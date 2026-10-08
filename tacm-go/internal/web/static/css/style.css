@@ -286,7 +286,7 @@ input, select, textarea { font-size: 16px; }
 @media (max-width: 700px) {
   .navlinks { display: none; }
   .topbar { padding: 8px 12px; gap: 10px; }
-  .comm { margin-left: auto; overflow-x: auto; display: flex; gap: 8px; }
+  .comm { margin-left: auto; display: flex; gap: 8px; }  /* M32：移除 overflow-x（下拉菜單被裁切根因） */
   .comm .pill { flex: none; }
 }
 @media (max-width: 560px) {
@@ -297,6 +297,16 @@ input, select, textarea { font-size: 16px; }
   .footer { padding-bottom: 96px; }
 }
 
+/* ===== M32 頂部登入/帳號（Python 同款：未登入「登入」、登入後綠燈＋帳號＋下拉） ===== */
+.member-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(240,185,11,.08); color: #f0b90b; border: 1px solid rgba(240,185,11,.35); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.member-pill .mdot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
+.member-pill.logged .mdot { background: #0ecb81; box-shadow: 0 0 6px rgba(14,203,129,.7); }
+.member-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 95; display: none; flex-direction: column; gap: 4px; min-width: 170px; padding: 10px; background: rgba(13,17,23,.98); border: 1px solid rgba(240,185,11,.25); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.55); }
+.member-wrap { position: relative; }
+.member-wrap.open .member-menu { display: flex; }
+.member-menu a { color: var(--bn-sub); text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+.member-menu a:hover { background: rgba(240,185,11,.1); color: #f0b90b; }
+.member-menu .mm-name { color: #fff; font-weight: 700; font-size: 13px; padding: 6px 10px; }
 /* ===== M31 頂部膠囊開關＋礦機訊號 ===== */
 .miner-pill { display: inline-flex; align-items: center; gap: 6px; }
 .miner-pill .mdot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; box-shadow: 0 0 6px rgba(107,114,128,.6); }

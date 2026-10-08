@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
+	"strings"
 	"time"
 
 	"tacm/internal/wallet"
@@ -96,8 +97,19 @@ func (s *RPCServer) handleMiners(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// M32：附加每台礦機的推薦註冊人數（算力加成來源）。
+	out := make([]map[string]any, 0, len(ms))
+	for _, m := range ms {
+		refs, _ := s.node.walletSvc.Store().ReferralCount(m.Address)
+		out = append(out, map[string]any{
+			"address": m.Address, "vcpu": m.VCPU, "vgpu": m.VGPU,
+			"hashrate": m.Hashrate, "status": m.Status,
+			"last_heartbeat_ts": m.LastHeartbeatTs, "registered_ts": m.RegisteredTs,
+			"online": m.Online, "refs": refs,
+		})
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true, "miners": ms, "online_count": len(splits), "splits": splits,
+		"ok": true, "miners": out, "online_count": len(splits), "splits": splits,
 	})
 }
 
@@ -129,4 +141,37 @@ func (s *RPCServer) handleMinerEarnings(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": addr, "earned_raw": earned.String(), "reward_count": count})
+}
+
+// handleChainStats GET /api/chain/stats — 全鏈統計（顯示於礦機頁）：
+//   總產出 TACm（累計出塊獎勵已分配）、TiUSD 總流通、獎勵池、總供應上限。
+func (s *RPCServer) handleChainStats(w http.ResponseWriter, r *http.Request) {
+	if s.node.walletSvc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "錢包未初始化")
+		return
+	}
+	total := big.NewInt(0)
+	led, err := s.node.walletSvc.Ledger(50000)
+	if err == nil {
+		for _, e := range led {
+			// 僅計 coinbase 出塊分配（:miner/:proposer/:pool）；排除 defi seed 與 defi 獎勵。
+			if e.Kind == wallet.KindReward && e.Asset == wallet.AssetTACm &&
+				(strings.HasSuffix(e.Memo, ":miner") || strings.HasSuffix(e.Memo, ":proposer") || strings.HasSuffix(e.Memo, ":pool")) {
+				if v, ok := new(big.Int).SetString(e.Delta, 10); ok && v.Sign() > 0 {
+					total.Add(total, v)
+				}
+			}
+		}
+	}
+	sup, _ := s.node.walletSvc.TiUSDSummary()
+	pool := big.NewInt(0)
+	if pa, err := s.node.walletSvc.Balance(wallet.RewardPoolAddr); err == nil {
+		pool = pa.TACmBalance
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true,
+		"total_mined_tacm": wallet.FormatAmountBig(total),
+		"tiusd_supply":     sup.Supply,
+		"reward_pool":      wallet.FormatAmountBig(pool),
+	})
 }

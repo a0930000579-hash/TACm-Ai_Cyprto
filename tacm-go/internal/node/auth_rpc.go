@@ -11,20 +11,25 @@ import (
 // handleAuthRegister 註冊：email＋password，成功即登入（設定 cookie）。
 func (s *RPCServer) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	var p struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		ReferralCode string `json:"referral_code"`
 	}
 	if err := decodeJSON(r, &p); err != nil {
 		writeJSON(w, 400, map[string]any{"ok": false, "message": "參數格式錯誤"})
 		return
 	}
-	uid, token, err := s.node.authSvc.Register(p.Email, p.Password)
+	uid, token, walletAddr, err := s.node.authSvc.Register(p.Email, p.Password, p.ReferralCode)
 	if err != nil {
 		writeJSON(w, 400, map[string]any{"ok": false, "message": err.Error()})
 		return
 	}
+	// M32：推薦關係記錄（提升邀請人礦機算力）。
+	if p.ReferralCode != "" && s.node.walletSvc != nil {
+		_ = s.node.walletSvc.Store().AddReferral(p.ReferralCode, walletAddr)
+	}
 	SetAuthCookie(w, token)
-	writeJSON(w, 200, map[string]any{"ok": true, "uid": uid, "email": p.Email})
+	writeJSON(w, 200, map[string]any{"ok": true, "uid": uid, "email": p.Email, "wallet_addr": walletAddr})
 }
 
 // handleAuthLogin 登入：驗證並設定 cookie。

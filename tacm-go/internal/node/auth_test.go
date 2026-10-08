@@ -17,19 +17,19 @@ func TestAuthLifecycle(t *testing.T) {
 	}
 	defer svc.Close()
 	// 註冊
-	uid, token, err := svc.Register("alice@example.com", "secret123")
+	uid, token, _, err := svc.Register("alice@example.com", "secret123", "")
 	if err != nil || uid <= 0 {
 		t.Fatalf("Register: uid=%d err=%v", uid, err)
 	}
 	// 重複 email 拒
-	if _, _, err := svc.Register("Alice@Example.com", "secret123"); err == nil {
+	if _, _, _, err := svc.Register("Alice@Example.com", "secret123", ""); err == nil {
 		t.Fatalf("重複 email 應拒")
 	}
 	// 壞 email / 短密碼拒
-	if _, _, err := svc.Register("bad", "secret123"); err == nil {
+	if _, _, _, err := svc.Register("bad", "secret123", ""); err == nil {
 		t.Fatalf("壞 email 應拒")
 	}
-	if _, _, err := svc.Register("bob@example.com", "123"); err == nil {
+	if _, _, _, err := svc.Register("bob@example.com", "123", ""); err == nil {
 		t.Fatalf("短密碼應拒")
 	}
 	// 登入成功

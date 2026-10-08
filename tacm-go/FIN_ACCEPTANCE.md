@@ -383,3 +383,40 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 | 社群三 API 同埠 | feed/market/ads 200 ✓；頁面實機載入（淺色風、零報錯）✓ |
 | 16 包 go test＋go vet | 全綠 |
 | 8 層冒煙（auth 11/community 24/mining 13/exchange 16/m17 8/c2c 26/defi 33/pool 14） | FAIL 全 0 |
+
+---
+
+## 18. M32 用戶回饋修復（登入/訊號/算力/錢包分流/節點教學）
+
+### 18.1 修復一覽
+
+| 用戶反映 | 根因 | 修復＋實測 |
+|---|---|---|
+| 「工具」無法下拉 | M30 CSS `.comm{overflow-x:auto}` 裁切 absolute 下拉 | 移除 overflow；☰ 下拉恢復 |
+| 頂部應顯示登入（Python 同款） | 登入入口藏在工具內 | 頂部常顯「登入」pill → 登入後**綠燈＋帳號**＋點擊下拉（我的錢包/礦機/登出） |
+| 礦機訊號永遠「待機」 | ① 節點自身默認礦機**註冊後無心跳**（180s 窗口過期）；② DB status 永 in-line 與窗口判定矛盾 | ① 節點**每輪出塊自動心跳**（consensusLoop）；② 徽章與膠囊**統一窗口判定**（`online`＝窗口內新鮮心跳）——實測 online_count=1、綠燈 |
+| 礦機個人/全鏈產出區分 | 挖礦頁只有個人收益 | 挖礦頁加**全鏈總覽**（全鏈總產出 TACm／TiUSD 總流通／獎勵池／我的累計收益）；錢包只顯示個人資產 |
+| 預設 1vCPU+2vGPU 不得修改 | mining.html 有輸入框＋register 收整數 | **算力固定**：後端 RegisterMiner 忽略傳入（實測傳 99/99 → vcpu=1/vgpu=2/hr=5M）；前端輸入框移除 |
+| 算力靠推薦註冊（每人 +0.01CPU/+0.02GPU） | 無推薦機制 | 新增 **referrals 表＋會員綁定錢包地址**：註冊填邀請人地址 → 邀請人算力+0.01/+0.02（實測推薦 2 人 → 1.02/2.04/hr=5.1M） |
+| 錢包資產天文數字 | Web 層 `datasource.go WalletView` 用 raw `String()`（與 RPC 層兩套） | 改 `FormatAmountBig/FormatAmountI64`（實測錢包頁顯示 149.6 TACm 非 raw）；獎勵池同步修復 |
+| 錢包僅個人＋全鏈總量放礦機 | 錢包有 TiUSD 供給區 | 錢包移除供給區（改「資產說明」）；供給移至挖礦頁全鏈總覽 |
+| 節點架設教學 | 無 | 新增 **NODE_SETUP.md**（電腦全節點／手機輕量礦工 PWA／Termux 全節點／驗證表） |
+
+### 18.2 同步修正
+
+- `wallet/miner.go`：vcpu/vgpu 改 REAL、Miner.Online 窗口判定、AddReferral/ReferralCount、RegisterMiner 固定算力
+- `node/auth.go`＋`auth_rpc.go`：users 加 wallet_addr/referrer、Register 回傳 walletAddr＋referral_code
+- `node/miner_rpc.go`：miners 加 refs/online、新 `/api/chain/stats`（總產出只計 coinbase :miner/:proposer/:pool，排除 seed/defi）
+- `base.html`：memberWrap 登入/帳號下拉；`wallet.html`：個人資產＋說明；`mining.html`：全鏈總覽＋固定算力；`auth.html`：邀請碼輸入
+- 冒煙：e2e TiUSD 資金改 exchange/deposit；auth_test Register 簽名
+
+### 18.3 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| 16 包 go test＋go vet | 全綠 |
+| 9 層冒煙（auth 11/community 24/mining 13/exchange 16/m17 8/c2c 26/defi 33/pool 14/e2e 23） | FAIL 全 0 |
+| 推薦算力實測 | 註冊傳 99/99 → 固定 1vCPU/2vGPU/5M；推薦 2 人 → 1.02/2.04/5.1M、refs=2 |
+| 全鏈總覽實測 | total_mined=出塊累計（2 塊=20）、TiUSD 流通 900,000、獎勵池 2.4 |
+| 挖礦頁實機 | 無輸入框、全鏈總覽、登入 pill、綠燈訊號、TiUSD 顯示 900 TiUSD |
+| Render API 現況 | `/api/wallet/info` 個人資產正確縮放（7576.8 TACm） |

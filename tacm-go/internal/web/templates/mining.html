@@ -61,17 +61,26 @@
       <button id="btnStop" onclick="stopMining()" style="display:none">停止挖礦</button>
     </div>
     <div class="mm-form" id="cfgForm">
-      <label>vCPU</label><input id="inVcpu" type="number" min="1" max="64" value="1">
-      <label>vGPU</label><input id="inVgpu" type="number" min="0" max="16" value="0">
-      <button onclick="applyConfig()">更新算力</button>
+      <div style="font-size:13px;color:var(--bn-sub);line-height:1.7">
+        <b style="color:#f0b90b">算力設定（固定不可改）</b><br>
+        ・基礎 <b>1 vCPU ＋ 2 vGPU</b>（vCPU×1M ＋ vGPU×2M）<br>
+        ・提升方式：<b>推薦註冊</b>——每邀請 1 名會員註冊，<b>+0.01 CPU／+0.02 GPU</b><br>
+        ・邀請碼＝你的錢包地址，分享給朋友於註冊時填寫即可。
+      </div>
     </div>
   </div>
 
   <div class="mm-grid">
-    <div class="mm-cell"><small>累計收益</small><b id="earned">0 TACm</b></div>
-    <div class="mm-cell"><small>獎勵池</small><b id="pool">—</b></div>
     <div class="mm-cell"><small>鏈頂高度</small><b id="height">—</b></div>
     <div class="mm-cell"><small>動態難度</small><b id="diff">—</b></div>
+  </div>
+
+  <div class="mm-sec">🌐 全鏈總覽</div>
+  <div class="mm-grid">
+    <div class="mm-cell"><small>全鏈總產出 TACm</small><b id="chainMined">—</b></div>
+    <div class="mm-cell"><small>TiUSD 總流通</small><b id="tiusdSupply">—</b></div>
+    <div class="mm-cell"><small>獎勵池</small><b id="pool">—</b></div>
+    <div class="mm-cell"><small>我的累計收益</small><b id="earned">0 TACm</b></div>
   </div>
 
   <div class="mm-sec">🌐 在線礦工排行（<span id="onlineN">0</span> 台 · 總算力 <span id="totalHr">0</span>）</div>
@@ -80,7 +89,8 @@
   <div class="mm-sec">⛏ 出塊與獎勵機制（原本方式）</div>
   <div class="mm-note">
     ・每區塊獎勵 <b>10 TACm</b>：<b>12%</b> 自動挹注獎勵池（作交易所資金用途），其餘 <b>88%</b> 按<b>在線礦工算力占比</b>即時瓜分。<br>
-    ・礦機以地址註冊（vCPU×1M + vGPU×2M 算力）並持續心跳，出塊時自動入帳；離線超過 3 分鐘不參與瓜分。<br>
+    ・礦機以地址註冊（固定 1vCPU×1M + 2vGPU×2M）並持續心跳，出塊時自動入帳；離線超過 3 分鐘不參與瓜分。<br>
+    ・算力提升靠推薦註冊：每 1 名會員以你的地址註冊，+0.01 CPU／+0.02 GPU。<br>
     ・節點自身亦為一台默認礦機（1 vCPU），保證鏈上任何時候都有算力歸屬與真實出塊。
   </div>
   <div id="err" class="err"></div>
@@ -104,8 +114,11 @@ function render(ms, splits, st){
   var me = null;
   (ms||[]).forEach(function(m){ if(m.address===myAddr) me = m; });
   if(me){
-    document.getElementById('stBadge').textContent = me.status==='online' ? '在線挖礦中' : '離線';
-    document.getElementById('stBadge').className = 'mm-badge' + (me.status==='online'?'':' off');
+    // M32：在線判定與頂部膠囊一致（窗口內新鮮心跳，不再用 DB status）。
+    var on = !!(me && me.online);
+    document.getElementById('stBadge').textContent = on ? '在線挖礦中' : '離線';
+    document.getElementById('stBadge').className = 'mm-badge' + (on?'':' off');
+    if (me && me.refs) { document.getElementById('refN').textContent = me.refs; }
     document.getElementById('hrCpu').textContent = fmtHr(me.vcpu*1000000);
     document.getElementById('hrGpu').textContent = fmtHr(me.vgpu*2000000);
     document.getElementById('hrTotal').textContent = fmtHr(me.vcpu*1000000 + me.vgpu*2000000);
@@ -135,21 +148,27 @@ function refresh(){
   var pS = get('/status').catch(function(){ return {block_height:0}; });
   var pP = get('/api/rewardpool').catch(function(){ return null; });
   var pE = get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).catch(function(){ return {earned_raw:'0'}; });
-  return Promise.all([pM, pS, pP, pE]).then(function(rs){
+  var pC = get('/api/chain/stats').catch(function(){ return null; });
+  return Promise.all([pM, pS, pP, pE, pC]).then(function(rs){
     try { render(rs[0].miners||[], rs[0].splits||[], rs[1]||{}); } catch (e) {}
     try {
       var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
       document.getElementById('pool').textContent = pool;
     } catch (e) {}
     try { document.getElementById('earned').textContent = fmtTacm(rs[3].earned_raw||'0'); } catch (e) {}
+    try {
+      var c = rs[4] || {};
+      document.getElementById('chainMined').textContent = c.total_mined_tacm ? fmtTacmRaw(c.total_mined_tacm) : '—';
+      document.getElementById('tiusdSupply').textContent = (c.tiusd_supply!=null) ? (c.tiusd_supply/1000000000).toLocaleString('en-US',{maximumFractionDigits:2}) + ' TiUSD' : '—';
+    } catch (e) {}
     document.getElementById('err').textContent = '';
   });
 }
 
+function fmtTacmRaw(v){ var n=parseFloat(v); if(isNaN(n)) return '—'; return n.toLocaleString('en-US',{maximumFractionDigits:6}) + ' TACm'; }
 function startMining(){
-  var vc = parseInt(document.getElementById('inVcpu').value||'1',10);
-  var vg = parseInt(document.getElementById('inVgpu').value||'0',10);
-  post('/api/miner/register',{address:myAddr, vcpu:vc, vgpu:vg}).then(function(){
+  // M32：算力固定 1vCPU+2vGPU＋推薦加成（後端計算），前端不再傳算力。
+  post('/api/miner/register',{address:myAddr}).then(function(){
     post('/api/miner/tick',{address:myAddr}).then(function(){
       mining = true;
       document.getElementById('btnStart').style.display='none';
@@ -175,11 +194,7 @@ function stopMining(){
     refresh();
   }).catch(function(e){ document.getElementById('err').textContent='停止失敗：'+e; });
 }
-function applyConfig(){
-  var vc = parseInt(document.getElementById('inVcpu').value||'1',10);
-  var vg = parseInt(document.getElementById('inVgpu').value||'0',10);
-  post('/api/miner/register',{address:myAddr, vcpu:vc, vgpu:vg}).then(function(){ refresh(); }).catch(function(e){ document.getElementById('err').textContent='更新算力失敗：'+e; });
-}
+
 
 get('/status').then(function(st){
   myAddr = st.address || '';

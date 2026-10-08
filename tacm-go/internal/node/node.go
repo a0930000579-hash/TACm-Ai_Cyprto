@@ -497,6 +497,11 @@ func (n *Node) consensusLoop() {
 		default:
 		}
 
+		// M32：節點自身默認礦機每輪心跳——保證鏈上任何時候都有在線算力歸屬（不再永遠「待機」）。
+		if n.walletSvc != nil {
+			_ = n.walletSvc.Store().TickMiner(n.nodeAddress)
+		}
+
 		// 動態出塊間隔：有交易快速（1s），無交易正常間隔。
 		wait := n.blockTime
 		if n.db.MempoolSize() > 0 {

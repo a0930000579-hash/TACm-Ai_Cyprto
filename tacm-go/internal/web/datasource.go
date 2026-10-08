@@ -1,10 +1,9 @@
 package web
 
 import (
-	"fmt"
-
 	"tacm/internal/chaindb"
 	"tacm/internal/node"
+	"tacm/internal/wallet"
 )
 
 // DataSource 抽象 Web 層所需的鏈數據，便於以節點實現或測試替身注入。
@@ -39,9 +38,10 @@ func (d *nodeDS) Wallet(addr string) (*WalletView, error) {
 	synced, _ := d.n.Wallet().SyncedHeight()
 	w := &WalletView{
 		Address:     addr,
-		TACm:        acc.TACmBalance.String(),
-		TiUSD:       fmt.Sprintf("%d", acc.TiUSDBalance),
-		USDT:        fmt.Sprintf("%d", acc.USDTBalance),
+		// M32：錢包只顯示個人資產（十進制縮放）——raw 不再外洩。
+		TACm:        wallet.FormatAmountBig(acc.TACmBalance),
+		TiUSD:       wallet.FormatAmountI64(acc.TiUSDBalance, wallet.AssetTiUSD),
+		USDT:        wallet.FormatAmountI64(acc.USDTBalance, wallet.AssetUSDT),
 		SyncedBlock: synced,
 		FeeTiUSDBps: 50, FeeUSDTBps: 125, FeeTACmBps: 200,
 		NodeAddress: d.n.Address(),

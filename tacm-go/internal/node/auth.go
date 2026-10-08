@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"tacm/internal/crypto"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -58,7 +60,9 @@ func OpenAuth(dataDir string) (*AuthService, error) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
-		created_at INTEGER NOT NULL
+		created_at INTEGER NOT NULL,
+		wallet_addr TEXT NOT NULL DEFAULT '',
+		referrer TEXT NOT NULL DEFAULT ''
 	)`); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("auth: 建立資料表: %w", err)
@@ -88,38 +92,50 @@ func (a *AuthService) userByEmail(email string) (int64, string, error) {
 }
 
 // Register 註冊會員。email 需格式正確、密碼至少 6 碼、email 唯一。
-func (a *AuthService) Register(email, password string) (int64, string, error) {
+func (a *AuthService) Register(email, password, referralCode string) (int64, string, string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if !emailRe.MatchString(email) {
-		return 0, "", fmt.Errorf("Email 格式不正確")
+		return 0, "", "", fmt.Errorf("Email 格式不正確")
 	}
 	if len(password) < 6 {
-		return 0, "", fmt.Errorf("密碼至少 6 碼")
+		return 0, "", "", fmt.Errorf("密碼至少 6 碼")
+	}
+	if referralCode != "" && !crypto.IsValidAddress(referralCode) {
+		return 0, "", "", fmt.Errorf("邀請人地址格式不正確（應為 tx0 開頭）")
 	}
 	existing, _, err := a.userByEmail(email)
 	if err != nil {
-		return 0, "", err
+		return 0, "", "", err
 	}
 	if existing != 0 {
-		return 0, "", fmt.Errorf("Email 已被註冊")
+		return 0, "", "", fmt.Errorf("Email 已被註冊")
 	}
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
-		return 0, "", fmt.Errorf("auth: 產生 salt: %w", err)
+		return 0, "", "", fmt.Errorf("auth: 產生 salt: %w", err)
 	}
 	hash := pbkdf2SHA256(password, salt)
 	stored := "pbkdf2$" + base64.StdEncoding.EncodeToString(salt) + "$" + base64.StdEncoding.EncodeToString(hash)
-	res, err := a.db.Exec(`INSERT INTO users(email, password_hash, created_at) VALUES(?,?,?)`,
-		email, stored, time.Now().Unix())
+	// M32：每個會員自動綁定一個鏈上錢包地址（挖礦即用此地址）。
+	kp, err := crypto.GenerateKeyPair()
 	if err != nil {
-		return 0, "", fmt.Errorf("auth: 建立使用者: %w", err)
+		return 0, "", "", fmt.Errorf("auth: 產生錢包地址: %w", err)
+	}
+	walletAddr, err := kp.Address()
+	if err != nil {
+		return 0, "", "", fmt.Errorf("auth: 產生錢包地址: %w", err)
+	}
+	res, err := a.db.Exec(`INSERT INTO users(email, password_hash, created_at, wallet_addr, referrer) VALUES(?,?,?,?,?)`,
+		email, stored, time.Now().Unix(), walletAddr, referralCode)
+	if err != nil {
+		return 0, "", "", fmt.Errorf("auth: 建立使用者: %w", err)
 	}
 	id, _ := res.LastInsertId()
 	token, err := a.SignSession(id, email)
 	if err != nil {
-		return 0, "", err
+		return 0, "", "", err
 	}
-	return id, token, nil
+	return id, token, walletAddr, nil
 }
 
 // Login 登入：驗證 email/密碼，回傳簽名 session。

@@ -61,8 +61,27 @@ func TestMinerStore(t *testing.T) {
 	if err := st.TickMiner("ghost"); err == nil {
 		t.Fatal("未註冊礦機心跳應報錯")
 	}
-	// 註冊算力：vcpu=2, vgpu=1 → 2e6+2e6=4e6。
-	if err := st.RegisterMiner("m2", 2, 1); err != nil {
+	// M32：算力固定 1vCPU+2vGPU（忽略傳入）→ 5e6；推薦註冊提升（每人 +0.01CPU/+0.02GPU）。
+	if err := st.RegisterMiner("m2", 99, 99); err != nil {
+		t.Fatal(err)
+	}
+	// 推薦 3 人：m2 算力 = (1+0.03)×1e6 + (2+0.06)×2e6 = 1.03e6+4.12e6 = 5_150_000。
+	if err := st.AddReferral("m2", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddReferral("m2", "r2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddReferral("m2", "r3"); err != nil {
+		t.Fatal(err)
+	}
+	// 重複推薦不重複計。
+	_ = st.AddReferral("m2", "r1")
+	n, _ := st.ReferralCount("m2")
+	if n != 3 {
+		t.Fatalf("推薦數=%d want 3", n)
+	}
+	if err := st.RegisterMiner("m2", 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	// 離線後不參與瓜分。
@@ -73,11 +92,26 @@ func TestMinerStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(splits) != 1 || splits[0].Address != "m2" || splits[0].Share.Cmp(big.NewInt(4_000_000)) != 0 {
+	if len(splits) != 1 || splits[0].Address != "m2" || splits[0].Share.Cmp(big.NewInt(5_150_000)) != 0 {
 		t.Fatalf("在線瓜分清單錯誤: %+v", splits)
 	}
 	ms, err := st.Miners()
 	if err != nil || len(ms) != 2 {
 		t.Fatalf("礦機清單錯誤: %+v %v", ms, err)
+	}
+	// online 判定：窗口內心跳為 true；停機後 false。
+	for _, m := range ms {
+		if m.Address == "m2" && !m.Online {
+			t.Fatalf("m2 心跳新鮮應在線: %+v", m)
+		}
+	}
+	if err := st.StopMiner("m2"); err != nil {
+		t.Fatal(err)
+	}
+	ms2, _ := st.Miners()
+	for _, m := range ms2 {
+		if m.Address == "m2" && m.Online {
+			t.Fatalf("m2 停機後不應在線: %+v", m)
+		}
 	}
 }

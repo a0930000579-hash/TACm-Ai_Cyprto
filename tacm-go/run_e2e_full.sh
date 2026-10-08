@@ -37,8 +37,9 @@ H=$(curl -sf "http://127.0.0.1:$RPC/status" | python3 -c "import sys,json;print(
 # 2. 種子資金：U1 TACm 10（外部充值）、U2 TACm 10；TiUSD mint U1 500 / U2 500。
 J /api/wallet/deposit "{\"to\":\"$U1\",\"asset\":\"TACm\",\"amount\":\"10\",\"memo\":\"s\"}" >/dev/null
 J /api/wallet/deposit "{\"to\":\"$U2\",\"asset\":\"TACm\",\"amount\":\"10\",\"memo\":\"s\"}" >/dev/null
-J /api/tiusd/mint "{\"to\":\"$U1\",\"amount\":\"500\",\"note\":\"s\"}" >/dev/null
-J /api/tiusd/mint "{\"to\":\"$U2\",\"amount\":\"500\",\"note\":\"s\"}" >/dev/null
+# M31：TiUSD 禁止私自鑄造——改交易所資金池直接入金（後台結算等效）。
+J /api/exchange/deposit "{\"uid\":\"$U1\",\"asset\":\"TiUSD\",\"amount\":\"500\"}" >/dev/null
+J /api/exchange/deposit "{\"uid\":\"$U2\",\"asset\":\"TiUSD\",\"amount\":\"500\"}" >/dev/null
 
 # 3. 鏈上轉帳 U1→U2 1 TACm（費 2%＝0.02，fee 入錢包 fee 帳戶）。
 R=$(J /api/wallet/transfer "{\"from\":\"$U1\",\"to\":\"$U2\",\"asset\":\"TACm\",\"amount\":\"1\",\"memo\":\"t\"}")

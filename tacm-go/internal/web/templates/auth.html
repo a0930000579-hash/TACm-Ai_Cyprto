@@ -20,6 +20,9 @@
       <input id="reg-email" class="f-input" type="email" placeholder="you@example.com" autocomplete="email">
       <div class="f-label">密碼</div>
       <input id="reg-pwd" class="f-input" type="password" placeholder="至少 6 碼" autocomplete="new-password">
+      <div class="f-label">邀請人地址（選填）</div>
+      <input id="reg-ref" class="f-input" type="text" placeholder="tx0 開頭的邀請人錢包地址">
+      <div style="font-size:11.5px; color:var(--bn-sub); margin:4px 0 10px;">填寫邀請人地址＝邀請人礦機算力 +0.01 CPU／+0.02 GPU</div>
       <button class="btn primary block" onclick="doRegister()">註冊</button>
     </div>
 
@@ -46,7 +49,7 @@ async function doLogin() {
   else msg(j.message || '登入失敗', true);
 }
 async function doRegister() {
-  const { r, j } = await post('/api/auth/register', { email: document.getElementById('reg-email').value, password: document.getElementById('reg-pwd').value });
+  const { r, j } = await post('/api/auth/register', { email: document.getElementById('reg-email').value, password: document.getElementById('reg-pwd').value, referral_code: document.getElementById('reg-ref').value });
   if (j.ok) { msg('註冊成功，重新載入…'); setTimeout(() => location.href = '/', 600); }
   else msg(j.message || '註冊失敗', true);
 }

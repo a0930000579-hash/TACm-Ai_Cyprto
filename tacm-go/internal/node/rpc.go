@@ -67,6 +67,7 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("POST /api/miner/stop", s.handleMinerStop)
 	s.addRoute("GET /api/miners", s.handleMiners)
 	s.addRoute("GET /api/miner/earnings", s.handleMinerEarnings)
+	s.addRoute("GET /api/chain/stats", s.handleChainStats)
 	s.addRoute("GET /api/exchange/pool", s.handleExchangePool)
 	// M21-C 社群（FB 風動態牆/市集/廣告）。
 	s.addRoute("GET /api/community/feed", s.handleCommunityFeed)

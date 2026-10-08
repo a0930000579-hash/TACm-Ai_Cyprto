@@ -16,24 +16,89 @@ const MinerOnlineWindow = 180
 const minerSchema = `
 CREATE TABLE IF NOT EXISTS miners (
     address TEXT PRIMARY KEY,
-    vcpu    INTEGER NOT NULL DEFAULT 1,
-    vgpu    INTEGER NOT NULL DEFAULT 0,
+    vcpu    REAL NOT NULL DEFAULT 1,
+    vgpu    REAL NOT NULL DEFAULT 2,
     hashrate TEXT NOT NULL DEFAULT '0',
     status  TEXT NOT NULL DEFAULT 'online',
     last_heartbeat_ts INTEGER NOT NULL DEFAULT 0,
     registered_ts INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS referrals (
+    referrer TEXT NOT NULL,
+    referral TEXT NOT NULL,
+    ts       INTEGER NOT NULL,
+    PRIMARY KEY (referrer, referral)
+);
 `
 
 // Miner 礦機視圖。
 type Miner struct {
-	Address         string `json:"address"`
-	VCPU            int    `json:"vcpu"`
-	VGPU            int    `json:"vgpu"`
-	Hashrate        string `json:"hashrate"`
-	Status          string `json:"status"`
-	LastHeartbeatTs int64  `json:"last_heartbeat_ts"`
-	RegisteredTs    int64  `json:"registered_ts"`
+	Address         string  `json:"address"`
+	VCPU            float64 `json:"vcpu"`
+	VGPU            float64 `json:"vgpu"`
+	Hashrate        string  `json:"hashrate"`
+	Status          string  `json:"status"`
+	LastHeartbeatTs int64   `json:"last_heartbeat_ts"`
+	RegisteredTs    int64   `json:"registered_ts"`
+	Online          bool    `json:"online"`
+}
+
+// BaseCPU/BaseGPU：礦機預設算力（不可手動修改，M32 固定）。
+// 算力提升唯一途徑＝推薦註冊：每 1 名推薦 +0.01 CPU、+0.02 GPU。
+const (
+	BaseCPU = 1.0
+	BaseGPU = 2.0
+	RefCPU  = 0.01
+	RefGPU  = 0.02
+)
+
+// RegisterMiner 註冊（或更新）一台礦機：算力固定 = 基礎 1vCPU+2vGPU＋推薦加成。
+// vcpu/vgpu 參數被忽略（防止手動改算力），僅為向後相容保留。
+func (s *Store) RegisterMiner(address string, _vcpu, _vgpu int) error {
+	if address == "" {
+		return fmt.Errorf("wallet: 礦機註冊參數非法 (address=%q)", address)
+	}
+	n, err := s.ReferralCount(address)
+	if err != nil {
+		return err
+	}
+	vcpu := BaseCPU + float64(n)*RefCPU
+	vgpu := BaseGPU + float64(n)*RefGPU
+	hr := int64(vcpu*1_000_000 + vgpu*2_000_000)
+	now := time.Now().Unix()
+	_, err = s.db.Exec(`
+INSERT INTO miners (address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts)
+VALUES (?, ?, ?, ?, 'online', ?, ?)
+ON CONFLICT(address) DO UPDATE SET
+  vcpu=excluded.vcpu, vgpu=excluded.vgpu, hashrate=excluded.hashrate,
+  status='online', last_heartbeat_ts=excluded.last_heartbeat_ts`,
+		address, vcpu, vgpu, fmt.Sprintf("%d", hr), now, now)
+	if err != nil {
+		return fmt.Errorf("wallet: 註冊礦機: %w", err)
+	}
+	return nil
+}
+
+// AddReferral 記錄一次推薦註冊（referrer 為邀請人地址，referral 為新註冊地址）。
+func (s *Store) AddReferral(referrer, referral string) error {
+	if referrer == "" || referral == "" || referrer == referral {
+		return fmt.Errorf("wallet: 推薦關係非法")
+	}
+	_, err := s.db.Exec(`INSERT OR IGNORE INTO referrals (referrer, referral, ts) VALUES (?, ?, ?)`,
+		referrer, referral, time.Now().Unix())
+	if err != nil {
+		return fmt.Errorf("wallet: 記錄推薦: %w", err)
+	}
+	return nil
+}
+
+// ReferralCount 回傳指定地址的推薦註冊人數。
+func (s *Store) ReferralCount(referrer string) (int, error) {
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM referrals WHERE referrer=?`, referrer).Scan(&n); err != nil {
+		return 0, fmt.Errorf("wallet: 查詢推薦數: %w", err)
+	}
+	return n, nil
 }
 
 // MinerSplit 一個礦工的瓜分份額（Share 為分子，分母為全體算力和）。
@@ -42,26 +107,7 @@ type MinerSplit struct {
 	Share   *big.Int `json:"share"`
 }
 
-// RegisterMiner 註冊（或更新）一台礦機；算力 = vcpu×1e6 + vgpu×2e6。
-func (s *Store) RegisterMiner(address string, vcpu, vgpu int) error {
-	if address == "" || vcpu < 0 || vgpu < 0 || (vcpu+vgpu) <= 0 {
-		return fmt.Errorf("wallet: 礦機註冊參數非法 (address=%q vcpu=%d vgpu=%d)", address, vcpu, vgpu)
-	}
-	hr := new(big.Int).Mul(big.NewInt(int64(vcpu)), big.NewInt(1_000_000))
-	hr.Add(hr, new(big.Int).Mul(big.NewInt(int64(vgpu)), big.NewInt(2_000_000)))
-	now := time.Now().Unix()
-	_, err := s.db.Exec(`
-INSERT INTO miners (address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts)
-VALUES (?, ?, ?, ?, 'online', ?, ?)
-ON CONFLICT(address) DO UPDATE SET
-  vcpu=excluded.vcpu, vgpu=excluded.vgpu, hashrate=excluded.hashrate,
-  status='online', last_heartbeat_ts=excluded.last_heartbeat_ts`,
-		address, vcpu, vgpu, hr.String(), now, now)
-	if err != nil {
-		return fmt.Errorf("wallet: 註冊礦機: %w", err)
-	}
-	return nil
-}
+
 
 // TickMiner 礦機心跳：更新最後心跳時間並維持在線。
 func (s *Store) TickMiner(address string) error {
@@ -96,11 +142,14 @@ func (s *Store) Miners() ([]Miner, error) {
 	}
 	defer rows.Close()
 	out := []Miner{}
+	now := time.Now().Unix()
 	for rows.Next() {
 		var m Miner
 		if err := rows.Scan(&m.Address, &m.VCPU, &m.VGPU, &m.Hashrate, &m.Status, &m.LastHeartbeatTs, &m.RegisteredTs); err != nil {
 			return nil, fmt.Errorf("wallet: 讀取礦機: %w", err)
 		}
+		// M32：在線判定統一窗口（與瓜分一致），不再用 DB status（永在線 bug）。
+		m.Online = m.Status == "online" && m.LastHeartbeatTs >= now-MinerOnlineWindow
 		out = append(out, m)
 	}
 	return out, rows.Err()

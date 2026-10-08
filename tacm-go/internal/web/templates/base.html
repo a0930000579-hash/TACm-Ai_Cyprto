@@ -38,10 +38,18 @@
       <span class="mdot" id="miner-dot"></span><span id="miner-label">待機</span>
     </a>
     <button class="pill tools-toggle" id="toolsToggle" aria-expanded="false" aria-haspopup="menu">☰ 工具</button>
+    <div class="member-wrap" id="memberWrap">
+      <a class="member-pill" id="member-pill" href="/auth/login" rel="noopener"><span class="mdot" id="member-dot"></span><span id="member-label">登入</span></a>
+      <div class="member-menu" id="memberMenu" role="menu">
+        <span class="mm-name" id="member-email">未登入</span>
+        <a href="/wallet" rel="noopener">我的錢包</a>
+        <a href="/mining" rel="noopener">我的礦機</a>
+        <a href="#" id="member-logout" rel="noopener" style="display:none">登出</a>
+      </div>
+    </div>
     <div class="tools-menu" id="toolsMenu" role="menu">
       <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
       <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
-      <a class="pill" id="member-pill" href="/auth/login" rel="noopener">會員登入</a>
       {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
       {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
       {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
@@ -95,19 +103,28 @@
   document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); } });
 })();
 <script>
-// 會員狀態：登入後頂欄顯示 email＋點擊登出。
+// M32：會員狀態（Python 同款）——未登入「登入」；登入後綠燈＋帳號顯示＋點擊下拉（錢包/礦機/登出）。
 (async function () {
+  var wrap = document.getElementById('memberWrap');
+  var pill = document.getElementById('member-pill');
+  var menu = document.getElementById('memberMenu');
+  var label = document.getElementById('member-label');
+  var dot = document.getElementById('member-dot');
+  var em = document.getElementById('member-email');
+  var lo = document.getElementById('member-logout');
+  function openMenu(open) { if (wrap) wrap.classList.toggle('open', open); }
+  if (pill) pill.addEventListener('click', function (e) {
+    if (label.getAttribute('data-logged') === '1') { e.preventDefault(); openMenu(!(wrap && wrap.classList.contains('open'))); }
+  });
+  if (wrap) document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) openMenu(false); });
   try {
     const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
     const j = await r.json().catch(() => null);
     if (j && j.ok && j.logged_in) {
-      const pill = document.getElementById('member-pill');
-      if (pill) {
-        pill.textContent = '👤 ' + j.user.email;
-        pill.href = '#';
-        pill.title = '點擊登出';
-        pill.onclick = async (e) => { e.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); };
-      }
+      if (pill) { pill.href = '#'; pill.classList.add('logged'); label.setAttribute('data-logged','1'); label.textContent = '👤 ' + j.user.email; }
+      if (dot) dot.className = 'mdot';
+      if (em) em.textContent = j.user.email;
+      if (lo) { lo.style.display = 'block'; lo.onclick = async (ev) => { ev.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }; }
     }
   } catch (e) {}
 })();
