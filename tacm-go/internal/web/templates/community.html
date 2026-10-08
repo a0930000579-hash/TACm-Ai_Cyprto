@@ -2,6 +2,12 @@
 {% block title %}TAC 社群 · 動態牆{% endblock %}
 {% block content %}
 <style>
+  /* M31：社群採 Facebook 淺色風（背景去深色） */
+  body { background: #f0f2f5; color: #1c1e21; }
+  .container { background: transparent; }
+  .footer { background: #fff; border-top-color: #dddfe2; color: #65676b; }
+  .bottom-nav { background: rgba(255, 255, 255, 0.97); border-top-color: #dddfe2; }
+  .bottom-nav a { color: #65676b; }
   .cm-wrap{max-width:1080px;margin:0 auto}
   .cm-head{background:#1877f2;background:linear-gradient(135deg,#1877f2,#166fe5);border-radius:16px;padding:16px 18px;color:#fff;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
   .cm-head .cm-logo{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800}
@@ -149,8 +155,9 @@
 </div>
 
 <script>
-var RPC = (new URLSearchParams(location.search)).get('rpc') || '8332';
-var base = location.protocol + '//' + location.hostname + ':' + RPC;
+// M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
 function get(p){ return fetch(base + p).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
 function post(p,b){ return fetch(base + p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})}).then(function(r){ if(!r.ok) return r.json().then(function(j){throw new Error(j.error||r.status)}); return r.json(); }); }
 var me = '';

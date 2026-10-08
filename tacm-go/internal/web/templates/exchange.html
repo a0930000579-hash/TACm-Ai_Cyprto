@@ -226,8 +226,9 @@
 </main>
 
 <script>
-  var RPC = (new URLSearchParams(location.search)).get('rpc') || '8332';
-  var base = location.protocol + '//' + location.hostname + ':' + RPC;
+  // M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+  var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+  var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
   var CUR = 'TACM/USDT';
   function get(path){ return fetch(base + path).then(function(r){ return r.json(); }); }
   function post(path, body){

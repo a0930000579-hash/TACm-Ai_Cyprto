@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
+	"strings"
 	"net/http/httptest"
 	"testing"
 
@@ -119,19 +120,24 @@ func TestTiUSDRPC(t *testing.T) {
 	ts := httptest.NewServer(rpc.Handler())
 	defer ts.Close()
 
-	if err := postOK(t, ts.URL+"/api/tiusd/mint", walletTxReq{To: "Vault", Amount: "50", Note: "mint"}); err != nil {
+	// M31：公開 mint/burn 已移除（禁止私自鑄造）——路由應 404，供給由鏈上機制（MintTiUSD 供給層）產生。
+	res, err := http.Post(ts.URL+"/api/tiusd/mint", "application/json",
+		strings.NewReader(`{"to":"Vault","amount":"50"}`))
+	if err != nil {
 		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("私自鑄造應被禁止（404），got %d", res.StatusCode)
+	}
+	// 鏈上機制鑄造（供給層）：等同節點內部 seed 行為（節點啟動已鏈上鑄造 defi 池初始供給）。
+	before := getJSON(t, ts.URL+"/api/tiusd/summary")["supply_raw"].(float64)
+	if _, err := n.walletSvc.MintTiUSD("Vault", 50_000_000, "chain-mint"); err != nil {
+		t.Fatalf("鏈上鑄造: %v", err)
 	}
 	sum := getJSON(t, ts.URL+"/api/tiusd/summary")
-	if sum["supply_raw"].(float64) != 50_000_000 {
-		t.Fatalf("供給=%v want 50 TiUSD", sum["supply_raw"])
-	}
-	if err := postOK(t, ts.URL+"/api/tiusd/burn", walletTxReq{Amount: "20", Note: "burn"}); err != nil {
-		t.Fatal(err)
-	}
-	sum = getJSON(t, ts.URL+"/api/tiusd/summary")
-	if sum["supply_raw"].(float64) != 30_000_000 {
-		t.Fatalf("銷毀後供給=%v want 30", sum["supply_raw"])
+	if sum["supply_raw"].(float64) != before+50_000_000 {
+		t.Fatalf("供給增量=%v want 50 TiUSD", sum["supply_raw"].(float64)-before)
 	}
 	v := getInfo(t, ts.URL, "Vault")
 	if v.TiUSDRaw != 50_000_000 {

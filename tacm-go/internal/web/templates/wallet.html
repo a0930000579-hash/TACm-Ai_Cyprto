@@ -107,21 +107,9 @@
         流通供給 <b style="color:var(--bn-yellow);">{{ wallet.TiUSDSupply }}</b>
         · 累計發行 {{ wallet.TiUSDMinted }} · 累計銷毀 {{ wallet.TiUSDBurned }}
       </div>
-      <form class="bn-form" id="mintf" onsubmit="return doMint(event)">
-        <label>發行至地址</label>
-        <input id="mto" value="{{ address }}" autocomplete="off">
-        <label>發行量（TiUSD）</label>
-        <input id="mamt" placeholder="0.00" autocomplete="off">
-        <button class="bn-btn" type="submit">發行 TiUSD</button>
-        <div class="bn-msg" id="mintmsg"></div>
-      </form>
-      <div style="height:8px"></div>
-      <form class="bn-form" id="burnf" onsubmit="return doBurn(event)">
-        <label>銷毀量（TiUSD）</label>
-        <input id="bamt" placeholder="0.00" autocomplete="off">
-        <button class="bn-btn" type="submit" style="background:var(--bn-card2); color:var(--bn-red);">銷毀 TiUSD</button>
-        <div class="bn-msg" id="burnmsg"></div>
-      </form>
+      <div class="bn-note" style="background:rgba(240,185,11,.07); border:1px solid rgba(240,185,11,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
+        TiUSD 由<b style="color:var(--bn-yellow)">鏈上機制（供給層鑄造）</b>產生——DeFi 池／交易所結算自動鑄造入帳，<b>禁止私自發行或銷毀</b>；供應量永久記錄於鏈上供給帳本。
+      </div>
     </div>
   </div>
 
@@ -148,8 +136,9 @@
 </main>
 
 <script>
-  var RPC = (new URLSearchParams(location.search)).get('rpc') || '8332';
-  var base = location.protocol + '//' + location.hostname + ':' + RPC;
+  // M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+  var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+  var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
   function post(path, body) {
     return fetch(base + path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
       .then(function(r){ return r.json().then(function(j){ return {st:r.status, j:j}; }); });
@@ -171,24 +160,6 @@
     }).catch(function(e){ show('tfmsg', 'err', '網路錯誤: ' + e); });
     return false;
   }
-  function doMint(ev) {
-    ev.preventDefault();
-    show('mintmsg', '', '送出中…');
-    post('/api/tiusd/mint', {to: document.getElementById('mto').value.trim(),
-      amount: document.getElementById('mamt').value.trim(), note: 'web mint'}).then(function(r){
-      if (r.st === 200) { show('mintmsg', 'ok', '✅ 發行成功，供給 ' + r.j.supply); setTimeout(function(){ location.reload(); }, 800); }
-      else { show('mintmsg', 'err', '❌ ' + (r.j.error || '失敗')); }
-    }).catch(function(e){ show('mintmsg', 'err', '網路錯誤: ' + e); });
-    return false;
-  }
-  function doBurn(ev) {
-    ev.preventDefault();
-    show('burnmsg', '', '送出中…');
-    post('/api/tiusd/burn', {amount: document.getElementById('bamt').value.trim(), note: 'web burn'}).then(function(r){
-      if (r.st === 200) { show('burnmsg', 'ok', '✅ 銷毀成功，供給 ' + r.j.supply); setTimeout(function(){ location.reload(); }, 800); }
-      else { show('burnmsg', 'err', '❌ ' + (r.j.error || '失敗')); }
-    }).catch(function(e){ show('burnmsg', 'err', '網路錯誤: ' + e); });
-    return false;
-  }
+  // M31：TiUSD 僅由鏈上機制鑄造，已移除發行/銷毀入口（供給由鏈上供給帳本管理）。
 </script>
 {% endblock %}

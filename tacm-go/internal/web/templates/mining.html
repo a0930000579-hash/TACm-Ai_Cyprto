@@ -87,8 +87,9 @@
 </div>
 
 <script>
-var RPC = (new URLSearchParams(location.search)).get('rpc') || '8332';
-var base = location.protocol + '//' + location.hostname + ':' + RPC;
+// M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
 function get(p){ return fetch(base + p).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
 function post(p,b){ return fetch(base + p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})}).then(function(r){ if(!r.ok) return r.json().then(function(j){throw new Error(j.error||r.status)}); return r.json(); }); }
 var myAddr = '';
@@ -127,16 +128,21 @@ function render(ms, splits, st){
   list.innerHTML = rows || '<div class="mm-note" style="margin-top:8px">目前無在線礦工</div>';
 }
 
+// M31：refresh 容錯——單一 API 失敗不阻斷整體（個別降級為預設值，避免「載入中…」卡死）。
 function refresh(){
-  return Promise.all([get('/api/miners'), get('/status'), get('/api/rewardpool')]).then(function(rs){
-    render(rs[0].miners, rs[0].splits, rs[1]);
-    var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
-    document.getElementById('pool').textContent = pool;
-    return get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).then(function(er){
-      document.getElementById('earned').textContent = fmtTacm(er.earned_raw||'0');
-    }).catch(function(){});
-  }).catch(function(e){
-    document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
+  var empty = {miners:[], splits:[], block_height:0};
+  var pM = get('/api/miners').catch(function(){ return empty; });
+  var pS = get('/status').catch(function(){ return {block_height:0}; });
+  var pP = get('/api/rewardpool').catch(function(){ return null; });
+  var pE = get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).catch(function(){ return {earned_raw:'0'}; });
+  return Promise.all([pM, pS, pP, pE]).then(function(rs){
+    try { render(rs[0].miners||[], rs[0].splits||[], rs[1]||{}); } catch (e) {}
+    try {
+      var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
+      document.getElementById('pool').textContent = pool;
+    } catch (e) {}
+    try { document.getElementById('earned').textContent = fmtTacm(rs[3].earned_raw||'0'); } catch (e) {}
+    document.getElementById('err').textContent = '';
   });
 }
 

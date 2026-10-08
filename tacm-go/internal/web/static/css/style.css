@@ -296,3 +296,29 @@ input, select, textarea { font-size: 16px; }
   .container { padding-bottom: 84px; }
   .footer { padding-bottom: 96px; }
 }
+
+/* ===== M31 頂部膠囊開關＋礦機訊號 ===== */
+.miner-pill { display: inline-flex; align-items: center; gap: 6px; }
+.miner-pill .mdot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; box-shadow: 0 0 6px rgba(107,114,128,.6); }
+.tools-toggle { background: rgba(240,185,11,.08); color: #f0b90b; border-color: rgba(240,185,11,.35); cursor: pointer; }
+.comm { position: relative; }
+.tools-menu { display: flex; align-items: center; gap: 8px; }
+
+/* 手機：工具收進 ☰ 開關下拉（不橫向滾動） */
+@media (max-width: 700px) {
+  .tools-menu {
+    display: none;
+    position: absolute; top: calc(100% + 10px); right: 0; z-index: 90;
+    flex-direction: column; align-items: stretch; gap: 6px;
+    min-width: 168px; padding: 10px;
+    background: rgba(13, 17, 23, 0.98);
+    border: 1px solid rgba(240, 185, 11, 0.25); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+  .tools-menu .pill { justify-content: flex-start; width: 100%; }
+  .comm.open .tools-menu { display: flex; }
+  .tools-toggle { display: inline-flex; }
+}
+@media (min-width: 701px) {
+  .tools-toggle { display: none; }
+}

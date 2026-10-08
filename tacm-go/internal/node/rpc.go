@@ -91,8 +91,7 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("POST /api/wallet/transfer", s.handleWalletTransfer)
 	s.addRoute("POST /api/wallet/deposit", s.handleWalletDeposit)
 	s.addRoute("GET /api/tiusd/summary", s.handleTiUSDSummary)
-	s.addRoute("POST /api/tiusd/mint", s.handleTiUSDMint)
-	s.addRoute("POST /api/tiusd/burn", s.handleTiUSDBurn)
+	// M31：移除公開 TiUSD 發行/銷毀——穩定幣僅由鏈上機制（供給層鑄造）產生，禁止私自鑄造。
 	s.addRoute("GET /api/exchange/balances", s.handleExchangeBalances)
 	s.addRoute("GET /api/exchange/orders", s.handleExchangeOrders)
 	s.addRoute("POST /api/exchange/deposit", s.handleExchangeDeposit)

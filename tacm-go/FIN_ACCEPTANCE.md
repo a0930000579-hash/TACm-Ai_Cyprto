@@ -351,3 +351,35 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 | viewport 禁縮放 / SVG 底部導航 / brand-badge / 幣安 CSS | 全部命中 |
 | 桌面實機截圖（/wallet） | 幣安風正常、無遮擋、無報錯 |
 | 回歸 | 16 包測試＋go vet＋exchange 16/16＋m17 8/8＋auth 11/11＋community 24/24＋mining 13/13，FAIL 全 0 |
+
+---
+
+## 17. M31 線上異常修復（錢包/礦機/社群/頂部/鑄造權限）
+
+### 17.1 根因修復
+
+| 用戶反映 | 根因 | 修復 |
+|---|---|---|
+| 錢包 TACm 天文數字（1.4e19） | Render 仍為舊版：WalletView 顯示 raw 未縮放 | 新版 `wallet_rpc.go` 已用 `FormatAmountBig`（M29 起）；交付新版重部署 |
+| 礦機無反應/「載入中…」卡死 | ① 頁面 RPC base 寫死 `8332`；② refresh `Promise.all` 單一 API 失敗全卡 | ① RPC 預設改**同源**（同埠合併＝web 埠，`?rpc=` 可覆蓋）——community/exchange/mining/wallet 4 頁全修；② refresh 各別 catch 降級 |
+| 社群載入失敗/市集「載入中…」 | 同上 ①（community JS 連 8332） | 同源修復後 feed/market/ads 同埠全通 |
+| 社群背景 | 深色 | **FB 淺色風**：body `#f0f2f5`、白卡、藍 #1877f2、底欄白化 |
+| 頂部橫向滾動 | M30 `overflow-x:auto` | **膠囊式開關選單**：手機端「☰ 工具」膠囊展開下拉（白皮書/EN/社群/會員），不再滾動 |
+| 礦機膠囊訊號 | 缺 | 頂部 miner-pill：綠點「挖礦中」/灰點「待機」，10 秒輪詢 /api/miners（Python 版同款訊號） |
+| TiUSD 私自鑄造 | 公開 `/api/tiusd/mint|burn` 任何人可發行 | **路由移除（404）**；TiUSD 改由**鏈上機制（供給層 MintTiUSD）**鑄造——defi 池 seed 走鏈上鑄造（實測供給 900,000 自動入池）；錢包頁發行/銷毀表單移除＋說明 |
+
+### 17.2 同步修正
+
+- `wallet_e2e_test.go TestTiUSDRPC`：mint 路由 404 斷言＋鏈上機制 MintTiUSD delta 供給
+- `run_m17_smoke.sh`/`run_pool_smoke.sh`：TiUSD 資金準備改交易所直接入金（後台結算等效）
+
+### 17.3 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| `/api/tiusd/mint` | 404（禁止私自鑄造）✓ |
+| `/api/tiusd/summary` | supply=900,000（鏈上機制自動鑄造）✓ |
+| 挖礦完整流程實測 | register→tick→出塊 4 塊→earnings 30.17 TACm（按算力 4vCPU/1vCPU 瓜分正確）→stop ✓ |
+| 社群三 API 同埠 | feed/market/ads 200 ✓；頁面實機載入（淺色風、零報錯）✓ |
+| 16 包 go test＋go vet | 全綠 |
+| 8 層冒煙（auth 11/community 24/mining 13/exchange 16/m17 8/c2c 26/defi 33/pool 14） | FAIL 全 0 |

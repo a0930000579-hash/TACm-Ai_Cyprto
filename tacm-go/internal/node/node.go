@@ -280,6 +280,13 @@ func (n *Node) seedAccountIfEmpty(account, asset string, amount float64, memo st
 		return fmt.Errorf("defi: 注資金額無效 %s/%s: %w", account, asset, err)
 	}
 	if accountBalanceIsZero(acc, wallet.Asset(asset)) {
+		if wallet.Asset(asset) == wallet.AssetTiUSD {
+			// TiUSD 由鏈上機制鑄造（供給層 MintTiUSD 增加供給並入帳），非私自發行。
+			if _, err := n.walletSvc.MintTiUSD(account, amts.I64, memo+":chain-mint"); err != nil {
+				return fmt.Errorf("defi: 鏈上鑄造注資 %s TiUSD: %w", account, err)
+			}
+			return nil
+		}
 		if err := n.walletSvc.Reward(account, wallet.Asset(asset), amts, memo); err != nil {
 			return fmt.Errorf("defi: 注資 %s %s: %w", account, asset, err)
 		}

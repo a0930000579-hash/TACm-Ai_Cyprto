@@ -45,10 +45,11 @@ OK=$($PY -c "import sys;d1=int('$(POOL | TACM balance)');d2=int('$(POOL | TACM t
 # 2. 撮合造 TACm fee：A 賣 2、B 買 2（TACM/TiUSD）。
 U1="tx0P21A"; U2="tx0P21B"
 J /api/wallet/deposit "{\"to\":\"$U1\",\"asset\":\"TACm\",\"amount\":\"10\",\"memo\":\"s\"}" >/dev/null
-J /api/tiusd/mint "{\"to\":\"$U1\",\"amount\":\"500\",\"note\":\"s\"}" >/dev/null
-J /api/tiusd/mint "{\"to\":\"$U2\",\"amount\":\"500\",\"note\":\"s\"}" >/dev/null
+# M31：TiUSD 禁止私自鑄造——改由交易所資金池直接入金（後台結算等效）。
+J /api/exchange/deposit "{\"uid\":\"$U1\",\"asset\":\"TiUSD\",\"amount\":\"500\"}" >/dev/null
+J /api/exchange/deposit "{\"uid\":\"$U2\",\"asset\":\"TiUSD\",\"amount\":\"500\"}" >/dev/null
 J /api/exchange/deposit_from_wallet "{\"uid\":\"$U1\",\"asset\":\"TACm\",\"amount\":\"5\"}" >/dev/null
-J /api/exchange/deposit_from_wallet "{\"uid\":\"$U2\",\"asset\":\"TiUSD\",\"amount\":\"300\"}" >/dev/null
+J /api/exchange/deposit "{\"uid\":\"$U2\",\"asset\":\"TiUSD\",\"amount\":\"300\"}" >/dev/null
 J /api/exchange/order "{\"uid\":\"$U1\",\"market\":\"TACM/TiUSD\",\"side\":\"sell\",\"type\":\"limit\",\"price\":\"100\",\"qty\":\"2\"}" >/dev/null
 R=$(J /api/exchange/order "{\"uid\":\"$U2\",\"market\":\"TACM/TiUSD\",\"side\":\"buy\",\"type\":\"limit\",\"price\":\"100\",\"qty\":\"2\"}")
 echo "$R" | grep -q '"status":"filled"' && ok "撮合成交（產生手續費）" || bad "撮合: $R"

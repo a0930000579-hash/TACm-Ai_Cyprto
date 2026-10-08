@@ -33,15 +33,21 @@
     <a href="/mining">挖礦</a>
     <a href="/community">社群</a>
   </nav>
-  <div class="comm">
-    <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
-    <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
-    <a class="pill" id="member-pill" href="/auth/login" rel="noopener">會員登入</a>
-    {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
-    {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
-    {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
-    {% if community.site %}<a class="pill" href="{{ community.site }}" target="_blank" rel="noopener">官網</a>{% endif %}
-    {% if not community.telegram and not community.x and not community.discord and not community.site %}<span class="pill off">社群陸續開放</span>{% endif %}
+  <div class="comm" id="topTools">
+    <a class="pill miner-pill" href="/mining" rel="noopener" title="礦機狀態">
+      <span class="mdot" id="miner-dot"></span><span id="miner-label">待機</span>
+    </a>
+    <button class="pill tools-toggle" id="toolsToggle" aria-expanded="false" aria-haspopup="menu">☰ 工具</button>
+    <div class="tools-menu" id="toolsMenu" role="menu">
+      <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
+      <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
+      <a class="pill" id="member-pill" href="/auth/login" rel="noopener">會員登入</a>
+      {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
+      {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
+      {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
+      {% if community.site %}<a class="pill" href="{{ community.site }}" target="_blank" rel="noopener">官網</a>{% endif %}
+      {% if not community.telegram and not community.x and not community.discord and not community.site %}<span class="pill off">社群陸續開放</span>{% endif %}
+    </div>
   </div>
   <div class="netstat">
     <span class="dot"></span>
@@ -67,6 +73,27 @@
   <span>最終化 #{{ status.FinalizedHeight }}</span>
 </footer>
 
+<script>
+// M31：礦機膠囊訊號（節點自身即默認礦機；online → 綠點「挖礦中」）。
+(function () {
+  var dot = document.getElementById('miner-dot');
+  var lab = document.getElementById('miner-label');
+  function paint(on) { if (dot) dot.style.background = on ? '#0ecb81' : '#6b7280'; if (lab) lab.textContent = on ? '挖礦中' : '待機'; }
+  function sync() {
+    fetch('/api/miners', { credentials: 'same-origin' }).then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
+      if (d && d.ok) { paint(d.online_count > 0); } else { paint(false); }
+    }).catch(function () { paint(false); });
+  }
+  sync(); setInterval(sync, 10000);
+})();
+// M31：膠囊開關選單（手機端收起多餘工具，☰ 展開）。
+(function () {
+  var tg = document.getElementById('toolsToggle');
+  var box = document.getElementById('topTools');
+  if (!tg || !box) return;
+  tg.addEventListener('click', function (e) { e.stopPropagation(); var o = box.classList.toggle('open'); tg.setAttribute('aria-expanded', o ? 'true' : 'false'); });
+  document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); } });
+})();
 <script>
 // 會員狀態：登入後頂欄顯示 email＋點擊登出。
 (async function () {
