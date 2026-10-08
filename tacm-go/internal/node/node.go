@@ -75,6 +75,7 @@ type Node struct {
 	communitySvc *community.Store
 	defiSvc      *defi.Store
 	c2cSvc       *c2c.Store
+	authSvc      *AuthService
 
 	// M12 view-change 硬化：多數認證票集（>2/3 驗證人簽名才切輪）。
 	vcMu          sync.Mutex
@@ -169,6 +170,14 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 		return nil, err
 	}
 	n.c2cSvc = cs2
+
+	// 會員系統（註冊/登入/登出）：users.db。
+	as, err := OpenAuth(dataDir)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	n.authSvc = as
 
 	// 節點密鑰：持久化於 node_key.json，否則新生成。
 	if err := n.loadOrCreateKey(dataDir); err != nil {
@@ -452,6 +461,9 @@ func (n *Node) Close() error {
 	if n.c2cSvc != nil {
 		_ = n.c2cSvc.Close()
 	}
+	if n.authSvc != nil {
+		_ = n.authSvc.Close()
+	}
 	return n.db.Close()
 }
 
@@ -646,8 +658,14 @@ func (n *Node) produceBlock() error {
 	txs := make([]chaindb.Transaction, 0, len(mempool)+1)
 
 	// coinbase 增發交易置於首位（height>0），其哈希進入 Merkle 根。
+	// 供應模型：TACM_MAX_SUPPLY 設定後依年衰減發行（上限 52,003,300）；未設定維持減半模式。
 	if height > 0 {
 		cb := chaindb.BuildCoinbaseTx(height, n.nodeAddress, ts)
+		if cfg, err := chaindb.LoadEmission(int64(n.cfg.BlockTime)); err == nil && cfg.Model == "annual_decay" {
+			// 上限模式：單塊獎勵由年衰減模型決定（鏈上帳本一致性）。
+			cb.Amount = chaindb.FormatFloat(chaindb.EmissionAmount(height, int64(n.cfg.BlockTime)))
+			cb.TxHash = chaindb.CoinbaseTxHash(height, n.nodeAddress, chaindb.EmissionAmount(height, int64(n.cfg.BlockTime)), ts)
+		}
 		txs = append(txs, cb)
 		txHashes = append(txHashes, cb.TxHash)
 	}

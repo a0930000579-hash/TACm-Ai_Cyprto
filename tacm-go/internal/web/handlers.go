@@ -121,3 +121,13 @@ func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {
 		"wallet": wv, "address": addr, "addrParam": addr, "rewardPool": pool,
 	})
 }
+
+// handleAuthLoginPage 會員登入頁（幣安風；JS 呼叫 /api/auth/login）。
+func (s *Server) handleAuthLoginPage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "auth.html", pongo2.Context{"activeTab": "auth"})
+}
+
+// handleAuthRegisterPage 會員註冊頁（JS 呼叫 /api/auth/register）。
+func (s *Server) handleAuthRegisterPage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "auth.html", pongo2.Context{"activeTab": "auth"})
+}

@@ -2,18 +2,29 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0e11">
 <title>{% block title %}TAC 自主智能鏈{% endblock %}</title>
 <link rel="stylesheet" href="/static/css/style.css">
 <link rel="manifest" href="/static/manifest.webmanifest">
-<meta name="theme-color" content="#0b0e11">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="/static/tacm.svg" type="image/svg+xml">
 </head>
 <body>
+<!-- SVG icons（App 底部導航） -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="ico-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="ico-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M16 12h5v2h-5z"/><circle cx="8" cy="12" r="1"/></symbol>
+  <symbol id="ico-pick" viewBox="0 0 24 24"><path d="M3 7c6-4 12-4 18 0"/><path d="M12 6v15"/><path d="M9 21h6"/><path d="M12 9l6 3"/><path d="M12 9L6 6"/></symbol>
+  <symbol id="ico-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></symbol>
+  <symbol id="ico-community" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="10" r="2.4"/><path d="M15.5 15.4c2.2.2 3.9 1.3 4.5 3.6"/></symbol>
+  <symbol id="ico-dash" viewBox="0 0 24 24"><path d="M3 13v8"/><path d="M9 9v12"/><path d="M15 5v16"/><path d="M21 3v18"/></symbol>
+</svg>
+
 <header class="topbar">
-  <a class="brand" href="/">TAC<span>Chain</span></a>
+  <a class="brand" href="/"><span class="brand-badge" aria-hidden="true"></span>TAC<span>Chain</span></a>
   <nav class="navlinks">
     <a href="/">區塊瀏覽</a>
     <a href="/wallet">錢包</a>
@@ -25,6 +36,7 @@
   <div class="comm">
     <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
     <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
+    <a class="pill" id="member-pill" href="/auth/login" rel="noopener">會員登入</a>
     {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
     {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
     {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
@@ -36,24 +48,45 @@
     <span class="height">#{{ status.Height }}</span>
   </div>
 </header>
+
 <main class="container">
 {% block content %}{% endblock %}
 </main>
+
 <nav class="bottom-nav" aria-label="主導航">
-  <a href="/" data-i="home"><span>⛓</span><small>首頁</small></a>
-  <a href="/wallet" data-i="wallet"><span>👛</span><small>錢包</small></a>
-  <a href="/mining" data-i="mining" class="bn-active"><span>⛏</span><small>挖礦</small></a>
-  <a href="/exchange" data-i="exchange"><span>📈</span><small>交易所</small></a>
-  <a href="/community" data-i="community"><span>👥</span><small>社群</small></a>
+  <a href="/" data-i="home"><svg class="ico"><use href="#ico-home"/></svg><small>首頁</small></a>
+  <a href="/wallet" data-i="wallet"><svg class="ico"><use href="#ico-wallet"/></svg><small>錢包</small></a>
+  <a href="/mining" data-i="mining"><svg class="ico"><use href="#ico-pick"/></svg><small>挖礦</small></a>
+  <a href="/exchange" data-i="exchange"><svg class="ico"><use href="#ico-chart"/></svg><small>交易所</small></a>
+  <a href="/community" data-i="community"><svg class="ico"><use href="#ico-community"/></svg><small>社群</small></a>
 </nav>
+
 <footer class="footer">
   <span>TAC 自主智能鏈</span>
   <span>鏈頂 #{{ status.Height }}</span>
   <span>最終化 #{{ status.FinalizedHeight }}</span>
 </footer>
+
 <script>
+// 會員狀態：登入後頂欄顯示 email＋點擊登出。
+(async function () {
+  try {
+    const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const j = await r.json().catch(() => null);
+    if (j && j.ok && j.logged_in) {
+      const pill = document.getElementById('member-pill');
+      if (pill) {
+        pill.textContent = '👤 ' + j.user.email;
+        pill.href = '#';
+        pill.title = '點擊登出';
+        pill.onclick = async (e) => { e.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); };
+      }
+    }
+  } catch (e) {}
+})();
+(function(){
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(function(){}); }
-(function(){var m={"/":"home","/wallet":"wallet","/mining":"mining","/exchange":"exchange","/dashboard":"dash","/community":"community"};
+var m={"/":"home","/wallet":"wallet","/mining":"mining","/exchange":"exchange","/dashboard":"dash","/community":"community"};
 var k=location.pathname; var key=m[k]||(k.indexOf("/wallet")===0?"wallet":(k.indexOf("/mining")===0?"mining":(k.indexOf("/exchange")===0?"exchange":(k.indexOf("/dashboard")===0?"dash":(k.indexOf("/community")===0?"community":"home")))));
 var cur=document.querySelector('.bottom-nav a[data-i="'+key+'"]'); if(cur){var a=document.querySelectorAll('.bottom-nav a'); for(var i=0;i<a.length;i++){a[i].classList.remove('bn-active');} cur.classList.add('bn-active');}})();
 </script>

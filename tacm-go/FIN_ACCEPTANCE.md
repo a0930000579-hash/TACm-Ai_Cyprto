@@ -290,3 +290,64 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 | 同埠實機（`-web-port 8840 -rpc-port 8840`） | health/status/首頁 200/wallet/defi/c2c 全通、無 bind 衝突（Render 失敗場景再現並修復） |
 | 分開埠回歸 | m17 8/8、exchange 16/16、c2c 26/26 全綠 |
 | go vet ./... ＋ 16 包 go test | 全綠 |
+
+---
+
+## 15. M29 供應上限＋會員系統（線上排查修復）
+
+### 15.1 線上排查（tacm-ai-cyprto.onrender.com）
+
+| 檢查項 | 結果 |
+|---|---|
+| /health、/status | ok；block_height 313（1 塊/秒正常出塊） |
+| 首頁/wallet/exchange | 200（桌面版面正常，資產顯示 #435） |
+| **總供應上限** | **Go 版漏搬 Python `TACM_MAX_SUPPLY=52003300` 年衰減模型 → 可無限增發** |
+| **會員功能** | **Go 版漏搬 Python `/api/auth/*`（register/login/logout＋users 表＋PBKDF2＋session cookie）** |
+
+### 15.2 供應模型（internal/chaindb/emission.go）
+
+- `TACM_MAX_SUPPLY=52003300`（Render 加環境變數即啟用）＋`TACM_EMISSION_YEARS=6`＋`TACM_ANNUAL_DECAY_PCT=0.25`
+- `EmissionAmount(height, blockTime)`：`INITIAL_SUBSIDY × 0.75^year`，6 年發行完畢歸零；**數學封閉總發行＝52,003,300**
+- 未設 env 維持既有 halving 模式（零相容破壞）；coinbase 金額與 hash 於上限模式同步重算
+- /status 新增 `emission_model/max_supply/emission_years/annual_decay_pct`
+
+### 15.3 會員系統（internal/node/auth.go＋auth_rpc.go＋auth.html）
+
+- users 表（SQLite users.db）、PBKDF2-HMAC-SHA256（100k 迭代、16B salt）、HMAC session（cookie `tacm_sess`、httponly 30 天）
+- `POST /api/auth/register|login|logout`＋`GET /api/auth/me`；email 格式/唯一、密碼≥6、錯誤帳密拒
+- 頁面 `/auth/login`、`/auth/register`（登入/註冊雙 tab）；頂欄「會員登入」pill，登入後 JS 顯示 email＋點擊登出（全站）
+
+### 15.4 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| emission 單元測試（6 年總和＝52,003,300、發行期後 0、首塊 INITIAL_SUBSIDY） | ok |
+| auth 單元測試（註冊/重複拒/壞 email 拒/短密碼拒/登入/錯密碼拒/session/偽造拒/cookie） | ok |
+| 上限模式實機（env 52003300） | status 顯示 annual_decay/52003300，首塊 coinbase=0.501511778224107 ✓ |
+| flat 實機（無 env） | halving、coinbase=10.0（既有行為不變）✓ |
+| run_auth_smoke.sh | PASS=11 / FAIL=0 |
+| 16 包 go test＋go vet＋m17 8/8＋c2c 26/26 回歸 | 全綠 |
+
+---
+
+## 16. M30 UI 全面幣安化＋App 化（頂部 Python 模式＋底部美化）
+
+### 16.1 變更（僅共用骨架 base.html＋style.css；未改任何子頁業務邏輯）
+
+| 面向 | 內容 |
+|---|---|
+| 禁縮放 | viewport `maximum-scale=1, user-scalable=no`；`touch-action: manipulation`、按鈕 min-height 44px、輸入 16px（iOS 防縮放） |
+| 背景幣安化 | body 疊加金黃/綠微光暈徑向漸層於 `#0b0e11`，全站一致 |
+| 頂部（Python 版模式） | brand＋金黃 badge（Python topbar 同款）＋導航；右側白皮書/EN＋社群膠囊（Telegram/X/Discord/官網）＋會員 pill＋網速徽章；行動端僅保留 brand＋工具區 |
+| 底部 App 導航 | emoji 改 **SVG symbol icon**（首頁/錢包/挖礦/交易所/社群 5 項）＋active 金黃上緣指示條＋安全區 `env(safe-area-inset-bottom)`＋內容留白防重疊 |
+| 通用按鈕 | `.btn/.primary(金黃)/.buy(綠)/.sell(紅)/.ghost/.small`＋active scale 回饋 |
+| 膠囊美化 | `.pill` 圓角膠囊、金黃 hover；member-pill 金黃邊框 |
+
+### 16.2 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| 9 頁 HTTP（/ /wallet /exchange /mining /community /dashboard /defi /c2c /auth/login） | 全 200 |
+| viewport 禁縮放 / SVG 底部導航 / brand-badge / 幣安 CSS | 全部命中 |
+| 桌面實機截圖（/wallet） | 幣安風正常、無遮擋、無報錯 |
+| 回歸 | 16 包測試＋go vet＋exchange 16/16＋m17 8/8＋auth 11/11＋community 24/24＋mining 13/13，FAIL 全 0 |

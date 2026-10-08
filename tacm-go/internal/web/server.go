@@ -87,6 +87,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /community", s.handleCommunity)
 	s.mux.HandleFunc("GET /defi", s.handleDefi)
 	s.mux.HandleFunc("GET /c2c", s.handleC2C)
+	s.mux.HandleFunc("GET /auth/login", s.handleAuthLoginPage)
+	s.mux.HandleFunc("GET /auth/register", s.handleAuthRegisterPage)
 	// 白皮書（中/英）——直接服務嵌入 static 成品（TAC 自主智能鏈，無第三方品牌）。
 	s.mux.HandleFunc("GET /whitepaper", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/whitepaper_zh.html", http.StatusFound)

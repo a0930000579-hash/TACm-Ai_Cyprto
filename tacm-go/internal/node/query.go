@@ -16,8 +16,12 @@ type Status struct {
 	FinalHeight  int64  `json:"final_block_height"`
 	MempoolSize  int64  `json:"mempool_size"`
 	Difficulty   int    `json:"effective_difficulty"`
-	UptimeSec    int64  `json:"uptime_sec"`
-	Consensus    string `json:"consensus"`
+	UptimeSec       int64   `json:"uptime_sec"`
+	Consensus       string  `json:"consensus"`
+	EmissionModel   string  `json:"emission_model"`
+	MaxSupply       float64 `json:"max_supply"`
+	EmissionYears   int     `json:"emission_years"`
+	AnnualDecayPct  float64 `json:"annual_decay_pct"`
 }
 
 // GetStatus 返回節點當前狀態。
@@ -30,7 +34,7 @@ func (n *Node) GetStatus() Status {
 	if dist {
 		consensus = "pow_bft_distributed"
 	}
-	return Status{
+	st := Status{
 		NodeID:      n.nodeID,
 		Address:     n.nodeAddress,
 		BlockHeight: n.db.GetTipHeight(),
@@ -39,7 +43,15 @@ func (n *Node) GetStatus() Status {
 		Difficulty:  diff,
 		UptimeSec:   int64(time.Since(n.onlineSince).Seconds()),
 		Consensus:   consensus,
+		EmissionModel: "halving",
 	}
+	if cfg, err := chaindb.LoadEmission(int64(n.cfg.BlockTime)); err == nil && cfg.Model == "annual_decay" {
+		st.EmissionModel = cfg.Model
+		st.MaxSupply = cfg.MaxSupply
+		st.EmissionYears = cfg.EmissionYears
+		st.AnnualDecayPct = cfg.AnnualDecayPct
+	}
+	return st
 }
 
 // BlockDetail 為帶交易列表的區塊詳情。

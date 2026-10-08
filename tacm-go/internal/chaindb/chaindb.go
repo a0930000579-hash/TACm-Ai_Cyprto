@@ -149,7 +149,8 @@ func (c *ChainDB) Close() error {
 
 // ---- 數值格式化（對照 Python str(float)，最短往返） ----
 
-func formatFloat(f float64) string {
+// FormatFloat 標準化金額為 8 位小數字串（與帳本解析一致）。
+func FormatFloat(f float64) string {
 	s := strconv.FormatFloat(f, 'g', -1, 64)
 	if !strings.ContainsAny(s, ".eE") {
 		s += ".0" // Python str(float 整數值) 帶 ".0"

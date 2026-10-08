@@ -127,7 +127,7 @@ func applyDelta(tx *sql.Tx, address string, delta float64, incNonce bool) error 
 		INSERT OR REPLACE INTO accounts
 		(address, balance, nonce, pubkey, first_seen, last_active)
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		address, formatFloat(bal+delta), int64(non), pub, first, nowUnix()); err != nil {
+		address, FormatFloat(bal+delta), int64(non), pub, first, nowUnix()); err != nil {
 		return fmt.Errorf("chaindb: 更新賬戶 %s 失敗: %w", address, err)
 	}
 	return nil

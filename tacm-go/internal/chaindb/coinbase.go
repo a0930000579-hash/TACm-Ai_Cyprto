@@ -11,7 +11,7 @@ import (
 // 由高度、提議者、獎勵與時間唯一確定）。
 func CoinbaseTxHash(height int64, proposer string, reward float64, ts int64) string {
 	canonical := fmt.Sprintf("tacm:coinbase:%d:%s:%s:%d",
-		height, proposer, formatFloat(reward), ts)
+		height, proposer, FormatFloat(reward), ts)
 	return hex.EncodeToString(crypto.DoubleSHA256([]byte(canonical)))
 }
 
@@ -22,7 +22,7 @@ func BuildCoinbaseTx(height int64, proposerAddr string, ts int64) Transaction {
 	return Transaction{
 		TxHash: CoinbaseTxHash(height, proposerAddr, reward, ts),
 		FromAddr: "", ToAddr: proposerAddr,
-		Amount: formatFloat(reward), Fee: "0", Nonce: 0, Ts: ts,
+		Amount: FormatFloat(reward), Fee: "0", Nonce: 0, Ts: ts,
 		Memo: "coinbase", Status: "confirmed",
 	}
 }
