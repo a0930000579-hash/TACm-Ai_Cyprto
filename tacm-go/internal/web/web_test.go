@@ -23,6 +23,7 @@ func (f *fakeDS) Block(int64) (*BlockView, error)      { return f.blockResult, n
 func (f *fakeDS) Transaction(string) (*TxView, error)  { return f.txResult, nil }
 func (f *fakeDS) Address(string) (*AddressView, error) { return f.addrResult, nil }
 func (f *fakeDS) Wallet(string) (*WalletView, error)   { return f.walletResult, nil }
+func (f *fakeDS) ChainStats() ChainStatsView           { return ChainStatsView{} }
 
 func newFake() *fakeDS {
 	now := time.Now().Unix()

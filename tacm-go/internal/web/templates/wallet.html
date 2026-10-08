@@ -140,12 +140,12 @@
       <tr><th>時間</th><th>類型</th><th>資產</th><th>帳戶</th><th>變動</th><th>備註</th></tr>
       {% for e in wallet.Ledger %}
       <tr>
-        <td class="mono">{{ e.Ts|timefmt }}</td>
+        <td class="mono nw">{{ e.Ts|tshort }}</td>
         <td><span class="bn-chip">{{ e.Kind }}</span></td>
-        <td>{{ e.Asset }}</td>
-        <td class="mono">{{ e.Account|shortaddr }}</td>
-        <td class="{% if e.Delta|negdelta %}neg{% else %}pos{% endif %}">{{ e.Delta }}</td>
-        <td class="mono">{{ e.Memo|trunc64 }}</td>
+        <td class="nw">{{ e.Asset }}</td>
+        <td class="mono nw">{{ e.Account|shortaddr }}</td>
+        <td class="nw {% if e.Delta|negdelta %}neg{% else %}pos{% endif %}">{{ e.Delta }}</td>
+        <td class="mono nm">{{ e.Memo|trunc40 }}</td>
       </tr>
       {% endfor %}
     </table>

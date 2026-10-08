@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -47,6 +48,11 @@ CREATE TABLE IF NOT EXISTS wallet_sync (
     id     INTEGER PRIMARY KEY CHECK (id = 1),
     height INTEGER NOT NULL DEFAULT 0,
     ts     INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS chain_stats (
+    id                INTEGER PRIMARY KEY CHECK (id = 1),
+    total_mined_tacm  TEXT NOT NULL DEFAULT '0',
+    updated_ts        INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ts ON wallet_ledger(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_ledger_account ON wallet_ledger(account);
@@ -275,8 +281,10 @@ func (s *Store) adjustTiUSD(delta int64, totalMinted int64, totalBurned int64) e
 
 // Ledger 返回最近 n 條分錄（審計流，倒序）。
 func (s *Store) Ledger(limit int) ([]LedgerEntry, error) {
-	if limit <= 0 || limit > 500 {
+	if limit <= 0 {
 		limit = 50
+	} else if limit > 5000 {
+		limit = 5000
 	}
 	rows, err := s.db.Query(
 		`SELECT id, ts, kind, asset, account, delta, memo FROM wallet_ledger ORDER BY id DESC LIMIT ?`, limit)
@@ -308,4 +316,40 @@ func balanceColumn(a Asset) (string, error) {
 	default:
 		return "", fmt.Errorf("wallet: 不支持的資產 %s", a)
 	}
+}
+
+// ChainMinedTacm 讀取全鏈累計出塊產出（O(1)，不掃 ledger）。
+func (s *Store) ChainMinedTacm() (*big.Int, error) {
+	var v string
+	err := s.db.QueryRow(`SELECT total_mined_tacm FROM chain_stats WHERE id=1`).Scan(&v)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return big.NewInt(0), nil
+		}
+		return nil, fmt.Errorf("wallet: 讀全鏈產出: %w", err)
+	}
+	out, ok := new(big.Int).SetString(v, 10)
+	if !ok {
+		return big.NewInt(0), nil
+	}
+	return out, nil
+}
+
+// AddMinedTacm 累加全鏈出塊產出（coinbase 分發時呼叫）。
+func (s *Store) AddMinedTacm(delta *big.Int) error {
+	if delta == nil || delta.Sign() <= 0 {
+		return nil
+	}
+	cur, err := s.ChainMinedTacm()
+	if err != nil {
+		return err
+	}
+	cur.Add(cur, delta)
+	_, err = s.db.Exec(`INSERT INTO chain_stats (id, total_mined_tacm, updated_ts) VALUES (1, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET total_mined_tacm = excluded.total_mined_tacm, updated_ts = excluded.updated_ts`,
+		cur.String(), time.Now().Unix())
+	if err != nil {
+		return fmt.Errorf("wallet: 累加全鏈產出: %w", err)
+	}
+	return nil
 }

@@ -37,9 +37,10 @@ var emailRe = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{
 
 // AuthUser 為會員基本資料（回傳予前端）。
 type AuthUser struct {
-	ID        int64  `json:"id"`
-	Email     string `json:"email"`
-	CreatedAt int64  `json:"created_at"`
+	ID         int64  `json:"id"`
+	Email      string `json:"email"`
+	CreatedAt  int64  `json:"created_at"`
+	WalletAddr string `json:"wallet_addr"`
 }
 
 // AuthService 提供會員註冊/登入/登出與 session 驗證。
@@ -205,10 +206,11 @@ func (a *AuthService) VerifySession(token string) (*AuthUser, error) {
 		return nil, fmt.Errorf("session 無效")
 	}
 	var createdAt int64
-	if err := a.db.QueryRow(`SELECT created_at FROM users WHERE id=?`, uid).Scan(&createdAt); err != nil {
+	var walletAddr string
+	if err := a.db.QueryRow(`SELECT created_at, wallet_addr FROM users WHERE id=?`, uid).Scan(&createdAt, &walletAddr); err != nil {
 		return nil, fmt.Errorf("session 使用者不存在")
 	}
-	return &AuthUser{ID: uid, Email: parts[1], CreatedAt: createdAt}, nil
+	return &AuthUser{ID: uid, Email: parts[1], CreatedAt: createdAt, WalletAddr: walletAddr}, nil
 }
 
 // CurrentUser 從請求 cookie 解析目前登入使用者（未登入回傳 nil）。

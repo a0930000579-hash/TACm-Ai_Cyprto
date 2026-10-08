@@ -87,12 +87,34 @@
   var dot = document.getElementById('miner-dot');
   var lab = document.getElementById('miner-label');
   function paint(on) { if (dot) dot.style.background = on ? '#0ecb81' : '#6b7280'; if (lab) lab.textContent = on ? '挖礦中' : '待機'; }
-  function sync() {
-    fetch('/api/miners', { credentials: 'same-origin' }).then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
-      if (d && d.ok) { paint(d.online_count > 0); } else { paint(false); }
-    }).catch(function () { paint(false); });
+  // M34：膠囊訊號反映「我的礦機」——登入會員＝其鏈上錢包地址；訪客＝節點地址。
+  // 開機→綠燈「挖礦中」；未開機/關機→灰燈「待機」；登入但未啟動→待機（不再受節點自身礦機影響）。
+  function pillSync(){
+    try {
+      var on = false;
+      var finish = function(){ try { paint(on); } catch (e) {} };
+      var my = null;
+      var st = null;
+      var fetchJSON = function (u) { return fetch(u, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); }).catch(function () { return null; }); };
+      fetchJSON('/api/auth/me').then(function (j) {
+        if (j && j.ok && j.logged_in && j.user && j.user.wallet_addr) { my = j.user.wallet_addr; }
+        return fetchJSON('/status');
+      }).then(function (s) {
+        st = s && s.address ? s.address : '';
+        var addr = my || st;
+        if (!addr) { finish(); return; }
+        fetchJSON('/api/miners').then(function (d) {
+          if (d && d.ok && d.miners) {
+            for (var i = 0; i < d.miners.length; i++) { if (d.miners[i].address === addr && d.miners[i].online) { on = true; break; } }
+          }
+          finish();
+        });
+      });
+    } catch (e) { try { paint(false); } catch (e2) {} }
   }
-  sync(); setInterval(sync, 10000);
+  pillSync();
+  setInterval(pillSync, 5000);
+  window.addEventListener('tac-pill-sync', pillSync);
 })();
 // M31：膠囊開關選單（手機端收起多餘工具，☰ 展開）。
 (function () {

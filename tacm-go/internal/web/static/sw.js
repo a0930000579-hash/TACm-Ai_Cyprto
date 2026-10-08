@@ -1,5 +1,5 @@
 /* TAC 自主智能鏈 Service Worker：核心頁面與靜態資源離線快取。 */
-const CACHE = 'tacm-v1';
+const CACHE = 'tacm-v2';
 const CORE = ['/dashboard', '/wallet', '/exchange', '/', '/static/css/style.css', '/static/tacm.svg'];
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));
@@ -12,17 +12,24 @@ self.addEventListener('activate', function(e){
 self.addEventListener('fetch', function(e){
   var u = new URL(e.request.url);
   if (e.request.method !== 'GET' || !u.protocol.startsWith('http')) return;
-  e.respondWith(
-    caches.match(e.request).then(function(hit){
-      return hit || fetch(e.request).then(function(res){
-        if (res.ok && (u.pathname.startsWith('/static/') || u.pathname === '/' || u.pathname.startsWith('/dashboard'))) {
-          var clone = res.clone();
-          caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
-        }
+  // M34：API 一律網路直連（不緩存）——避免礦機/錢包/全鏈數據「固定不動」。
+  if (u.pathname.indexOf('/api/') === 0) { e.respondWith(fetch(e.request)); return; }
+  if (u.pathname.startsWith('/static/')) {
+    // 靜態資源：快取優先、背景更新（stale-while-revalidate）。
+    e.respondWith(caches.match(e.request).then(function(hit){
+      var net = fetch(e.request).then(function(res){
+        if (res.ok) { var clone = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, clone); }); }
         return res;
-      }).catch(function(){
-        return caches.match('/dashboard');
-      });
-    })
-  );
+      }).catch(function(){ return hit; });
+      return hit || net;
+    }));
+    return;
+  }
+  // 頁面（HTML）：網路優先，離線才用快取。
+  e.respondWith(fetch(e.request).then(function(res){
+    if (res.ok) { var clone = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, clone); }); }
+    return res;
+  }).catch(function(){
+    return caches.match(e.request).then(function(hit){ return hit || caches.match('/dashboard'); });
+  }));
 });

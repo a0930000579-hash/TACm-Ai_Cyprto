@@ -19,7 +19,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "index.html", pongo2.Context{"blocks": blocks})
+	s.render(w, "index.html", pongo2.Context{"blocks": blocks, "chain": s.ds.ChainStats()})
 }
 
 func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {

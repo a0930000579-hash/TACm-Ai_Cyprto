@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
-	"strings"
 	"time"
 
 	"tacm/internal/wallet"
@@ -174,18 +173,10 @@ func (s *RPCServer) handleChainStats(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusServiceUnavailable, "錢包未初始化")
 		return
 	}
-	total := big.NewInt(0)
-	led, err := s.node.walletSvc.Ledger(50000)
-	if err == nil {
-		for _, e := range led {
-			// 僅計 coinbase 出塊分配（:miner/:proposer/:pool）；排除 defi seed 與 defi 獎勵。
-			if e.Kind == wallet.KindReward && e.Asset == wallet.AssetTACm &&
-				(strings.HasSuffix(e.Memo, ":miner") || strings.HasSuffix(e.Memo, ":proposer") || strings.HasSuffix(e.Memo, ":pool")) {
-				if v, ok := new(big.Int).SetString(e.Delta, 10); ok && v.Sign() > 0 {
-					total.Add(total, v)
-				}
-			}
-		}
+	total, err := s.node.walletSvc.Store().ChainMinedTacm()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "讀取全鏈產出失敗")
+		return
 	}
 	sup, _ := s.node.walletSvc.TiUSDSummary()
 	pool := big.NewInt(0)

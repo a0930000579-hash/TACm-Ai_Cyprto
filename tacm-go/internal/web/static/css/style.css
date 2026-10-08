@@ -14,6 +14,12 @@
 
 * { box-sizing: border-box; }
 
+/* M33/M34：表格橫向滾動容器（手機不破版） */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tbl-scroll table{min-width:560px;font-size:12px}
+.tbl-scroll th,.tbl-scroll td{white-space:nowrap;padding:7px 8px}
+.tbl-scroll td.nm{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -225,9 +231,18 @@ body {
     #0b0e11;
 }
 
-/* 禁縮放：點擊無 300ms 延遲、按鈕級操作不觸發縮放 */
-html { touch-action: manipulation; }
-button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* M34 禁縮放＋禁複製反白（app 化）：預設禁止選取與點擊高亮，輸入框/地址等可複製例外 */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+input, select, textarea, .mm-addr, .mono, .member-pill, .miner-pill {
+  -webkit-user-select: text;
+  user-select: text;
+}
 button { min-height: 44px; }
 input, select, textarea { font-size: 16px; }
 

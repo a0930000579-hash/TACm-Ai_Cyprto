@@ -65,6 +65,20 @@ func registerFilters() {
 			}
 			return pongo2.AsValue(t), nil
 		},
+		"trunc40": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+			t := in.String()
+			if len(t) > 40 {
+				t = t[:40] + "…"
+			}
+			return pongo2.AsValue(t), nil
+		},
+		"tshort": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+			ts := in.Integer()
+			if ts <= 0 {
+				return pongo2.AsValue("-"), nil
+			}
+			return pongo2.AsValue(time.Unix(int64(ts), 0).Format("01-02 15:04:05")), nil
+		},
 		"timefmt": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 			ts := in.Integer()
 			if ts <= 0 {

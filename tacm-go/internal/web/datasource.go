@@ -1,7 +1,9 @@
 package web
 
 import (
+	"fmt"
 	"math/big"
+
 	"tacm/internal/chaindb"
 	"tacm/internal/node"
 	"tacm/internal/wallet"
@@ -15,6 +17,7 @@ type DataSource interface {
 	Transaction(hash string) (*TxView, error)
 	Address(addr string) (*AddressView, error)
 	Wallet(addr string) (*WalletView, error)
+	ChainStats() ChainStatsView
 }
 
 type nodeDS struct{ n *node.Node }
@@ -109,6 +112,51 @@ func blockView(b *chaindb.Block) BlockView {
 		bv.PrevHeight = b.Height - 1
 	}
 	return bv
+}
+
+// ChainStatsView 首頁全鏈儀表（與 /api/chain/stats 同口徑：總產出僅計 coinbase 出塊分配）。
+type ChainStatsView struct {
+	TotalMinedTacm string `json:"total_mined_tacm"`
+	TiUSDSupply    string `json:"tiusd_supply"`
+	RewardPool     string `json:"reward_pool"`
+	OnlineMiners   int    `json:"online_miners"`
+	TotalHashrate  string `json:"total_hashrate"`
+}
+
+// ChainStats 全鏈統計（M34）：總產出＝coinbase :miner/:proposer/:pool 累計；
+// 獎勵池＝reward_pool 帳戶餘額；TiUSD＝供給；全網算力＝窗口內在線礦工 hashrate 和。
+func (d *nodeDS) ChainStats() ChainStatsView {
+	out := ChainStatsView{}
+	if d.n.Wallet() == nil {
+		return out
+	}
+	total, err := d.n.Wallet().Store().ChainMinedTacm()
+	if err != nil {
+		total = big.NewInt(0)
+	}
+	out.TotalMinedTacm = wallet.FormatAmountBig(total)
+	if acc, err := d.n.Wallet().Balance(wallet.RewardPoolAddr); err == nil {
+		out.RewardPool = wallet.FormatAmountBig(acc.TACmBalance)
+	}
+	if sup, err := d.n.Wallet().TiUSDSummary(); err == nil && sup != nil {
+		out.TiUSDSupply = wallet.FormatAmountBig(new(big.Int).SetInt64(sup.Supply))
+	}
+	if ms, err := d.n.Wallet().Store().Miners(); err == nil {
+		var totalHr float64
+		on := 0
+		for _, m := range ms {
+			if m.Online {
+				on++
+				if v, ok := new(big.Int).SetString(m.Hashrate, 10); ok {
+					f, _ := new(big.Float).SetInt(v).Float64()
+					totalHr += f
+				}
+			}
+		}
+		out.OnlineMiners = on
+		out.TotalHashrate = fmt.Sprintf("%.2fM", totalHr/1e6)
+	}
+	return out
 }
 
 func (d *nodeDS) Status() StatusView {

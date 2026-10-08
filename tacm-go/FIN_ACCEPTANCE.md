@@ -459,3 +459,48 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 | 錢包頁實機 | 3 資產卡（無獎勵池）、TACm 325.6 縮放正確 |
 | 挖礦頁實機 | 效率圈 100.0%、停止鈕正確、全鏈總覽隨出塊滾動（#21→210/184.8） |
 | 登入流程實測 | register→login→/api/auth/me 回傳 logged_in＋email |
+
+## §20 M34：線上 7 點異常根因修復＋全設備適配（2026-10-08）
+
+**用戶線上截圖反饋（Render 舊版＋sw v1 快取）**：①頂部「待機」不變＋登入自動挖礦＋未啟動即挖；②礦機關閉仍挖；③挖礦頁全鏈總覽 250/900/220 固定不動僅獎勵池動；④首頁無全鏈資訊/速率圈；⑤錢包帳本破版；⑥全局全設備自適應、禁縮放禁反白；⑦頂部三膠囊異常。
+
+### 根因
+1. **全鏈總覽固定**＝wallet/Store.Ledger() 對 limit>500 硬重置 50 條＋/api/chain/stats 與 /api/miner/earnings 只掃 25 塊（250/220 永不動；獎勵池直接查餘額所以會動）。
+2. **線上混合舊頁**＝sw.js v1 cache-first 把舊 HTML 快取住。
+3. **pill「待機」**＝舊版無輪詢＋被快取；sync 只在 DOM 就緒一次。
+4. **登入/綁定**＝/api/auth/me 不回 wallet_addr，mining 綁定失效。
+
+### 修改
+| 檔案 | 變更 |
+|---|---|
+| internal/wallet/store.go | 新增 chain_stats 表（id=1, total_mined_tacm, updated_ts）＋AddMinedTacm/ChainMinedTacm（O(1)）；Ledger cap 改 5000（修 limit>500 硬重置） |
+| internal/wallet/sync.go | ApplyBlock coinbase（:miner/:proposer/:pool）分發後累加 minedTotal（fallback 與 splits 兩分支） |
+| internal/wallet/wallet.go | Reward() hook 已還原（coinbase 走 ApplyBlock，不走 Reward） |
+| internal/node/miner_rpc.go | handleChainStats 改讀 counter（total_mined_tacm） |
+| internal/web/datasource.go | ChainStatsView＋ChainStats()（counter＋獎勵池＋TiUSD 供給＋在線礦工算力）；DataSource interface＋fakeDS 補齊 |
+| internal/web/handlers.go | handleIndex 傳 chain 資料 |
+| internal/web/templates/index.html | 全鏈儀表 panel（速率圈 SVG＋全鏈總產出/獎勵池/TiUSD/出塊速率）＋10s 刷新 |
+| internal/web/templates/mining.html | bindMiner 會員綁定（me→wallet_addr；訪客→節點＋「（訪客）」標註）；myAddrOnline 依 render 設定；全鏈總覽 10s 滾動 |
+| internal/web/templates/base.html | pillSync 會員導向（登入＝會員錢包；訪客＝節點地址）＋5s 輪詢＋tac-pill-sync 事件 |
+| internal/web/templates/wallet.html | 帳本 tshort（MM-DD HH:mm）＋trunc40（備註 40 字截斷）＋.tbl-scroll 橫向滾動 |
+| internal/web/server.go | 新增 tshort/trunc40 template filter |
+| internal/web/static/css/style.css | 全域 user-select:none＋tap-highlight 透明＋touch-action:manipulation；.tbl-scroll min-width 560px＋ellipsis |
+| internal/web/static/sw.js | v2：API network-only、頁面 network-first、靜態 stale-while-revalidate |
+| internal/node/auth.go | AuthUser 加 WalletAddr（json:"wallet_addr"）；VerifySession 查 wallet_addr |
+
+### 實機驗證（本地 8892，block-time=1）
+- 全鏈總覽即時：t0 total_mined=20/pool 2.4 → t+3s 50/6；截圖 160/19.2/140.8、360/43.2/316.8、610/73.2/536.8、1520/182.4/1337.6 均＝區塊數×10/1.2/8.8 精確。
+- 我的累計收益：41 塊×8.8＝360.8 ✓。
+- 會員綁定：註冊→/api/auth/me 回 wallet_addr（tx013Foz…）✓；miner/start 後 miners 該地址 active=True online=True（online_count 1→2）；stop 即時 offline（2→1）✓。
+- pill：訪客（節點恒在線）頁面載入後不再誤顯示「待機」；JS 5s 校正＋mining render 雙保險 ✓。
+- 錢包帳本：.tbl-scroll 容器限寬橫向滾動，不再溢破版面 ✓。
+- 首頁儀表：全鏈 80/9.6/900/8 塊＋速率圈 ✓。
+
+### 回歸
+- go test ./...：16 包 ok、0 FAIL（node 66s e2e 含）。
+- 9 支冒煙：auth 11 / community 24 / mining 17 / exchange 16 / m17 8 / c2c 26 / defi 33 / pool 14 / e2e 23，合計 172 項全 PASS、0 失敗。
+- 打包 tacm-go-m34.zip（排除 .smoke_*/.fix_pools.py/tacweb/tacnode/.regress.sh/.ck.txt）。
+
+### 交付與上線注意
+- **Render 必須 Manual Deploy 新 commit**（GitHub 自動部署未驗證）。線上 sw v1 cache-first 是線上所有「異常」元兇——部署後**清除瀏覽器快取/改用無痕**再測。
+- Render 免費層無持久碟：重啟後鏈/錢包重置為創世（測試用途）。

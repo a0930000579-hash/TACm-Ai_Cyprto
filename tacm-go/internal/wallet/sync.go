@@ -35,6 +35,7 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 	}
 
 	entries := make([]LedgerEntry, 0, len(txs)*3)
+	var minedTotal *big.Int // M34：全鏈出塊產出累計（僅 coinbase :miner/:proposer/:pool）
 	for i, tx := range txs {
 		amount, err := parseTxAmount(tx.Amount, AssetTACm)
 		if err != nil {
@@ -63,6 +64,10 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 					Entry(KindReward, tx.ToAddr, AssetTACm, rest, memo+":proposer"),
 					Entry(KindReward, RewardPoolAddr, AssetTACm, share, memo+":pool"),
 				)
+				if minedTotal == nil {
+					minedTotal = new(big.Int)
+				}
+				minedTotal.Add(minedTotal, amount)
 				continue
 			}
 			portions, err := DistributeByHashrate(rest, splits)
@@ -81,6 +86,10 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 			entries = append(entries,
 				Entry(KindReward, RewardPoolAddr, AssetTACm, share, memo+":pool"),
 			)
+			if minedTotal == nil {
+				minedTotal = new(big.Int)
+			}
+			minedTotal.Add(minedTotal, amount)
 			continue
 		}
 		if tx.FromAddr != tx.ToAddr {
@@ -97,6 +106,12 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 	}
 	if err := s.st.ApplyEntries(entries); err != nil {
 		return err
+	}
+	// M34：全鏈出塊產出計數器（O(1)，正確反映全鏈總產出）。
+	if minedTotal != nil {
+		if err := s.st.AddMinedTacm(minedTotal); err != nil {
+			return err
+		}
 	}
 	return s.st.markSynced(height)
 }

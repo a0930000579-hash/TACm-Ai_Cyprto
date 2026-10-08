@@ -131,7 +131,7 @@
 // M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
 var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
 var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
-function get(p){ return fetch(base + p).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
+function get(p){ return fetch(base + p, {cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
 function post(p,b){ return fetch(base + p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})}).then(function(r){ if(!r.ok) return r.json().then(function(j){throw new Error(j.error||r.status)}); return r.json(); }); }
 var myAddr = '';
 var mining = false, tickTimer = null;
@@ -193,6 +193,7 @@ function render(ms, splits, st){
 
 // M31：refresh 容錯——單一 API 失敗不阻斷整體（個別降級為預設值，避免「載入中…」卡死）。
 function refresh(){
+  // M34：本頁同時同步頂部礦機膠囊（雙保險）——僅在 render 後依 myAddrOnline 設定，避免首繪誤置「待機」。
   var empty = {miners:[], splits:[], block_height:0};
   var pM = get('/api/miners').catch(function(){ return empty; });
   var pS = get('/status').catch(function(){ return {block_height:0}; });
@@ -200,7 +201,15 @@ function refresh(){
   var pE = get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).catch(function(){ return {earned_raw:'0'}; });
   var pC = get('/api/chain/stats').catch(function(){ return null; });
   return Promise.all([pM, pS, pP, pE, pC]).then(function(rs){
-    try { render(rs[0].miners||[], rs[0].splits||[], rs[1]||{}); } catch (e) {}
+    try {
+      render(rs[0].miners||[], rs[0].splits||[], rs[1]||{});
+      myAddrOnline = false;
+      var ms2 = rs[0].miners || [];
+      for (var i2 = 0; i2 < ms2.length; i2++) { if (ms2[i2].address === myAddr && ms2[i2].online) { myAddrOnline = true; break; } }
+      var pl = document.getElementById('miner-label');
+      var pd = document.getElementById('miner-dot');
+      if (pl && pd) { pl.textContent = myAddrOnline ? '挖礦中' : '待機'; pd.style.background = myAddrOnline ? '#0ecb81' : '#6b7280'; }
+    } catch (e) {}
     try {
       var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
       document.getElementById('pool').textContent = pool;
@@ -226,6 +235,7 @@ function startMining(){
     document.getElementById('stBadge').className='mm-badge';
     document.getElementById('cfgForm').classList.add('open');
     refresh();
+    try { window.dispatchEvent(new CustomEvent('tac-pill-sync')); } catch (e) {}
   }).catch(function(e){ document.getElementById('err').textContent='開機失敗：'+e; });
 }
 function stopMining(){
@@ -237,18 +247,36 @@ function stopMining(){
     document.getElementById('stBadge').textContent='離線';
     document.getElementById('stBadge').className='mm-badge off';
     refresh();
+    try { window.dispatchEvent(new CustomEvent('tac-pill-sync')); } catch (e) {}
   }).catch(function(e){ document.getElementById('err').textContent='停止失敗：'+e; });
 }
 
 
-get('/status').then(function(st){
-  myAddr = st.address || '';
-  document.getElementById('myAddr').textContent = shortAddr(myAddr);
-  refresh();
-  // M33：每 10s 即時刷新——全鏈總產出／TiUSD 流通／獎勵池／我的收益／鏈頂／難度／排行全隨區塊鏈機制滾動。
-  setInterval(refresh, 10000);
-}).catch(function(e){
-  document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
-});
+function bindMiner(){
+  // M34：優先綁定登入會員的鏈上錢包地址（「我的礦機」＝會員自己的礦機）；
+  // 未登入時退回節點地址並標註訪客模式（節點自身為默認礦機）。
+  var guest = true;
+  fetch('/api/auth/me', {credentials:'same-origin', cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return null; }); }).then(function(j){
+    if (j && j.ok && j.logged_in && j.user && j.user.wallet_addr) {
+      myAddr = j.user.wallet_addr;
+      guest = false;
+    }
+  }).catch(function(){}).then(function(){
+    if (!myAddr) {
+      return get('/status').then(function(st){ myAddr = st.address || ''; }).catch(function(e){
+        document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
+      });
+    }
+  }).then(function(){
+    if (myAddr) {
+      document.getElementById('myAddr').textContent = shortAddr(myAddr) + (guest ? '（訪客）' : '');
+      document.getElementById('myAddr').title = myAddr;
+      refresh();
+      // M33：每 10s 即時刷新——全鏈總產出／TiUSD 流通／獎勵池／我的收益／鏈頂／難度／排行全隨區塊鏈機制滾動。
+      setInterval(refresh, 10000);
+    }
+  });
+}
+bindMiner();
 </script>
 {% endblock %}
