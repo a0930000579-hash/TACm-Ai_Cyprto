@@ -26,18 +26,18 @@
 <header class="topbar">
   <a class="brand" href="/"><span class="brand-badge" aria-hidden="true"></span>TAC<span>Chain</span></a>
   <nav class="navlinks">
-    <a href="/">區塊瀏覽</a>
-    <a href="/wallet">錢包</a>
-    <a href="/exchange">交易所</a>
-    <a href="/dashboard">儀表板</a>
-    <a href="/mining">挖礦</a>
-    <a href="/community">社群</a>
+    <a href="/" data-i18n="nav.home">區塊瀏覽</a>
+    <a href="/wallet" data-i18n="nav.wallet">錢包</a>
+    <a href="/exchange" data-i18n="nav.exchange">交易所</a>
+    <a href="/dashboard" data-i18n="nav.dash">儀表板</a>
+    <a href="/mining" data-i18n="nav.mining">挖礦</a>
+    <a href="/community" data-i18n="nav.community">社群</a>
   </nav>
   <div class="comm" id="topTools">
     <a class="pill miner-pill" href="/mining" rel="noopener" title="礦機狀態">
       <span class="mdot" id="miner-dot"></span><span id="miner-label">待機</span>
     </a>
-    <button class="pill tools-toggle" id="toolsToggle" aria-expanded="false" aria-haspopup="menu">☰ 工具</button>
+    <button class="pill tools-toggle" id="toolsToggle" aria-expanded="false" aria-haspopup="menu" data-i18n="pill.tools">☰ 工具</button>
     <div class="member-wrap" id="memberWrap">
       <a class="member-pill" id="member-pill" href="/auth/login" rel="noopener"><span class="mdot" id="member-dot"></span><span id="member-label">登入</span></a>
       <div class="member-menu" id="memberMenu" role="menu">
@@ -48,8 +48,8 @@
       </div>
     </div>
     <div class="tools-menu" id="toolsMenu" role="menu">
-      <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
-      <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
+      <a class="pill" href="/whitepaper" rel="noopener" data-i18n="pill.wp">白皮書</a>
+      <button class="pill" id="langToggle" type="button" data-i18n-lang="1" data-i18n="pill.lang">EN</button>
       {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
       {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
       {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
@@ -68,11 +68,11 @@
 </main>
 
 <nav class="bottom-nav" aria-label="主導航">
-  <a href="/" data-i="home"><svg class="ico"><use href="#ico-home"/></svg><small>首頁</small></a>
-  <a href="/wallet" data-i="wallet"><svg class="ico"><use href="#ico-wallet"/></svg><small>錢包</small></a>
-  <a href="/mining" data-i="mining"><svg class="ico"><use href="#ico-pick"/></svg><small>挖礦</small></a>
-  <a href="/exchange" data-i="exchange"><svg class="ico"><use href="#ico-chart"/></svg><small>交易所</small></a>
-  <a href="/community" data-i="community"><svg class="ico"><use href="#ico-community"/></svg><small>社群</small></a>
+  <a href="/" data-i="home"><svg class="ico"><use href="#ico-home"/></svg><small data-i18n="nav.home">首頁</small></a>
+  <a href="/wallet" data-i="wallet"><svg class="ico"><use href="#ico-wallet"/></svg><small data-i18n="nav.wallet">錢包</small></a>
+  <a href="/mining" data-i="mining"><svg class="ico"><use href="#ico-pick"/></svg><small data-i18n="nav.mining">挖礦</small></a>
+  <a href="/exchange" data-i="exchange"><svg class="ico"><use href="#ico-chart"/></svg><small data-i18n="nav.exchange">交易所</small></a>
+  <a href="/community" data-i="community"><svg class="ico"><use href="#ico-community"/></svg><small data-i18n="nav.community">社群</small></a>
 </nav>
 
 <footer class="footer">
@@ -81,12 +81,19 @@
   <span>最終化 #{{ status.FinalizedHeight }}</span>
 </footer>
 
+<script src="/static/js/i18n.js"></script>
 <script>
+// M35：語言切換鈕（工具選單內）。
+(function(){
+  var b=document.getElementById('langToggle');
+  if(b){ b.addEventListener('click', function(){ if(window.TAC_I18N){ TAC_I18N.toggle(); window.dispatchEvent(new CustomEvent('tac-pill-sync')); } }); }
+})();
 // M31：礦機膠囊訊號（節點自身即默認礦機；online → 綠點「挖礦中」）。
 (function () {
   var dot = document.getElementById('miner-dot');
   var lab = document.getElementById('miner-label');
-  function paint(on) { if (dot) dot.style.background = on ? '#0ecb81' : '#6b7280'; if (lab) lab.textContent = on ? '挖礦中' : '待機'; }
+  function t18n(k, zh, en) { try { if (window.TAC_I18N && TAC_I18N.cur() === 'en') { return en; } } catch (e) {} return zh; }
+  function paint(on) { if (dot) dot.style.background = on ? '#0ecb81' : '#6b7280'; if (lab) lab.textContent = on ? t18n('mining.online','挖礦中','Mining') : t18n('pill.standby','待機','Idle'); }
   // M34：膠囊訊號反映「我的礦機」——登入會員＝其鏈上錢包地址；訪客＝節點地址。
   // 開機→綠燈「挖礦中」；未開機/關機→灰燈「待機」；登入但未啟動→待機（不再受節點自身礦機影響）。
   function pillSync(){
@@ -121,8 +128,15 @@
   var tg = document.getElementById('toolsToggle');
   var box = document.getElementById('topTools');
   if (!tg || !box) return;
-  tg.addEventListener('click', function (e) { e.stopPropagation(); var o = box.classList.toggle('open'); tg.setAttribute('aria-expanded', o ? 'true' : 'false'); });
-  document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); } });
+  tg.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var o = box.classList.toggle('open');
+    tg.setAttribute('aria-expanded', o ? 'true' : 'false');
+    // M35：inline style 雙保險——部分環境下 class 切換不足以展開下拉。
+    var menu = document.getElementById('toolsMenu');
+    if (menu) { menu.style.display = o ? 'flex' : ''; }
+  });
+  document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); var menu = document.getElementById('toolsMenu'); if (menu) { menu.style.display = ''; } } });
 })();
 <script>
 // M32：會員狀態（Python 同款）——未登入「登入」；登入後綠燈＋帳號顯示＋點擊下拉（錢包/礦機/登出）。
@@ -139,16 +153,39 @@
     if (label.getAttribute('data-logged') === '1') { e.preventDefault(); openMenu(!(wrap && wrap.classList.contains('open'))); }
   });
   if (wrap) document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) openMenu(false); });
+  function renderMember(j) {
+    try {
+      if (j && j.ok && j.logged_in && j.user) {
+        if (pill) { pill.href = '#'; pill.classList.add('logged'); label.setAttribute('data-logged','1'); // M35：帳號縮排顯示（a0930……）——完整 email 保留於下拉選單。
+        label.textContent = '👤 ' + (j.user.email && j.user.email.length > 9 ? j.user.email.slice(0, 9) + '…' : j.user.email); }
+        if (dot) dot.className = 'mdot';
+        if (em) em.textContent = j.user.email;
+        if (lo) { lo.style.display = 'block'; lo.onclick = async (ev) => { ev.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }; }
+      } else {
+        if (pill) { pill.href = '/auth/login'; pill.classList.remove('logged'); label.setAttribute('data-logged','0'); label.textContent = (window.TAC_I18N && TAC_I18N.cur() === 'en') ? 'Log In' : '登入'; }
+        if (dot) dot.className = 'mdot off';
+        if (em) em.textContent = '未登入';
+        if (lo) lo.style.display = 'none';
+      }
+    } catch (e) {}
+  }
   try {
-    const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const r = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
     const j = await r.json().catch(() => null);
-    if (j && j.ok && j.logged_in) {
-      if (pill) { pill.href = '#'; pill.classList.add('logged'); label.setAttribute('data-logged','1'); label.textContent = '👤 ' + j.user.email; }
-      if (dot) dot.className = 'mdot';
-      if (em) em.textContent = j.user.email;
-      if (lo) { lo.style.display = 'block'; lo.onclick = async (ev) => { ev.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }; }
-    }
-  } catch (e) {}
+    renderMember(j);
+  } catch (e) { renderMember(null); }
+  // M35：每 5s 重查登入狀態（登入後頂欄即時切換為帳號縮排）。
+  setInterval(async function () {
+    try {
+      const r = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+      const j = await r.json().catch(() => null);
+      renderMember(j);
+    } catch (e) { renderMember(null); }
+  }, 5000);
+  // M35：語言切換時立即重渲染會員膠囊（登入/Log In 即時切換）。
+  window.addEventListener('tac-lang-changed', function () {
+    fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); }).then(function (j) { renderMember(j); }).catch(function () { renderMember(null); });
+  });
 })();
 (function(){
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(function(){}); }

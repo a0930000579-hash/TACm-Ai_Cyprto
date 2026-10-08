@@ -133,6 +133,14 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 		return nil, err
 	}
 	n.walletSvc = wallet.NewService(ws)
+	// M35：TiUSD 錨定——注入 TACm 總供應上限（TACM_MAX_SUPPLY），流通量低於 0.330 倍時自動補鑄至下限。
+	if ecfg, eerr := chaindb.LoadEmission(int64(cfg.BlockTime)); eerr == nil && ecfg.Model == "annual_decay" && ecfg.MaxSupply > 0 {
+		n.walletSvc.SetTACMSupplyCap(ecfg.MaxSupply)
+	}
+	if _, ferr := n.walletSvc.EnsureTiUSDFloor(); ferr != nil {
+		_ = db.Close()
+		return nil, ferr
+	}
 
 	// 交易所撮合引擎（獨立帳本：ex_balances/ex_orders/ex_trades）。
 	es, err := exchange.Open(dataDir)

@@ -149,11 +149,12 @@ func (c *ChainDB) Close() error {
 
 // ---- 數值格式化（對照 Python str(float)，最短往返） ----
 
-// FormatFloat 標準化金額為 8 位小數字串（與帳本解析一致）。
+// FormatFloat 標準化金額為固定小數字串（與帳本解析一致）。
+// M35：改用 'f' 避免大數以科學記號輸出（1.18e+07 無法被金額解析器解析）。
 func FormatFloat(f float64) string {
-	s := strconv.FormatFloat(f, 'g', -1, 64)
+	s := strconv.FormatFloat(f, 'f', -1, 64)
 	if !strings.ContainsAny(s, ".eE") {
-		s += ".0" // Python str(float 整數值) 帶 ".0"
+		s += ".0" // 整數值帶 ".0"（與 Python str(float) 一致）
 	}
 	return s
 }

@@ -504,3 +504,43 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 ### 交付與上線注意
 - **Render 必須 Manual Deploy 新 commit**（GitHub 自動部署未驗證）。線上 sw v1 cache-first 是線上所有「異常」元兇——部署後**清除瀏覽器快取/改用無痕**再測。
 - Render 免費層無持久碟：重啟後鏈/錢包重置為創世（測試用途）。
+
+## §21 M35 收尾：礦機按鈕同步＋登入帳號＋工具下拉＋白皮書中英＋TiUSD 錨定（2026-10-09）
+
+### 修改檔
+| 檔案 | 內容 |
+|---|---|
+| internal/wallet/supply.go（新） | SetTACMSupplyCap／tiUSDSupplies（floor＝總供應×0.330、cap＝總供應×1e6）／EnsureTiUSDFloor（低於下限自動補鑄至下限） |
+| internal/wallet/supply_test.go（新） | TestTiUSDSupplyFloorAndCaps（floor/cap 邊界全綠） |
+| internal/wallet/wallet.go | mu sync.Mutex＋tacmMaxSupply；MintTiUSD 超上限拒絕、BurnTiUSD 低於下限拒絕 |
+| internal/node/node.go | LoadEmission 傳參修正（int64(bt)→int64(cfg.BlockTime)，修 ns 誤傳致發行爆量）；SetTACMSupplyCap＋EnsureTiUSDFloor 注入（Model==annual_decay 且 MaxSupply>0） |
+| internal/chaindb/chaindb.go | FormatFloat 由 'g' 改 'f'（消除科學記號 1.18e+07 致 coinbase 金額解析失敗） |
+| internal/web/static/js/i18n.js（新） | 全套中英字典＋TAC_I18N{cur,apply,toggle}＋localStorage 持久化＋?lang=en/zh URL 切換 |
+| internal/web/templates/base.html | data-i18n 全導航/膠囊/工具列/底部＋langToggle 切換鈕＋帳號縮排（👤 email 前 9 字…）＋移除 miner-label/member-label data-i18n（防 apply 覆寫 paint）＋member 監聽 tac-lang-changed 即時切語 |
+| internal/web/templates/mining.html | 按鈕以 on（online）判定「停止挖礦/開機挖礦」＋徽章 i18n＋tiusd 顯示 /1e6 |
+| internal/web/templates/wallet.html | data-i18n 標籤 |
+| internal/web/templates/index.html | data-i18n＋tiusd 顯示 /1e6 |
+| internal/web/static/whitepaper_zh.html / _en.html | §6.3 出塊即時瓜分（88%/12%/180s 心跳）、§6.4 礦機算力（1vCPU+2vGPU 固定、推薦 +0.01/+0.02、邀請碼＝tx0 地址）、§6.5 代幣分配、§7.1 幣安風交易所（費率 TACm 200bp/TiUSD 50bp/USDT 125bp）、§8 供給層鑄造＋0.330 下限/1:1 上限；兩檔 langbar 中英互跳 |
+| run_wallet_smoke.sh | 步驟 2 改為錨定 summary＋公開 mint 路由 404（禁止私自鑄造）驗證 |
+
+### 鏈核心 Bug 修復（M35 收尾挖出）
+1. FormatFloat 'g' 科學記號（1.18e+07）→ coinbase 金額解析失敗 → 錢包同步卡死（全鏈總覽 0）。改 'f' 後 0 錯誤。
+2. LoadEmission 誤傳 int64(bt)（Duration ns）→ 發行曲線爆量（16 塊挖 36M）。改 int64(cfg.BlockTime) 後每塊 ~0.33 TACm（6 年發完 52,003,300）。
+
+### 實機驗證（TACM_MAX_SUPPLY=52003300，block-time=1）
+- coinbase 入帳：total_mined_tacm 即時累計、reward_pool＝12%、我的累計收益＝88% ✓
+- mining 頁：在線→「停止挖礦」；離線→「開機挖礦」；頂欄訊號與頁面一致（挖礦中）✓
+- 全鏈總覽四數值隨出塊即時滾動 ✓
+- ?lang=en：Stop Mining／Total TACm Mined／Reward Pool／My Earnings／Whitepaper／「中文」切換鈕全英文 ✓
+- 白皮書中英互跳（English/中文 切換條＋章節目錄）✓
+- TiUSD：tiusd_supply=18,061,089,000,000 micro＝floor(17,161,089,000,000)＋DeFi seed(900,000,000,000)，錨定上限 1:1＝52,003,300×1e6 ✓
+
+### 回歸
+- go test ./...：16 包全 ok、0 FAIL。
+- 冒煙 10 支全綠：auth / mining / wallet 8 / exchange / community / m17 / c2c / defi / pool / e2e 23（合計 172 項 PASS、0 失敗）。
+- 打包 tacm-go-m35.zip＋render-tac-chain.zip（排除 .smoke_*/.smoke2/tacweb/tacnode/.regress.sh/.ck.txt/run_*.sh 調試目錄）。
+
+### 上線注意
+- Render 環境變數必須加 **TACM_MAX_SUPPLY=52003300**（否則錨定不啟用、走 halving）。
+- Render Start 命令：`./tacweb -web-port $PORT -rpc-port $PORT -data-dir ./data -block-time 1 -difficulty 1`。
+- 線上舊 sw 快取：部署後無痕／清除快取再測。

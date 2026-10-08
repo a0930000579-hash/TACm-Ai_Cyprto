@@ -34,12 +34,15 @@ li{margin:6px 0}
 .toc a{color:var(--txt);text-decoration:none}
 .toc a:hover{color:var(--brand)}
 .formula{background:var(--panel);padding:16px 20px;border-radius:6px;text-align:center;font-family:"Courier New",monospace;font-size:1rem;margin:16px 0;overflow-x:auto}
+.langbar{text-align:right;font-size:.85rem;margin-bottom:8px}
+.langbar a{color:var(--brand);text-decoration:none}
 footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding:24px;margin-top:40px;text-align:center}
 @media(max-width:640px){.kv{grid-template-columns:1fr}main{padding:20px 16px}}
 </style>
 </head>
 <body>
 <header>
+  <div class="langbar"><a href="/whitepaper-en">English</a> <span>｜</span> <a href="/whitepaper">中文</a></div>
   <h1>TACm 白皮書</h1>
   <div class="subtitle">Time Asset Crypto Mining — 時間權證共識驅動的區塊鏈金融網絡</div>
   <div class="version">VERSION 3.0</div>
@@ -226,7 +229,23 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>6.2 發行曲線</h3>
 <p>TACM 採用年衰減發行模型，前四年為高獎勵期以吸引早期參與者，第五年起進入線性衰減，第九年起轉入尾端發行（Tail Emission），以年化 2% 的恆定速率維持網絡安全與節點激勵。</p>
 
-<h3>6.3 代幣分配</h3>
+<h3>6.3 出塊獎勵即時瓜分</h3>
+<p>每個區塊獎勵 10 TACm（供應上限模型下由年衰減發行曲線決定實際值），鏈上即時按以下比例分配：<b>88% 歸在線礦工</b>（按個人算力佔全網比例瓜分，出塊即入帳）；<b>12% 自動挹注獎勵池</b>，作為去中心化交易所的做市與運營資金。獎勵由伺服器端排程持續心跳確保真實出塊，離開頁面仍持續挖礦。</p>
+<div class="kv">
+<div class="k">礦工分潤</div><div>每塊獎勵 88%，按在線算力瓜分</div>
+<div class="k">獎勵池</div><div>每塊 12% 自動挹注（作交易所資金池用途）</div>
+<div class="k">在線判定</div><div>180 秒心跳窗口內即時在線</div>
+</div>
+
+<h3>6.4 礦機與算力機制</h3>
+<p>每位會員註冊即自動綁定鏈上錢包地址作為礦機身份。預設算力為 <b>1 vCPU + 2 vGPU</b>（vCPU×1M 算力、vGPU×2M 算力，共 5M），不可手動修改；算力提升僅透過推薦註冊——<b>每邀請 1 名會員註冊（填寫邀請碼）提升 0.01 vCPU 與 0.02 vGPU</b>。邀請碼即會員自己的鏈上錢包地址。</p>
+<div class="kv">
+<div class="k">基礎算力</div><div>1 vCPU + 2 vGPU（共 5M 算力，固定）</div>
+<div class="k">推薦提升</div><div>每 1 名推薦註冊 +0.01 vCPU / +0.02 vGPU</div>
+<div class="k">邀請碼</div><div>會員鏈上錢包地址（tx0 開頭）</div>
+</div>
+
+<h3>6.5 代幣分配</h3>
 <table>
 <tr><th>分配類別</th><th>比例</th><th>數量</th><th>用途說明</th></tr>
 <tr><td>礦工獎勵</td><td>60%</td><td>31,201,980</td><td>通過時間權證共識機制分配給在線參與節點</td></tr>
@@ -249,8 +268,14 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s7">七、金融生態</h2>
 <p>TACm 不僅是一個區塊鏈網絡，更是一個完整的去中心化金融生態。在共識層之上，TACm 構建了以下金融基礎設施：</p>
 
-<h3>7.1 去中心化交易所（DEX）</h3>
-<p>基於自動做市商（AMM）機制的去中心化交易所，支持 TACM、USDT、TiUSD 等資產的無許可鏈上兌換。流動性提供者可獲得交易手續費分成與挖礦獎勵。</p>
+<h3>7.1 幣安風交易所</h3>
+<p>內建撮合式交易所（Binance-style）：訂單簿撮合、市價/限價掛單、閃兌（快速兌換當前開放交易幣種）、自動交易機器人（可設定自動掛買/掛賣策略）、充值/提現與理財資金池。交易所支持 TACM、TiUSD、USDT 多資產，採用差異化手續費（TACm 200bp、USDT 125bp、TiUSD 50bp）鼓勵穩定幣採用。獎勵池資金作為交易所做市與運營資金池。</p>
+<div class="kv">
+<div class="k">撮合引擎</div><div>訂單簿＋市價/限價</div>
+<div class="k">閃兌</div><div>快速兌換開放交易幣種</div>
+<div class="k">自動交易</div><div>掛買/掛賣機器人策略</div>
+<div class="k">手續費</div><div>TACm 200bp / TiUSD 50bp / USDT 125bp</div>
+</div>
 
 <h3>7.2 衍生品交易</h3>
 <p>支持永續合約交易，最高 125 倍槓桿，具備完整的風控機制，包括逐倉保證金、自動減倉、風險準備金、標記價格與資金費率機制，確保衍生品市場的穩定運行。</p>
@@ -267,18 +292,19 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s8">八、穩定幣協議</h2>
 
 <h3>8.1 TiUSD 概述</h3>
-<p>TiUSD 是 TACm 生態內的美元穩定幣，與美元 1:1 錨定，旨在為生態提供低波動、低手續費的價值儲存與交易媒介。TiUSD 採用超額質押鑄造機制，用戶質押 TACM 等資產即可鑄造 TiUSD。</p>
+<p>TiUSD 是 TACm 生態內由<b>區塊鏈供給層</b>鑄造的美元穩定幣，與美元 1:1 錨定。TiUSD 僅能由鏈上供給層機制（供給層鑄造）產生，<b>禁止任何賬戶私自鑄造</b>，從機制上杜絕超發與通膨。</p>
 
-<h3>8.2 穩定機制</h3>
-<ul>
-<li><b>超額質押</b>：每枚 TiUSD 背後都有超額的加密資產質押擔保</li>
-<li><b>套利機制</b>：當 TiUSD 偏離 1 美元時，套利者可通過鑄造/贖回機制進行套利，推動價格回歸</li>
-<li><b>清算機制</b>：當質押率低於清算線時，系統自動清算質押資產以償還 TiUSD</li>
-<li><b>穩定費</b>：TiUSD 借款收取穩定費，費用收入用於生態發展</li>
-</ul>
+<h3>8.2 錨定與供應保護</h3>
+<p>為防止幣值崩盤，TiUSD 以 TACm 總供應量為錨定基準實行上下限保護：</p>
+<div class="kv">
+<div class="k">最小流通量</div><div>TACm 總供應量之 0.330 倍——銷毀不得低於此下限；低於下限時供給層自動補鑄至下限</div>
+<div class="k">最大流通量</div><div>TACm 總供應量（1:1 錨定上限）——增發不得超過此上限</div>
+<div class="k">市值調節</div><div>按市值需要增發或銷毀，但永久保留總發行量最低 0.330 倍之發行量</div>
+<div class="k">發行途徑</div><div>僅鏈上供給層鑄造（DeFi 池注資／系統補鑄），無公開鑄造接口</div>
+</div>
 
 <h3>8.3 TiUSD 應用</h3>
-<p>TiUSD 在 TACm 生態中具有廣泛應用場景：作為低手續費交易對（TiUSD 交易對手續費僅 0.5%，顯著低於 USDT 交易對的 1.25%）、作為 DeFi 借貸市場的借貸資產、作為收益聚合器的標的資產、以及作為用戶規避市場波動的穩定資產避風港。</p>
+<p>TiUSD 在 TACm 生態中具有廣泛應用場景：作為低手續費交易對（TiUSD 交易對手續費僅 0.5%，顯著低於 USDT 交易對的 1.25%）、作為交易所撮合/閃兌的主流幣種、作為 DeFi 借貸市場的借貸資產、作為收益聚合器的標的資產、以及作為用戶規避市場波動的穩定資產避風港。</p>
 
 <h2 id="s9">九、治理機制</h2>
 

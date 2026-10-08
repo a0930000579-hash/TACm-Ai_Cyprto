@@ -34,12 +34,15 @@ li{margin:6px 0}
 .toc a{color:var(--txt);text-decoration:none}
 .toc a:hover{color:var(--brand)}
 .formula{background:var(--panel);padding:16px 20px;border-radius:6px;text-align:center;font-family:"Courier New",monospace;font-size:1rem;margin:16px 0;overflow-x:auto}
+.langbar{text-align:right;font-size:.85rem;margin-bottom:8px}
+.langbar a{color:var(--brand);text-decoration:none}
 footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding:24px;margin-top:40px;text-align:center}
 @media(max-width:640px){.kv{grid-template-columns:1fr}main{padding:20px 16px}}
 </style>
 </head>
 <body>
 <header>
+  <div class="langbar"><a href="/whitepaper-en">English</a> <span>｜</span> <a href="/whitepaper">中文</a></div>
   <h1>TACm Whitepaper</h1>
   <div class="subtitle">Time Asset Crypto Mining — A Time-Warrant Consensus-Driven Blockchain Financial Network</div>
   <div class="version">VERSION 3.0</div>
@@ -226,7 +229,23 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>6.2 Issuance Curve</h3>
 <p>TACM adopts an annual decay issuance model. The first four years are a high-reward period to attract early participants. From the fifth year, it enters linear decay. From the ninth year, it transitions to Tail Emission, maintaining network security and node incentives at a constant annual rate of 2%.</p>
 
-<h3>6.3 Token Distribution</h3>
+<h3>6.3 On-Chain Block Reward Split</h3>
+<p>Each block rewards 10 TACm (actual value follows the annual-decay emission curve under the supply cap). Rewards are split on-chain in real time: <b>88% to online miners</b> (proportional to each miner’s hashrate share, credited immediately on block production); <b>12% is auto-credited to the reward pool</b> as market-making and operating capital for the exchange. Server-side scheduling with continuous heartbeat ensures real block production even after leaving the page.</p>
+<div class="kv">
+<div class="k">Miner share</div><div>88% of each block, split by online hashrate</div>
+<div class="k">Reward pool</div><div>12% auto-credited per block (exchange capital pool)</div>
+<div class="k">Online window</div><div>Online within 180s heartbeat window</div>
+</div>
+
+<h3>6.4 Miner &amp; Hashrate Mechanism</h3>
+<p>Every member is bound to an on-chain wallet address as their miner identity upon registration. Default hashrate is <b>1 vCPU + 2 vGPU</b> (vCPU×1M + vGPU×2M = 5M total), fixed and not manually adjustable; hashrate growth is only via referrals — <b>each invited registered member (+referral code) grants +0.01 vCPU and +0.02 vGPU</b>. The referral code is simply the member’s own tx0 wallet address.</p>
+<div class="kv">
+<div class="k">Base hashrate</div><div>1 vCPU + 2 vGPU (5M total, fixed)</div>
+<div class="k">Referral boost</div><div>+0.01 vCPU / +0.02 vGPU per referred registration</div>
+<div class="k">Referral code</div><div>Member tx0 wallet address</div>
+</div>
+
+<h3>6.5 Token Distribution</h3>
 <table>
 <tr><th>Category</th><th>Percentage</th><th>Amount</th><th>Purpose</th></tr>
 <tr><td>Miner Rewards</td><td>60%</td><td>31,201,980</td><td>Distributed to online participating nodes through the Time Warrant consensus mechanism</td></tr>
@@ -249,8 +268,14 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s7">7. Financial Ecosystem</h2>
 <p>TACm is not only a blockchain network, but also a complete decentralized financial ecosystem. Above the consensus layer, TACm has built the following financial infrastructure:</p>
 
-<h3>7.1 Decentralized Exchange (DEX)</h3>
-<p>A decentralized exchange based on the Automated Market Maker (AMM) mechanism, supporting permissionless on-chain exchange of assets such as TACM, USDT, and TiUSD. Liquidity providers can earn transaction fee sharing and mining rewards.</p>
+<h3>7.1 Binance-Style Exchange</h3>
+<p>A built-in matching-engine exchange (Binance-style): order-book matching, market/limit orders, Flash Swap (instant conversion among open trading assets), automated trading bots (configurable auto buy/sell strategies), deposit/withdraw and a wealth pool. The exchange supports TACM, TiUSD and USDT with differentiated fees (TACm 200bp, TiUSD 50bp, USDT 125bp) to encourage stablecoin adoption. Reward pool funds serve as exchange market-making capital.</p>
+<div class="kv">
+<div class="k">Matching engine</div><div>Order book + market/limit</div>
+<div class="k">Flash swap</div><div>Instant conversion of listed assets</div>
+<div class="k">Auto trading</div><div>Buy/sell bot strategies</div>
+<div class="k">Fees</div><div>TACm 200bp / TiUSD 50bp / USDT 125bp</div>
+</div>
 
 <h3>7.2 Derivatives Trading</h3>
 <p>Supports perpetual contract trading with up to 125x leverage, featuring a complete risk control mechanism including isolated margin, auto-deleveraging, risk reserve fund, mark price, and funding rate mechanisms to ensure stable operation of the derivatives market.</p>

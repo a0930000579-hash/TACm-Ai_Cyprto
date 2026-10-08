@@ -3,12 +3,15 @@ package wallet
 import (
 	"fmt"
 	"math/big"
+	"sync"
 )
 
 // Service 為錢包高層操作：多資產轉帳（含手續費）、TiUSD 發行/銷毀、
 // 充值/提現/獎勵入帳。所有操作走單一事務 + 雙分錄審計。
 type Service struct {
-	st *Store
+	st             *Store
+	mu             sync.Mutex
+	tacmMaxSupply  float64 // M35：TACm 總供應上限（TiUSD 錨定基準）
 }
 
 // NewService 創建錢包服務。
@@ -127,6 +130,16 @@ func (s *Service) MintTiUSD(address string, amount int64, note string) (int64, e
 	if amount <= 0 {
 		return 0, fmt.Errorf("wallet: TiUSD 發行量必須大於 0")
 	}
+	_, capAmt, enabled := s.tiUSDSupplies()
+	if enabled {
+		sup0, err0 := s.st.TiUSDSummary()
+		if err0 != nil {
+			return 0, fmt.Errorf("wallet: 讀取 TiUSD 供給: %w", err0)
+		}
+		if sup0.Supply+amount > capAmt {
+			return 0, fmt.Errorf("wallet: TiUSD 發行超上限（總供應 1:1 錨定，當前 %d 最小單位）", capAmt)
+		}
+	}
 	if err := s.st.adjustTiUSD(amount, amount, 0); err != nil {
 		return 0, err
 	}
@@ -147,6 +160,16 @@ func (s *Service) MintTiUSD(address string, amount int64, note string) (int64, e
 func (s *Service) BurnTiUSD(amount int64, note string) (int64, error) {
 	if amount <= 0 {
 		return 0, fmt.Errorf("wallet: TiUSD 銷毀量必須大於 0")
+	}
+	floorAmt, _, enabled := s.tiUSDSupplies()
+	if enabled {
+		sup0, err0 := s.st.TiUSDSummary()
+		if err0 != nil {
+			return 0, fmt.Errorf("wallet: 讀取 TiUSD 供給: %w", err0)
+		}
+		if sup0.Supply-amount < floorAmt {
+			return 0, fmt.Errorf("wallet: TiUSD 銷毀將低於最小流通量（總供應 0.330 倍＝%d 最小單位）", floorAmt)
+		}
 	}
 	if err := s.st.adjustTiUSD(-amount, 0, amount); err != nil {
 		return 0, err

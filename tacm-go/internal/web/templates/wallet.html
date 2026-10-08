@@ -75,7 +75,7 @@
 
   <div class="bn-row">
     <div class="bn-panel">
-      <h3>站內轉帳</h3>
+      <h3 data-i18n="wallet.transfer">站內轉帳</h3>
       <form class="bn-form" id="tf" onsubmit="return doTransfer(event)">
         <label>資產</label>
         <select id="asset">
@@ -133,7 +133,7 @@
   </div>
 
   <div class="bn-panel" style="margin-top:16px;">
-    <h3>最近帳本流（審計分錄）</h3>
+    <h3 data-i18n="wallet.ledger">最近帳本流（審計分錄）</h3>
     {% if wallet.Ledger %}
     <div class="tbl-scroll">
     <table>

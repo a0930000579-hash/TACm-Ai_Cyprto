@@ -63,7 +63,7 @@
 
 <div class="miner-wrap">
   <div class="mm-hero">
-    <span class="mm-badge off" id="stBadge">離線</span>
+    <span class="mm-badge off" id="stBadge" data-i18n="mining.offline">離線</span>
     <h2>⛏ 我的礦機</h2>
     <div class="mm-addr" id="addrRow">
       <span id="myAddr">載入中…</span>
@@ -88,8 +88,8 @@
       </div>
     </div>
     <div class="mm-cta">
-      <button id="btnStart" onclick="startMining()">⚡ 開機挖礦</button>
-      <button id="btnStop" onclick="stopMining()" style="display:none">停止挖礦</button>
+      <button id="btnStart" onclick="startMining()" data-i18n="mining.start">⚡ 開機挖礦</button>
+      <button id="btnStop" onclick="stopMining()" style="display:none" data-i18n="mining.stop">停止挖礦</button>
     </div>
     <div class="mm-form" id="cfgForm">
       <div style="font-size:13px;color:var(--bn-sub);line-height:1.7">
@@ -108,10 +108,10 @@
 
   <div class="mm-sec">🌐 全鏈總覽</div>
   <div class="mm-grid">
-    <div class="mm-cell"><small>全鏈總產出 TACm</small><b id="chainMined">—</b></div>
-    <div class="mm-cell"><small>TiUSD 總流通</small><b id="tiusdSupply">—</b></div>
-    <div class="mm-cell"><small>獎勵池</small><b id="pool">—</b></div>
-    <div class="mm-cell"><small>我的累計收益</small><b id="earned">0 TACm</b></div>
+    <div class="mm-cell"><small data-i18n="chain.mined">全鏈總產出 TACm</small><b id="chainMined">—</b></div>
+    <div class="mm-cell"><small data-i18n="chain.tiusd">TiUSD 總流通</small><b id="tiusdSupply">—</b></div>
+    <div class="mm-cell"><small data-i18n="chain.pool">獎勵池</small><b id="pool">—</b></div>
+    <div class="mm-cell"><small data-i18n="chain.earned">我的累計收益</small><b id="earned">0 TACm</b></div>
   </div>
 
   <div class="mm-sec">🌐 在線礦工排行（<span id="onlineN">0</span> 台 · 總算力 <span id="totalHr">0</span>）</div>
@@ -147,15 +147,16 @@ function render(ms, splits, st){
   if(me){
     // M32：在線判定與頂部膠囊一致（窗口內新鮮心跳，不再用 DB status）。
     var on = !!(me && me.online);
-    document.getElementById('stBadge').textContent = on ? '在線挖礦中' : '離線';
+    document.getElementById('stBadge').textContent = on ? (window.TAC_I18N&&TAC_I18N.cur()==='en'?'Mining Online':'在線挖礦中') : (window.TAC_I18N&&TAC_I18N.cur()==='en'?'Offline':'離線');
     document.getElementById('stBadge').className = 'mm-badge' + (on?'':' off');
     if (me && me.refs) { document.getElementById('refN').textContent = me.refs; }
     document.getElementById('hrCpu').textContent = fmtHr(me.vcpu*1000000);
     document.getElementById('hrGpu').textContent = fmtHr(me.vgpu*2000000);
     document.getElementById('hrTotal').textContent = fmtHr(me.vcpu*1000000 + me.vgpu*2000000);
-    // M33：開機狀態與按鈕同步（F5 後恢復正確按鈕）。
+    // M35：按鈕以「在線」為準（與徽章同源）——在線＝顯示「停止挖礦」，離線＝「開機挖礦」。
+    // 修正訪客/節點礦機 active=false 但 online=true 時「在線挖礦中＋開機挖礦」矛盾顯示。
     var btnS = document.getElementById('btnStart'), btnT = document.getElementById('btnStop');
-    if (me.active) { if(btnS) btnS.style.display='none'; if(btnT) btnT.style.display='block'; }
+    if (on) { if(btnS) btnS.style.display='none'; if(btnT) btnT.style.display='block'; }
     else { if(btnS) btnS.style.display='block'; if(btnT) btnT.style.display='none'; }
     // M33：效率圓環＋算力條（個人算力佔全鏈比例）。
     var cpu = me.vcpu*1000000, gpu = me.vgpu*2000000, mine = cpu+gpu, totalHr2 = 0;
@@ -218,7 +219,7 @@ function refresh(){
     try {
       var c = rs[4] || {};
       document.getElementById('chainMined').textContent = c.total_mined_tacm ? fmtTacmRaw(c.total_mined_tacm) : '—';
-      document.getElementById('tiusdSupply').textContent = (c.tiusd_supply!=null) ? (c.tiusd_supply/1000000000).toLocaleString('en-US',{maximumFractionDigits:2}) + ' TiUSD' : '—';
+      document.getElementById('tiusdSupply').textContent = (c.tiusd_supply!=null) ? (c.tiusd_supply/1000000).toLocaleString('en-US',{maximumFractionDigits:2}) + ' TiUSD' : '—';
     } catch (e) {}
     document.getElementById('err').textContent = '';
   });
@@ -231,7 +232,7 @@ function startMining(){
     mining = true;
     document.getElementById('btnStart').style.display='none';
     document.getElementById('btnStop').style.display='block';
-    document.getElementById('stBadge').textContent='在線挖礦中';
+    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Mining Online':'在線挖礦中';
     document.getElementById('stBadge').className='mm-badge';
     document.getElementById('cfgForm').classList.add('open');
     refresh();
@@ -244,7 +245,7 @@ function stopMining(){
     document.getElementById('btnStart').style.display='block';
     document.getElementById('btnStop').style.display='none';
     document.getElementById('cfgForm').classList.remove('open');
-    document.getElementById('stBadge').textContent='離線';
+    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Offline':'離線';
     document.getElementById('stBadge').className='mm-badge off';
     refresh();
     try { window.dispatchEvent(new CustomEvent('tac-pill-sync')); } catch (e) {}
