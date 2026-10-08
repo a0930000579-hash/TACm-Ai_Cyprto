@@ -420,3 +420,42 @@ RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address alread
 | 全鏈總覽實測 | total_mined=出塊累計（2 塊=20）、TiUSD 流通 900,000、獎勵池 2.4 |
 | 挖礦頁實機 | 無輸入框、全鏈總覽、登入 pill、綠燈訊號、TiUSD 顯示 900 TiUSD |
 | Render API 現況 | `/api/wallet/info` 個人資產正確縮放（7576.8 TACm） |
+
+---
+
+## 19. M33 帳本縮放＋礦機伺服器排程＋即時輪詢＋效率圈
+
+### 19.1 用戶 7 點回饋與修復
+
+| 回饋 | 根因 | 修復＋實測 |
+|---|---|---|
+| 帳本流固定面板破圖＋變動顯示 raw | 表格無橫向滾動容器；`datasource.go` Delta 直接輸出 raw | ① 表格包 `.tbl-scroll{overflow-x:auto}`（手機左右滾動）；② `formatDelta` 依資產精度縮放並保留符號——實測變動欄顯示 `1.2 / 8.8`（每塊 10×12%/88%），備註截斷 `trunc64` |
+| 礦機啟動沒動作／訊號不隨開關／離開頁面失效 | 心跳完全依賴前端 JS（每 10s fetch）——離開頁面即停 → 3 分鐘後離線 | **伺服器端排程**：miners 表加 `active`；新 `POST /api/miner/start\|stop`（start＝註冊＋啟用排程＋即時心跳；stop＝active=0＋心跳歸零）；節點 `minerHeartbeatLoop` goroutine 每 10s 對 active 礦工持續心跳——**實測**：開機 online=True（綠）、關機即時 online=False（灰）、離開頁面 13s 仍線上 |
+| 頂部「工具」沒反應／登入後沒顯示 | ☰ toggle 正常（CSS 已查）；「登入後無帳號」＝Render 仍是舊版（新版已含 `/api/auth/me`＋member-wrap） | 本地全流程實測：register→login→`/api/auth/me` 回傳 logged_in＋email → 頂部綠燈＋帳號＋下拉正常 |
+| 缺 Python 版即時效率圈／顯示條 | Go 版未搬運 | 挖礦頁新增**效率圓環**（SVG：個人算力佔全鏈比例）＋**CPU/GPU 算力條**（數值＋比例 bar）——實機顯示 100.0% |
+| 錢包應僅個人資產（獎勵池屬 DEX） | 錢包頁第 4 張卡顯示獎勵池 | **移除獎勵池卡**（只留 TACm/TiUSD/USDT 個人資產）＋資產說明標註「獎勵池屬交易所資產，於挖礦頁全鏈總覽查看」 |
+| 全鏈與個人資產不即時更新（250/900/220 卡死） | `refresh()` 只執行一次，**無輪詢** | mining.html 載入後 `setInterval(refresh, 10000)`——實機：鏈頂#21、總產出 210、收益 184.8（=21×10×88%）持續滾動 |
+| 全鏈總覽僅獎勵池會變 | 同上（refresh 無週期） | 同上一併修復（全鏈總產出/TiUSD/我的收益/鏈頂/難度/排行全隨區塊鏈機制即時更新） |
+| 疑「可用餘額」重複頁面 | 非重複路由（`uniq -d` 空）；「可用餘額」屬區塊瀏覽地址詳情頁（address.html），與錢包頁不同頁 | 已確認無重複頁面/路由；錢包頁與地址詳情頁功能分離 |
+
+### 19.2 同步修正
+
+- `wallet/miner.go`：miners 表加 `active`；`SetActiveMiner/ActiveMiners/StopMiner`（stop 含 active=0＋心跳歸零）；`Miner.Active` json
+- `node/miner_rpc.go`＋`rpc.go`：`POST /api/miner/start`（register＋active＋tick）；`handleMiners` 附 `active`
+- `node/node.go`：`minerHeartbeatLoop`（10s tick active 礦工）
+- `web/datasource.go`＋`server.go`：`formatDelta`（帳本縮放）＋`trunc64` filter
+- `web/templates/wallet.html`：去獎勵池卡＋10s 資產/區塊即時刷新＋`tbl-scroll`
+- `web/templates/mining.html`：效率圓環＋算力條＋`setInterval(refresh,10000)`＋start/stop 走伺服器排程＋按鈕狀態恢復（F5 正確）
+- `run_mining_smoke.sh`：新增 4 項排程測試（active/online/即時灰/持續心跳）
+
+### 19.3 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| 16 包 go test＋go vet | 全綠 |
+| 9 層冒煙 | mining 17/17（新增 4 項排程測）、auth 11、community 24、exchange 16、m17 8、c2c 26、defi 33、pool 14、e2e 23 —— FAIL 全 0 |
+| 伺服器排程實測 | 開機綠→關機灰→無前端 13s 仍綠 |
+| 帳本縮放實測 | `1.2 / 8.8` 十進制（非 raw）＋tbl-scroll |
+| 錢包頁實機 | 3 資產卡（無獎勵池）、TACm 325.6 縮放正確 |
+| 挖礦頁實機 | 效率圈 100.0%、停止鈕正確、全鏈總覽隨出塊滾動（#21→210/184.8） |
+| 登入流程實測 | register→login→/api/auth/me 回傳 logged_in＋email |

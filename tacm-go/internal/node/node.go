@@ -381,9 +381,38 @@ func (n *Node) Start() {
 	}
 	n.running = true
 	n.mu.Unlock()
-	n.wg.Add(2)
+	n.wg.Add(3)
 	go n.consensusLoop()
 	go n.runBFT()
+	go n.minerHeartbeatLoop()
+}
+
+// minerHeartbeatLoop M33：伺服器端礦機排程——每 10s 對所有已「開機」的礦工持續心跳，
+// 離開頁面仍繼續挖礦；「開機/關機」由 /api/miner/start|stop 控制（訊號隨開關即時轉換）。
+func (n *Node) minerHeartbeatLoop() {
+	defer n.wg.Done()
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-n.stopCh:
+			return
+		case <-t.C:
+			if n.walletSvc == nil {
+				continue
+			}
+			active, err := n.walletSvc.Store().ActiveMiners()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[miner-heartbeat] %v\n", err)
+				continue
+			}
+			for _, a := range active {
+				if err := n.walletSvc.Store().TickMiner(a); err != nil {
+					fmt.Fprintf(os.Stderr, "[miner-heartbeat] tick %s: %v\n", a, err)
+				}
+			}
+		}
+	}
 }
 
 // StartAsFollower 以跟隨/全節點模式啟動：不主動 PoW 出塊，

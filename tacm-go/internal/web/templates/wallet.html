@@ -71,11 +71,6 @@
       <div class="val">{{ wallet.USDT }}</div>
       <div class="fees">轉帳手續費 {{ wallet.FeeUSDTBps }}bp (1.25%)</div>
     </div>
-    <div class="asset-card">
-      <div class="sym"><span>獎勵池</span><span class="tag">每區塊挹注 15%</span></div>
-      <div class="val tacm">{{ rewardPool }}</div>
-      <div class="fees">coinbase 分潤 + 交易所手續費結算入池</div>
-    </div>
   </div>
 
   <div class="bn-row">
@@ -100,6 +95,33 @@
         <div class="bn-msg" id="tfmsg"></div>
       </form>
     </div>
+    <script>
+      // M33：錢包資產與帳本 10s 即時刷新（挖礦出塊入帳立即反映）。
+      (function () {
+        var waddr = "{{ address }}";
+        function fresh() {
+          fetch(base + '/api/wallet/info?address=' + encodeURIComponent(waddr), { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (!j || !j.ok) return;
+              var els = document.querySelectorAll('.bn-grid .val');
+              if (els[0]) els[0].textContent = j.tacm;
+              if (els[1]) els[1].textContent = j.tiusd;
+              if (els[2]) els[2].textContent = j.usdt;
+            }).catch(function () {});
+          fetch(base + '/status', { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (st) {
+              if (st && st.block_height != null) {
+                var el = document.querySelector('.bn-chip');
+                if (el) el.textContent = '#' + st.block_height;
+              }
+            }).catch(function () {});
+        }
+        fresh();
+        setInterval(fresh, 10000);
+      })();
+    </script>
 
     <div class="bn-panel">
       <h3>資產說明</h3>
@@ -113,6 +135,7 @@
   <div class="bn-panel" style="margin-top:16px;">
     <h3>最近帳本流（審計分錄）</h3>
     {% if wallet.Ledger %}
+    <div class="tbl-scroll">
     <table>
       <tr><th>時間</th><th>類型</th><th>資產</th><th>帳戶</th><th>變動</th><th>備註</th></tr>
       {% for e in wallet.Ledger %}
@@ -122,10 +145,11 @@
         <td>{{ e.Asset }}</td>
         <td class="mono">{{ e.Account|shortaddr }}</td>
         <td class="{% if e.Delta|negdelta %}neg{% else %}pos{% endif %}">{{ e.Delta }}</td>
-        <td class="mono">{{ e.Memo }}</td>
+        <td class="mono">{{ e.Memo|trunc64 }}</td>
       </tr>
       {% endfor %}
     </table>
+    </div>
     {% else %}
     <div style="color:var(--bn-sub); font-size:13px;">暫無分錄。挖礦出塊後 coinbase 獎勵會自動入帳。</div>
     {% endif %}

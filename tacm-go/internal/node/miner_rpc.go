@@ -45,6 +45,30 @@ func (s *RPCServer) handleMinerRegister(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "vcpu": req.VCPU, "vgpu": req.VGPU})
 }
 
+// handleMinerStart POST /api/miner/start — 開機挖礦（M33：開啟伺服器端排程＋立即心跳）。
+// 開啟後由節點 minerHeartbeatLoop 每 10s 持續心跳——離開頁面仍繼續挖礦。
+func (s *RPCServer) handleMinerStart(w http.ResponseWriter, r *http.Request) {
+	if s.node.walletSvc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "錢包未初始化")
+		return
+	}
+	var req MinerTickReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "參數解析失敗: "+err.Error())
+		return
+	}
+	// 開機＝註冊（固定算力）＋啟用排程＋立即心跳（訊號即時轉綠）。
+	if err := s.node.walletSvc.Store().RegisterMiner(req.Address, 0, 0); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.node.walletSvc.Store().SetActiveMiner(req.Address, true); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "active": true})
+}
+
 // handleMinerTick POST /api/miner/tick — 礦機心跳。
 func (s *RPCServer) handleMinerTick(w http.ResponseWriter, r *http.Request) {
 	if s.node.walletSvc == nil {
@@ -105,7 +129,7 @@ func (s *RPCServer) handleMiners(w http.ResponseWriter, r *http.Request) {
 			"address": m.Address, "vcpu": m.VCPU, "vgpu": m.VGPU,
 			"hashrate": m.Hashrate, "status": m.Status,
 			"last_heartbeat_ts": m.LastHeartbeatTs, "registered_ts": m.RegisteredTs,
-			"online": m.Online, "refs": refs,
+			"online": m.Online, "refs": refs, "active": m.Active,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

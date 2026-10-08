@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS miners (
     hashrate TEXT NOT NULL DEFAULT '0',
     status  TEXT NOT NULL DEFAULT 'online',
     last_heartbeat_ts INTEGER NOT NULL DEFAULT 0,
-    registered_ts INTEGER NOT NULL
+    registered_ts INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS referrals (
     referrer TEXT NOT NULL,
@@ -41,6 +42,7 @@ type Miner struct {
 	LastHeartbeatTs int64   `json:"last_heartbeat_ts"`
 	RegisteredTs    int64   `json:"registered_ts"`
 	Online          bool    `json:"online"`
+	Active          bool    `json:"active"`
 }
 
 // BaseCPU/BaseGPU：礦機預設算力（不可手動修改，M32 固定）。
@@ -125,18 +127,60 @@ func (s *Store) TickMiner(address string) error {
 	return nil
 }
 
-// StopMiner 礦機離線（登出/停止）。
+// StopMiner 礦機離線（登出/停止）：M33 關閉後端排程並將心跳歸零，前端訊號即時轉灰。
 func (s *Store) StopMiner(address string) error {
-	_, err := s.db.Exec(`UPDATE miners SET status='offline' WHERE address=?`, address)
+	_, err := s.db.Exec(`UPDATE miners SET status='offline', last_heartbeat_ts=0, active=0 WHERE address=?`, address)
 	if err != nil {
 		return fmt.Errorf("wallet: 礦機離線: %w", err)
 	}
 	return nil
 }
 
+// SetActiveMiner 開啟/關閉伺服器端挖礦排程（M33：離開頁面仍持續挖礦）。
+// active=true：設為啟用並立即心跳（訊號即時轉綠）。
+func (s *Store) SetActiveMiner(address string, active bool) error {
+	if address == "" {
+		return fmt.Errorf("wallet: 啟用礦機缺少地址")
+	}
+	if active {
+		res, err := s.db.Exec(`UPDATE miners SET active=1, status='online', last_heartbeat_ts=? WHERE address=?`,
+			time.Now().Unix(), address)
+		if err != nil {
+			return fmt.Errorf("wallet: 啟用礦機: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return fmt.Errorf("wallet: 礦機未註冊（請先 /api/miner/register）: %s", address)
+		}
+		return nil
+	}
+	_, err := s.db.Exec(`UPDATE miners SET active=0, last_heartbeat_ts=0, status='offline' WHERE address=?`, address)
+	if err != nil {
+		return fmt.Errorf("wallet: 停用礦機: %w", err)
+	}
+	return nil
+}
+
+// ActiveMiners 回傳已開啟伺服器端排程的礦機地址（節點循環心跳用）。
+func (s *Store) ActiveMiners() ([]string, error) {
+	rows, err := s.db.Query(`SELECT address FROM miners WHERE active=1`)
+	if err != nil {
+		return nil, fmt.Errorf("wallet: 查詢啟用礦機: %w", err)
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			return nil, fmt.Errorf("wallet: 讀取啟用礦機: %w", err)
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 // Miners 回傳全部礦機（含離線）。
 func (s *Store) Miners() ([]Miner, error) {
-	rows, err := s.db.Query(`SELECT address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts FROM miners ORDER BY hashrate DESC`)
+	rows, err := s.db.Query(`SELECT address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts, active FROM miners ORDER BY hashrate DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("wallet: 查詢礦機: %w", err)
 	}
@@ -145,7 +189,7 @@ func (s *Store) Miners() ([]Miner, error) {
 	now := time.Now().Unix()
 	for rows.Next() {
 		var m Miner
-		if err := rows.Scan(&m.Address, &m.VCPU, &m.VGPU, &m.Hashrate, &m.Status, &m.LastHeartbeatTs, &m.RegisteredTs); err != nil {
+		if err := rows.Scan(&m.Address, &m.VCPU, &m.VGPU, &m.Hashrate, &m.Status, &m.LastHeartbeatTs, &m.RegisteredTs, &m.Active); err != nil {
 			return nil, fmt.Errorf("wallet: 讀取礦機: %w", err)
 		}
 		// M32：在線判定統一窗口（與瓜分一致），不再用 DB status（永在線 bug）。

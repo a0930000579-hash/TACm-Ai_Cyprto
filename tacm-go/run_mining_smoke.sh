@@ -63,6 +63,20 @@ COM=$(curl -sf --max-time 5 "http://127.0.0.1:$BASE/api/status" | /opt/python3.1
 echo "$M" | grep -q 'href="https://t.me/tacm_test"' && ok "頂欄 Telegram 膠囊渲染（可點）" || bad "Telegram 膠囊未渲染"
 echo "$M" | grep -q 'target="_blank"' && ok "社群連結新分頁開啟" || bad "外鏈未新分頁"
 
+# M33：礦機伺服器排程——開機即綠（active+online）、關機即灰、無前端心跳仍持續。
+SADDR=$NODE_ADDR
+curl -sf --max-time 5 -X POST "http://127.0.0.1:$BASE/api/miner/start" -H 'Content-Type: application/json' -d "{\"address\":\"$SADDR\"}" >/dev/null
+MS=$(curl -sf --max-time 5 "http://127.0.0.1:$BASE/api/miners")
+echo "$MS" | grep -q '"active":true' && ok "開機後 active=true（伺服器排程）" || bad "開機 active 未生效"
+echo "$MS" | grep -q '"online":true' && ok "開機後 online=true（訊號即時綠）" || bad "開機 online 未生效"
+curl -sf --max-time 5 -X POST "http://127.0.0.1:$BASE/api/miner/stop" -H 'Content-Type: application/json' -d "{\"address\":\"$SADDR\"}" >/dev/null
+MS2=$(curl -sf --max-time 5 "http://127.0.0.1:$BASE/api/miners")
+echo "$MS2" | grep -q '"online":false' && ok "關機後即時離線（訊號灰）" || bad "關機未即時離線"
+curl -sf --max-time 5 -X POST "http://127.0.0.1:$BASE/api/miner/start" -H 'Content-Type: application/json' -d "{\"address\":\"$SADDR\"}" >/dev/null
+sleep 13
+MS3=$(curl -sf --max-time 5 "http://127.0.0.1:$BASE/api/miners")
+echo "$MS3" | grep -q '"online":true' && ok "離開頁面 13s 仍線上（伺服器持續心跳）" || bad "伺服器心跳未持續"
+
 echo
 log "RESULT: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

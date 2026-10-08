@@ -1,6 +1,7 @@
 package web
 
 import (
+	"math/big"
 	"tacm/internal/chaindb"
 	"tacm/internal/node"
 	"tacm/internal/wallet"
@@ -53,12 +54,37 @@ func (d *nodeDS) Wallet(addr string) (*WalletView, error) {
 		w.TiUSDBurned = sup.TotalBurned
 	}
 	for _, e := range led {
+		// M33：帳本變動以十進制顯示（raw 不再外洩）；保留 +/− 符號。
 		w.Ledger = append(w.Ledger, WalletLedgerView{
 			Ts: e.Ts, Kind: string(e.Kind), Asset: string(e.Asset),
-			Account: e.Account, Delta: e.Delta, Memo: e.Memo,
+			Account: e.Account, Delta: formatDelta(e.Delta, string(e.Asset)), Memo: e.Memo,
 		})
 	}
 	return w, nil
+}
+
+
+// formatDelta 帳本變動縮放（依資產精度），保留符號。
+func formatDelta(delta, asset string) string {
+	v, ok := new(big.Int).SetString(delta, 10)
+	if !ok {
+		return delta
+	}
+	neg := v.Sign() < 0
+	if neg {
+		v = new(big.Int).Neg(v)
+	}
+	var out string
+	switch wallet.Asset(asset) {
+	case wallet.AssetTiUSD:
+		out = wallet.FormatAmountBig(v)
+	default: // TACm/USDT 18 位
+		out = wallet.FormatAmountBig(v)
+	}
+	if neg {
+		out = "-" + out
+	}
+	return out
 }
 
 func txView(t *chaindb.Transaction) TxView {

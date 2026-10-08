@@ -58,6 +58,13 @@ func registerFilters() {
 			neg := len(in.String()) > 0 && in.String()[0] == '-'
 			return pongo2.AsValue(neg), nil
 		},
+		"trunc64": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+			t := in.String()
+			if len(t) > 64 {
+				t = t[:64] + "…"
+			}
+			return pongo2.AsValue(t), nil
+		},
 		"timefmt": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 			ts := in.Integer()
 			if ts <= 0 {
