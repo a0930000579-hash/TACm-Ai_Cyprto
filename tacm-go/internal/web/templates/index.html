@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}TAC 自主智能鏈 · 網絡概覽{% endblock %}
+{% block content %}
+<section class="stat-cards">
+  <div class="card">
+    <div class="card-label">鏈頂高度</div>
+    <div class="card-value">{{ status.Height }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">最終化高度</div>
+    <div class="card-value final">{{ status.FinalizedHeight }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">當前難度</div>
+    <div class="card-value">{{ status.Difficulty }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">待打包交易</div>
+    <div class="card-value">{{ status.MempoolSize }}</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>最新區塊</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>高度</th><th>區塊哈希</th><th>提議者</th><th>交易數</th><th>時間</th></tr>
+    </thead>
+    <tbody>
+    {% for b in blocks %}
+      <tr>
+        <td><a class="mono strong" href="/block/{{ b.Height }}">{{ b.Height }}</a></td>
+        <td class="mono"><a href="/block/{{ b.Height }}">{{ b.Hash|shortaddr }}</a></td>
+        <td class="mono"><a href="/address/{{ b.ProposerAddress }}">{{ b.ProposerAddress|shortaddr }}</a></td>
+        <td>{{ b.TxCount }}</td>
+        <td class="nowrap muted">{{ b.Ts|timefmt }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted center">尚無區塊</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

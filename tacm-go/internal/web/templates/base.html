@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}TAC 自主智能鏈{% endblock %}</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#0b0e11">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="/static/tacm.svg" type="image/svg+xml">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">TAC<span>Chain</span></a>
+  <nav class="navlinks">
+    <a href="/">區塊瀏覽</a>
+    <a href="/wallet">錢包</a>
+    <a href="/exchange">交易所</a>
+    <a href="/dashboard">儀表板</a>
+    <a href="/mining">挖礦</a>
+    <a href="/community">社群</a>
+  </nav>
+  <div class="comm">
+    <a class="pill" href="/whitepaper" rel="noopener">白皮書</a>
+    <a class="pill" href="/whitepaper-en" rel="noopener">EN</a>
+    {% if community.telegram %}<a class="pill" href="{{ community.telegram }}" target="_blank" rel="noopener">Telegram</a>{% endif %}
+    {% if community.x %}<a class="pill" href="{{ community.x }}" target="_blank" rel="noopener">X</a>{% endif %}
+    {% if community.discord %}<a class="pill" href="{{ community.discord }}" target="_blank" rel="noopener">Discord</a>{% endif %}
+    {% if community.site %}<a class="pill" href="{{ community.site }}" target="_blank" rel="noopener">官網</a>{% endif %}
+    {% if not community.telegram and not community.x and not community.discord and not community.site %}<span class="pill off">社群陸續開放</span>{% endif %}
+  </div>
+  <div class="netstat">
+    <span class="dot"></span>
+    <span class="height">#{{ status.Height }}</span>
+  </div>
+</header>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<nav class="bottom-nav" aria-label="主導航">
+  <a href="/" data-i="home"><span>⛓</span><small>首頁</small></a>
+  <a href="/wallet" data-i="wallet"><span>👛</span><small>錢包</small></a>
+  <a href="/mining" data-i="mining" class="bn-active"><span>⛏</span><small>挖礦</small></a>
+  <a href="/exchange" data-i="exchange"><span>📈</span><small>交易所</small></a>
+  <a href="/community" data-i="community"><span>👥</span><small>社群</small></a>
+</nav>
+<footer class="footer">
+  <span>TAC 自主智能鏈</span>
+  <span>鏈頂 #{{ status.Height }}</span>
+  <span>最終化 #{{ status.FinalizedHeight }}</span>
+</footer>
+<script>
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/static/sw.js').catch(function(){}); }
+(function(){var m={"/":"home","/wallet":"wallet","/mining":"mining","/exchange":"exchange","/dashboard":"dash","/community":"community"};
+var k=location.pathname; var key=m[k]||(k.indexOf("/wallet")===0?"wallet":(k.indexOf("/mining")===0?"mining":(k.indexOf("/exchange")===0?"exchange":(k.indexOf("/dashboard")===0?"dash":(k.indexOf("/community")===0?"community":"home")))));
+var cur=document.querySelector('.bottom-nav a[data-i="'+key+'"]'); if(cur){var a=document.querySelectorAll('.bottom-nav a'); for(var i=0;i<a.length;i++){a[i].classList.remove('bn-active');} cur.classList.add('bn-active');}})();
+</script>
+</body>
+</html>

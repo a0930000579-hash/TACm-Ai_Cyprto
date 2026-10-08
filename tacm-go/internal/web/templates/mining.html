@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}TAC 挖礦 · 礦機{% endblock %}
+{% block content %}
+<style>
+  .miner-wrap{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:0 auto}
+  .mm-hero{background:linear-gradient(160deg,rgba(240,185,11,.14),rgba(240,185,11,.03) 60%);border:1px solid rgba(240,185,11,.4);border-radius:16px;padding:16px;position:relative}
+  .mm-hero .mm-badge{position:absolute;top:14px;right:14px;background:rgba(14,203,129,.14);color:var(--green);border:1px solid rgba(14,203,129,.4);font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px}
+  .mm-hero .mm-badge.off{background:rgba(246,70,93,.14);color:var(--red);border-color:rgba(246,70,93,.4)}
+  .mm-hero h2{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px}
+  .mm-hero .mm-addr{font-family:ui-monospace,monospace;font-size:13px;color:var(--muted);word-break:break-all;line-height:1.6;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .mm-hero .mm-addr button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;flex:none}
+  .mm-hash{display:flex;gap:10px;margin-top:12px;text-align:center}
+  .mm-hash>div{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:10px 4px}
+  .mm-hash b{display:block;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+  .mm-hash small{color:var(--muted);font-size:11px}
+  .mm-cta{display:flex;gap:10px;margin-top:12px}
+  .mm-cta button{flex:1;padding:12px 0;border-radius:10px;font-weight:800;font-size:14px;border:none;cursor:pointer}
+  #btnStart{background:var(--accent);color:#0b0e11}
+  #btnStop{background:rgba(246,70,93,.15);color:var(--red);border:1px solid rgba(246,70,93,.5)!important}
+  .mm-form{margin-top:12px;display:none;gap:8px;align-items:center}
+  .mm-form.open{display:flex}
+  .mm-form label{font-size:12px;color:var(--muted);flex:none}
+  .mm-form input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-size:14px}
+  .mm-form button{background:var(--accent);color:#0b0e11;border:none;border-radius:8px;font-weight:800;padding:9px 14px;font-size:13px;cursor:pointer;flex:none}
+  .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mm-cell{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .mm-cell small{color:var(--muted);font-size:11px;display:block;margin-bottom:4px}
+  .mm-cell b{font-size:15px;font-variant-numeric:tabular-nums}
+  .mm-sec{font-size:13px;font-weight:800;color:var(--text);margin:6px 2px 0;display:flex;align-items:center;gap:8px}
+  .rank-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-top:8px}
+  .rank-row .rk{width:26px;height:26px;border-radius:50%;background:rgba(240,185,11,.14);color:var(--accent);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+  .rank-row .rk.solo{background:rgba(240,185,11,.3)}
+  .rank-row .rkbody{flex:1;min-width:0}
+  .rank-row .rkbody .ra{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rank-row .rkbody .rkbar{height:5px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:5px;overflow:hidden}
+  .rank-row .rkbody .rkbar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+  .rank-row .rkv{flex:none;text-align:right;font-size:12px;color:var(--text);font-variant-numeric:tabular-nums}
+  .mm-note{font-size:12px;color:var(--muted);line-height:1.7;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .mm-note b{color:var(--text)}
+  .err{color:var(--red);font-size:13px;margin-top:8px;text-align:center}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:700}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+</style>
+
+<div class="miner-wrap">
+  <div class="mm-hero">
+    <span class="mm-badge off" id="stBadge">離線</span>
+    <h2>⛏ 我的礦機</h2>
+    <div class="mm-addr" id="addrRow">
+      <span id="myAddr">載入中…</span>
+      <button onclick="copyAddr()">複製</button>
+    </div>
+    <div class="mm-hash">
+      <div><b id="hrCpu">—</b><small>CPU 算力</small></div>
+      <div><b id="hrGpu">—</b><small>GPU 算力</small></div>
+      <div><b id="hrTotal">—</b><small>總算力</small></div>
+    </div>
+    <div class="mm-cta">
+      <button id="btnStart" onclick="startMining()">⚡ 開機挖礦</button>
+      <button id="btnStop" onclick="stopMining()" style="display:none">停止挖礦</button>
+    </div>
+    <div class="mm-form" id="cfgForm">
+      <label>vCPU</label><input id="inVcpu" type="number" min="1" max="64" value="1">
+      <label>vGPU</label><input id="inVgpu" type="number" min="0" max="16" value="0">
+      <button onclick="applyConfig()">更新算力</button>
+    </div>
+  </div>
+
+  <div class="mm-grid">
+    <div class="mm-cell"><small>累計收益</small><b id="earned">0 TACm</b></div>
+    <div class="mm-cell"><small>獎勵池</small><b id="pool">—</b></div>
+    <div class="mm-cell"><small>鏈頂高度</small><b id="height">—</b></div>
+    <div class="mm-cell"><small>動態難度</small><b id="diff">—</b></div>
+  </div>
+
+  <div class="mm-sec">🌐 在線礦工排行（<span id="onlineN">0</span> 台 · 總算力 <span id="totalHr">0</span>）</div>
+  <div id="rankList"></div>
+
+  <div class="mm-sec">⛏ 出塊與獎勵機制（原本方式）</div>
+  <div class="mm-note">
+    ・每區塊獎勵 <b>10 TACm</b>：<b>12%</b> 自動挹注獎勵池（作交易所資金用途），其餘 <b>88%</b> 按<b>在線礦工算力占比</b>即時瓜分。<br>
+    ・礦機以地址註冊（vCPU×1M + vGPU×2M 算力）並持續心跳，出塊時自動入帳；離線超過 3 分鐘不參與瓜分。<br>
+    ・節點自身亦為一台默認礦機（1 vCPU），保證鏈上任何時候都有算力歸屬與真實出塊。
+  </div>
+  <div id="err" class="err"></div>
+</div>
+
+<script>
+var RPC = (new URLSearchParams(location.search)).get('rpc') || '8332';
+var base = location.protocol + '//' + location.hostname + ':' + RPC;
+function get(p){ return fetch(base + p).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
+function post(p,b){ return fetch(base + p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})}).then(function(r){ if(!r.ok) return r.json().then(function(j){throw new Error(j.error||r.status)}); return r.json(); }); }
+var myAddr = '';
+var mining = false, tickTimer = null;
+var WEI = 1000000000000000000;
+function fmtTacm(w){ var f = parseFloat(w)/WEI; return f.toLocaleString('en-US',{maximumFractionDigits:6}) + ' TACm'; }
+function fmtHr(h){ var n=parseFloat(h); if(n>=1e6) return (n/1e6).toFixed(2)+'M'; if(n>=1e3) return (n/1e3).toFixed(1)+'K'; return n.toFixed(0); }
+function shortAddr(a){ if(!a) return '—'; if(a.length<=16) return a; return a.slice(0,10)+'…'+a.slice(-6); }
+function copyAddr(){ if(!myAddr) return; var done=function(){ alert('地址已複製'); }; if(navigator.clipboard){ navigator.clipboard.writeText(myAddr).then(done,function(){}) } else { done(); } }
+
+function render(ms, splits, st){
+  var me = null;
+  (ms||[]).forEach(function(m){ if(m.address===myAddr) me = m; });
+  if(me){
+    document.getElementById('stBadge').textContent = me.status==='online' ? '在線挖礦中' : '離線';
+    document.getElementById('stBadge').className = 'mm-badge' + (me.status==='online'?'':' off');
+    document.getElementById('hrCpu').textContent = fmtHr(me.vcpu*1000000);
+    document.getElementById('hrGpu').textContent = fmtHr(me.vgpu*2000000);
+    document.getElementById('hrTotal').textContent = fmtHr(me.vcpu*1000000 + me.vgpu*2000000);
+  }
+  document.getElementById('height').textContent = st.block_height != null ? '#'+st.block_height : '—';
+  document.getElementById('diff').textContent = st.effective_difficulty != null ? st.effective_difficulty : '—';
+  var totalHr = 0; (splits||[]).forEach(function(s){ totalHr += parseFloat(s.share||0); });
+  document.getElementById('onlineN').textContent = (splits||[]).length;
+  document.getElementById('totalHr').textContent = fmtHr(totalHr);
+  var list = document.getElementById('rankList');
+  var rows = '';
+  (splits||[]).forEach(function(s,i){
+    var pct = totalHr>0 ? (parseFloat(s.share)/totalHr*100) : 0;
+    var mine = s.address===myAddr ? ' · 我' : '';
+    rows += '<div class="rank-row"><div class="rk'+(s.address===myAddr?' solo':'')+'">'+(i+1)+'</div>'+
+      '<div class="rkbody"><div class="ra">'+shortAddr(s.address)+mine+'</div>'+
+      '<div class="rkbar"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>'+
+      '<div class="rkv">'+fmtHr(s.share)+'<br><small style="color:var(--muted)">'+pct.toFixed(1)+'%</small></div></div>';
+  });
+  list.innerHTML = rows || '<div class="mm-note" style="margin-top:8px">目前無在線礦工</div>';
+}
+
+function refresh(){
+  return Promise.all([get('/api/miners'), get('/status'), get('/api/rewardpool')]).then(function(rs){
+    render(rs[0].miners, rs[0].splits, rs[1]);
+    var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
+    document.getElementById('pool').textContent = pool;
+    return get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).then(function(er){
+      document.getElementById('earned').textContent = fmtTacm(er.earned_raw||'0');
+    }).catch(function(){});
+  }).catch(function(e){
+    document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
+  });
+}
+
+function startMining(){
+  var vc = parseInt(document.getElementById('inVcpu').value||'1',10);
+  var vg = parseInt(document.getElementById('inVgpu').value||'0',10);
+  post('/api/miner/register',{address:myAddr, vcpu:vc, vgpu:vg}).then(function(){
+    post('/api/miner/tick',{address:myAddr}).then(function(){
+      mining = true;
+      document.getElementById('btnStart').style.display='none';
+      document.getElementById('btnStop').style.display='block';
+      document.getElementById('stBadge').textContent='在線挖礦中';
+      document.getElementById('stBadge').className='mm-badge';
+      document.getElementById('cfgForm').classList.add('open');
+      if(tickTimer) clearInterval(tickTimer);
+      tickTimer = setInterval(function(){ post('/api/miner/tick',{address:myAddr}).catch(function(){}); }, 10000);
+      refresh();
+    }).catch(function(e){ document.getElementById('err').textContent='心跳失敗：'+e; });
+  }).catch(function(e){ document.getElementById('err').textContent='註冊失敗：'+e; });
+}
+function stopMining(){
+  if(tickTimer) clearInterval(tickTimer);
+  post('/api/miner/stop',{address:myAddr}).then(function(){
+    mining = false;
+    document.getElementById('btnStart').style.display='block';
+    document.getElementById('btnStop').style.display='none';
+    document.getElementById('cfgForm').classList.remove('open');
+    document.getElementById('stBadge').textContent='離線';
+    document.getElementById('stBadge').className='mm-badge off';
+    refresh();
+  }).catch(function(e){ document.getElementById('err').textContent='停止失敗：'+e; });
+}
+function applyConfig(){
+  var vc = parseInt(document.getElementById('inVcpu').value||'1',10);
+  var vg = parseInt(document.getElementById('inVgpu').value||'0',10);
+  post('/api/miner/register',{address:myAddr, vcpu:vc, vgpu:vg}).then(function(){ refresh(); }).catch(function(e){ document.getElementById('err').textContent='更新算力失敗：'+e; });
+}
+
+get('/status').then(function(st){
+  myAddr = st.address || '';
+  document.getElementById('myAddr').textContent = shortAddr(myAddr);
+  refresh();
+}).catch(function(e){
+  document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
+});
+</script>
+{% endblock %}

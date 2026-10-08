@@ -1,0 +1,26 @@
+2026/10/08 13:56:34 [genesis] 創世區塊已生成
+2026/10/08 13:56:34 [bridge] 跨鏈守衛網絡已啟用（守衛 2 個）
+2026/10/08 13:56:34 [rpc] RPC/P2P 服務已啟動: http://0.0.0.0:8712
+2026/10/08 13:56:34 [node] 節點 b2 已啟動，地址 tx01DrgmyWDDHtQJV2R5z3HZ7PpStDL15P6QJ，鏈頂 0，跟隨模式=false
+2026/10/08 13:56:50 [p2p] 接收投票失敗: 投票高度/輪不匹配
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=propose mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [bridge] 聚合 mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d 簽名數=2 有效=1 ok=false insufficient signatures: need 2, have 1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=propose mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [bridge] 聚合 mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d 簽名數=3 有效=2 ok=true 
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=exec mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=exec mid=2d10796dee8a7053aa5702898fa3ceea9f3e95577ccb455d643e47a25d152c2d from=b0
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=propose mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [bridge] 聚合 mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 簽名數=2 有效=1 ok=false insufficient signatures: need 2, have 1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b0
+2026/10/08 13:56:55 [bridge] 聚合 mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 簽名數=3 有效=2 ok=true 
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=propose mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=exec mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=sig mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b0
+2026/10/08 13:56:55 [p2p] 收到跨鏈消息 type=exec mid=5b9c7ccba171287ec63e758133ef3fcc1a28474023584ea748b0c374853cf8c7 from=b1
+2026/10/08 13:56:55 [shutdown] 正在停止節點...

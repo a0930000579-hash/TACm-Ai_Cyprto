@@ -1,0 +1,157 @@
+package wallet
+
+// miner.go — 礦機模組（對齊 Python autominers/miner_client 原本方式）：
+//   礦機以地址註冊（VCPU/VGPU 算力）→ 週期心跳 → 出塊時 coinbase 剩餘
+//   按在線礦工算力占比瓜分（PoolShareBps 進獎勵池、其餘 100% 依算力分配）。
+
+import (
+	"fmt"
+	"math/big"
+	"time"
+)
+
+// MinerOnlineWindow 心跳有效窗口：超過此秒數未心跳視為離線，不參與瓜分。
+const MinerOnlineWindow = 180
+
+const minerSchema = `
+CREATE TABLE IF NOT EXISTS miners (
+    address TEXT PRIMARY KEY,
+    vcpu    INTEGER NOT NULL DEFAULT 1,
+    vgpu    INTEGER NOT NULL DEFAULT 0,
+    hashrate TEXT NOT NULL DEFAULT '0',
+    status  TEXT NOT NULL DEFAULT 'online',
+    last_heartbeat_ts INTEGER NOT NULL DEFAULT 0,
+    registered_ts INTEGER NOT NULL
+);
+`
+
+// Miner 礦機視圖。
+type Miner struct {
+	Address         string `json:"address"`
+	VCPU            int    `json:"vcpu"`
+	VGPU            int    `json:"vgpu"`
+	Hashrate        string `json:"hashrate"`
+	Status          string `json:"status"`
+	LastHeartbeatTs int64  `json:"last_heartbeat_ts"`
+	RegisteredTs    int64  `json:"registered_ts"`
+}
+
+// MinerSplit 一個礦工的瓜分份額（Share 為分子，分母為全體算力和）。
+type MinerSplit struct {
+	Address string   `json:"address"`
+	Share   *big.Int `json:"share"`
+}
+
+// RegisterMiner 註冊（或更新）一台礦機；算力 = vcpu×1e6 + vgpu×2e6。
+func (s *Store) RegisterMiner(address string, vcpu, vgpu int) error {
+	if address == "" || vcpu < 0 || vgpu < 0 || (vcpu+vgpu) <= 0 {
+		return fmt.Errorf("wallet: 礦機註冊參數非法 (address=%q vcpu=%d vgpu=%d)", address, vcpu, vgpu)
+	}
+	hr := new(big.Int).Mul(big.NewInt(int64(vcpu)), big.NewInt(1_000_000))
+	hr.Add(hr, new(big.Int).Mul(big.NewInt(int64(vgpu)), big.NewInt(2_000_000)))
+	now := time.Now().Unix()
+	_, err := s.db.Exec(`
+INSERT INTO miners (address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts)
+VALUES (?, ?, ?, ?, 'online', ?, ?)
+ON CONFLICT(address) DO UPDATE SET
+  vcpu=excluded.vcpu, vgpu=excluded.vgpu, hashrate=excluded.hashrate,
+  status='online', last_heartbeat_ts=excluded.last_heartbeat_ts`,
+		address, vcpu, vgpu, hr.String(), now, now)
+	if err != nil {
+		return fmt.Errorf("wallet: 註冊礦機: %w", err)
+	}
+	return nil
+}
+
+// TickMiner 礦機心跳：更新最後心跳時間並維持在線。
+func (s *Store) TickMiner(address string) error {
+	if address == "" {
+		return fmt.Errorf("wallet: 心跳缺少地址")
+	}
+	res, err := s.db.Exec(`UPDATE miners SET status='online', last_heartbeat_ts=? WHERE address=?`,
+		time.Now().Unix(), address)
+	if err != nil {
+		return fmt.Errorf("wallet: 礦機心跳: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("wallet: 礦機未註冊（請先 /api/miner/register）: %s", address)
+	}
+	return nil
+}
+
+// StopMiner 礦機離線（登出/停止）。
+func (s *Store) StopMiner(address string) error {
+	_, err := s.db.Exec(`UPDATE miners SET status='offline' WHERE address=?`, address)
+	if err != nil {
+		return fmt.Errorf("wallet: 礦機離線: %w", err)
+	}
+	return nil
+}
+
+// Miners 回傳全部礦機（含離線）。
+func (s *Store) Miners() ([]Miner, error) {
+	rows, err := s.db.Query(`SELECT address, vcpu, vgpu, hashrate, status, last_heartbeat_ts, registered_ts FROM miners ORDER BY hashrate DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("wallet: 查詢礦機: %w", err)
+	}
+	defer rows.Close()
+	out := []Miner{}
+	for rows.Next() {
+		var m Miner
+		if err := rows.Scan(&m.Address, &m.VCPU, &m.VGPU, &m.Hashrate, &m.Status, &m.LastHeartbeatTs, &m.RegisteredTs); err != nil {
+			return nil, fmt.Errorf("wallet: 讀取礦機: %w", err)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// OnlineMinerSplits 回傳「窗口內在線」礦工的算力瓜分份額（分子 = 各礦工算力）。
+// now 由呼叫方傳入，保證同一高度下全體一致。
+func (s *Store) OnlineMinerSplits(now int64) ([]MinerSplit, error) {
+	rows, err := s.db.Query(`SELECT address, hashrate FROM miners
+WHERE status='online' AND last_heartbeat_ts >= ? ORDER BY hashrate DESC`, now-MinerOnlineWindow)
+	if err != nil {
+		return nil, fmt.Errorf("wallet: 查詢在線礦工: %w", err)
+	}
+	defer rows.Close()
+	out := []MinerSplit{}
+	for rows.Next() {
+		var addr, hr string
+		if err := rows.Scan(&addr, &hr); err != nil {
+			return nil, fmt.Errorf("wallet: 讀取在線礦工: %w", err)
+		}
+		v, ok := new(big.Int).SetString(hr, 10)
+		if !ok || v.Sign() <= 0 {
+			continue
+		}
+		out = append(out, MinerSplit{Address: addr, Share: v})
+	}
+	return out, rows.Err()
+}
+
+// DistributeByHashrate 把 amount 依 shares 按占比分配，回傳 (地址→份額)。
+// 無在線礦工時回傳 nil（呼叫方自行決定 fallback）。
+func DistributeByHashrate(amount *big.Int, splits []MinerSplit) (map[string]*big.Int, error) {
+	total := big.NewInt(0)
+	for _, sp := range splits {
+		total.Add(total, sp.Share)
+	}
+	if total.Sign() <= 0 {
+		return nil, nil
+	}
+	out := make(map[string]*big.Int, len(splits))
+	acc := big.NewInt(0)
+	for i, sp := range splits {
+		// portion = amount × share / total（末位補齊：最後一名拿剩餘，避免捨入虧損）。
+		if i == len(splits)-1 {
+			out[sp.Address] = new(big.Int).Sub(amount, acc)
+			continue
+		}
+		p := new(big.Int).Mul(amount, sp.Share)
+		p.Div(p, total)
+		acc.Add(acc, p)
+		out[sp.Address] = p
+	}
+	return out, nil
+}
