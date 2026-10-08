@@ -89,14 +89,9 @@ func main() {
 	}
 
 	// 節點 RPC。
-	rpcHandler := node.NewRPCServer(n).Handler()
-	rpcSrv := &http.Server{Addr: addr(*rpcPort), Handler: rpcHandler}
-	go func() {
-		log.Printf("[rpc] 節點 RPC: http://0.0.0.0:%d", *rpcPort)
-		if err := rpcSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("[rpc] 退出: %v", err)
-		}
-	}()
+	rpcServer := node.NewRPCServer(n)
+	rpcHandler := rpcServer.Handler()
+	var rpcSrv *http.Server
 
 	// Web 區塊瀏覽。
 	wserver, err := web.New(web.NewNodeDataSource(n))
@@ -107,13 +102,38 @@ func main() {
 	n.Start()
 	log.Printf("[node] 節點 %s 已啟動，地址 %s", *nodeID, n.Address())
 
-	webSrv := &http.Server{Addr: addr(*webPort), Handler: wserver.Handler()}
-	go func() {
-		log.Printf("[web] Web 區塊瀏覽: http://0.0.0.0:%d", *webPort)
-		if err := webSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("[web] 退出: %v", err)
+	var webSrv *http.Server
+	if *webPort == *rpcPort {
+		// 同埠模式：RPC 路由掛載進 Web mux，單一監聽
+		// （Render 等平台只暴露單埠；/api/*、/health、/status 皆由 Web 同源服務）。
+		wmux, ok := wserver.Handler().(*http.ServeMux)
+		if !ok {
+			log.Fatalf("Web handler 型別不支援同埠合併")
 		}
-	}()
+		rpcServer.MountInto(wmux)
+		rpcSrv = &http.Server{Addr: addr(*webPort), Handler: wmux}
+		log.Printf("[web+rpc] 同埠合併模式 :%d（RPC /health /status /api/* 已掛載）", *webPort)
+		go func() {
+			if err := rpcSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("[web+rpc] 退出: %v", err)
+			}
+		}()
+	} else {
+		rpcSrv = &http.Server{Addr: addr(*rpcPort), Handler: rpcHandler}
+		go func() {
+			log.Printf("[rpc] 節點 RPC: http://0.0.0.0:%d", *rpcPort)
+			if err := rpcSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("[rpc] 退出: %v", err)
+			}
+		}()
+		webSrv = &http.Server{Addr: addr(*webPort), Handler: wserver.Handler()}
+		go func() {
+			log.Printf("[web] Web 區塊瀏覽: http://0.0.0.0:%d", *webPort)
+			if err := webSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("[web] 退出: %v", err)
+			}
+		}()
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -122,8 +142,12 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_ = rpcSrv.Shutdown(ctx)
-	_ = webSrv.Shutdown(ctx)
+	if rpcSrv != nil {
+		_ = rpcSrv.Shutdown(ctx)
+	}
+	if webSrv != nil {
+		_ = webSrv.Shutdown(ctx)
+	}
 	if err := n.Close(); err != nil {
 		log.Printf("[shutdown] 關閉出錯: %v", err)
 	}

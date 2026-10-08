@@ -266,3 +266,27 @@
 | DATA_DIR env 實機 | 節點啟動後資料落指定目錄（chain.db/c2c.db/community.db 等），health ok |
 | go vet ./... ＋ go build | 全綠 |
 | 部署後冒煙清單 | 12 層 223 項斷言全 FAIL=0（M26 版已驗） |
+
+---
+
+## 14. M28 同埠合併修復（Render 部署 404 根因）
+
+### 14.1 根因
+
+DEPLOY.md 宣稱「RPC 與 Web 同埠（/api/* 即 RPC 同源直連）」，但程式無同埠合併邏輯：
+RPC 與 Web 各自 `ListenAndServe` 同埠 → Web 綁定失敗（address already in use）→ 僅 RPC 存活 → 首頁 404。
+
+### 14.2 修復
+
+| 檔案 | 內容 |
+|---|---|
+| internal/node/rpc.go | 新增 `route{pattern,h}`＋`addRoute`（註冊並記錄）＋`MountInto(mux)`（回放路由至外部 mux；跳過 `/block/{height}`、`/tx/{txhash}` 避免與 Web 語義重複的 pattern 衝突 panic）；117+ 條路由全部改走 addRoute |
+| cmd/web/main.go | `-web-port == -rpc-port` 時：RPC 路由掛載進 Web mux、單一監聽（`[web+rpc] 同埠合併模式`）；分開埠維持原行為；Shutdown 條件化 |
+
+### 14.3 驗證
+
+| 驗證層 | 結果 |
+|---|---|
+| 同埠實機（`-web-port 8840 -rpc-port 8840`） | health/status/首頁 200/wallet/defi/c2c 全通、無 bind 衝突（Render 失敗場景再現並修復） |
+| 分開埠回歸 | m17 8/8、exchange 16/16、c2c 26/26 全綠 |
+| go vet ./... ＋ 16 包 go test | 全綠 |
