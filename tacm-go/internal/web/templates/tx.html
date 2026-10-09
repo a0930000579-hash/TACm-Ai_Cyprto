@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}交易 · {{ t.Hash|shortaddr }}{% endblock %}
+{% block title %}Tx · {{ t.Hash|shortaddr }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <a class="back" href="/block/{{ t.BlockHeight }}">← 返回區塊 #{{ t.BlockHeight }}</a>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}TAC C2C · 場外交易{% endblock %}
+{% block title %}TAC C2C · OTC{% endblock %}
 {% block content %}
 <style>
 .bn{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang TC","Microsoft JhengHei",sans-serif;background:#0b0e11;color:#eaecef}
@@ -66,9 +66,9 @@
       <div class="grid2">
         <select class="inp" id="pub-asset"><option>USDT</option><option>TiUSD</option><option>TACm</option></select>
         <select class="inp" id="pub-fiat"><option>TWD</option><option>CNY</option><option>USD</option><option>HKD</option><option>JPY</option></select>
-        <input class="inp" id="pub-price" type="number" placeholder="單價（法幣/幣）">
-        <input class="inp" id="pub-min" type="number" placeholder="最低金額（幣）">
-        <input class="inp" id="pub-max" type="number" placeholder="最高金額（幣）">
+        <input class="inp" id="pub-price" type="number" placeholder="unit price (fiat/coin)">
+        <input class="inp" id="pub-min" type="number" placeholder="min amount (coin)">
+        <input class="inp" id="pub-max" type="number" placeholder="max amount (coin)">
         <select class="inp" id="pub-pay"><option>銀行轉帳</option><option>支付寶</option><option>微信支付</option><option>PayPal</option><option>LINE Pay</option><option>街口支付</option></select>
       </div>
       <button class="bn-btn" style="width:100%;margin-top:10px" onclick="pubAd()">發佈廣告</button>
@@ -102,7 +102,7 @@ async function loadAds(){
         <div class="sub">限額 ${ad.min_amount}–${ad.max_amount} ${ad.asset} · 完成 ${ad.completed_orders} 單 · 評分 ${ad.rating.toFixed(1)}</div>
         <div class="sub">支付：${(ad.payment_methods||[]).map(m=>'<span class="chip">'+m+'</span>').join(' ')}</div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <input class="inp" id="amt-${ad.id}" type="number" placeholder="數量 ${ad.asset}" style="flex:1">
+          <input class="inp" id="amt-${ad.id}" type="number" placeholder="amount ${ad.asset}" style="flex:1">
           <select class="inp" id="pay-${ad.id}" style="flex:1"><option>銀行轉帳</option><option>LINE Pay</option><option>街口支付</option><option>PayPal</option><option>支付寶</option><option>微信支付</option></select>
           <button class="bn-btn" style="flex:1" onclick="buy(${ad.id})">${isSell?'購買':'出售'}</button>
         </div>

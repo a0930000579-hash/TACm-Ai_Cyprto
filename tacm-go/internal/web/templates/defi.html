@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}TAC DeFi · 流動性挖礦與借貸{% endblock %}
+{% block title %}TAC DeFi · Liquidity & Lending{% endblock %}
 {% block content %}
 <style>
   :root { --bn-bg:#0b0e11; --bn-card:#161a1e; --bn-card2:#1e2329; --bn-line:#2b3139;
@@ -73,7 +73,7 @@
   <div id="meBox" class="box" style="margin-bottom:12px">
     <h3>🔑 身份（錢包地址）<button class="bn-btn" onclick="connect()" style="padding:6px 12px;font-size:12px">讀取</button></h3>
     <div class="flow">
-      <div class="f"><input id="me" placeholder="tx0 開頭地址" style="font-family:ui-monospace,monospace"></div>
+      <div class="f"><input id="me" placeholder="tx0 address" style="font-family:ui-monospace,monospace"></div>
       <div class="f" style="flex:2"><span class="sub">以地址為身份操作 DeFi；資產進出即時上鏈記帳（費率：TACm 2%／TiUSD 0.5%／USDT 1.25%）。</span></div>
     </div>
   </div>
@@ -144,7 +144,7 @@
         <div class="bn-form">
           <select id="lendAsset"><option value="">選擇資產…</option></select>
           <div class="flow">
-            <div class="f"><input id="lendAmt" type="number" step="any" placeholder="金額"></div>
+            <div class="f"><input id="lendAmt" type="number" step="any" placeholder="amount"></div>
             <div class="f"><button class="bn-btn" onclick="lendDep()">存入</button><button class="bn-btn blue" onclick="lendWd()" style="margin-left:6px">取出</button></div>
           </div>
           <div class="bn-msg" id="lendMsg"></div>

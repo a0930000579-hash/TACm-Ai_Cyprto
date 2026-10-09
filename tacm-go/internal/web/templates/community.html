@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}TAC 社群 · 動態牆{% endblock %}
+{% block title %}TAC Community · Feed{% endblock %}
 {% block content %}
 <style>
   /* M31：社群採 Facebook 淺色風（背景去深色） */
@@ -90,7 +90,7 @@
       <div class="cm-card">
         <h3>👤 我的身份</h3>
         <div class="cm-id">
-          <input id="myAddr" placeholder="輸入錢包地址…" value="">
+          <input id="myAddr" placeholder="enter wallet address..." value="">
           <button onclick="setIdentity()">切換</button>
         </div>
         <p style="font-size:12px;color:#65676b;margin:0;line-height:1.6">社群身分＝TAC 錢包地址（tx0 開頭）。發文、按讚、留言、市集與廣告皆以該地址記錄。</p>
@@ -110,13 +110,13 @@
       <div class="cm-card">
         <h3>📝 發佈動態 / 商品</h3>
         <div class="cm-composer">
-          <textarea id="postContent" placeholder="分享你的挖礦日常、想法…（市集請填商品說明）"></textarea>
+          <textarea id="postContent" placeholder="Share mining daily & ideas... (market: item description)"></textarea>
           <div class="cm-side">
             <select id="postKind">
               <option value="post">動態</option>
               <option value="market">市集商品</option>
             </select>
-            <input id="postPrice" type="number" min="0" step="0.01" placeholder="價格 TACM（市集）">
+            <input id="postPrice" type="number" min="0" step="0.01" placeholder="price TACM (market)">
             <button class="cm-post-btn" onclick="publish()">發布</button>
           </div>
         </div>
@@ -134,10 +134,10 @@
       <div class="cm-card" style="margin-top:12px">
         <h3>📣 廣告池 <span class="cm-tag ad">Sponsored</span></h3>
         <div style="display:flex;gap:6px;margin-bottom:8px">
-          <input id="adTitle" placeholder="廣告標題" style="flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
-          <input id="adBudget" type="number" min="0" step="0.01" placeholder="預算 TACM" style="width:86px;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
+          <input id="adTitle" placeholder="ad title" style="flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
+          <input id="adBudget" type="number" min="0" step="0.01" placeholder="budget TACM" style="width:86px;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
         </div>
-        <input id="adBody" placeholder="廣告內容" style="width:100%;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box">
+        <input id="adBody" placeholder="ad content" style="width:100%;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box">
         <button class="cm-post-btn" style="width:100%;margin-bottom:8px" onclick="createAd()">發佈廣告</button>
         <div id="adsList"></div>
       </div>
@@ -185,7 +185,7 @@ function renderFeed(items){
       buyBtn+
       '</div>'+
       '<div class="cm-comments" id="cmt-'+p.id+'"><div id="cmtlist-'+p.id+'"></div>'+
-      '<div class="cm-comadd"><input id="cmtin-'+p.id+'" placeholder="寫下留言…"><button onclick="addComment('+p.id+')">送出</button></div></div>'+
+      '<div class="cm-comadd"><input id="cmtin-'+p.id+'" placeholder="Write a comment..."><button onclick="addComment('+p.id+')">送出</button></div></div>'+
       '</div>';
   }).join('');
 }

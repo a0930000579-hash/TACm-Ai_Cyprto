@@ -46,7 +46,7 @@
   <div class="bn-logo"><b>TAC</b> WALLET</div>
   <div class="bn-search">
     <form method="get" action="/wallet">
-      <input name="address" value="{{ addrParam }}" placeholder="輸入 tx0 開頭地址查詢錢包" autocomplete="off">
+      <input name="address" value="{{ addrParam }}" placeholder="enter tx0 address to query wallet" autocomplete="off">
     </form>
   </div>
   <div class="bn-addr mono">
@@ -58,8 +58,8 @@
 
 <main>
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-    <div style="font-size:13px; color:var(--bn-sub);">資產總覽 · 錢包同步區塊 <span class="bn-chip">#{{ wallet.SyncedBlock }}</span></div>
-    <a href="/">← 區塊瀏覽器</a>
+    <div style="font-size:13px; color:var(--bn-sub);">Assets Overview · Wallet synced to Block <span class="bn-chip">#{{ wallet.SyncedBlock }}</span></div>
+    <a href="/">← Block Explorer</a>
   </div>
 
   <!-- M38：訪客私鑰備份/恢復（僅未登入訪客顯示） -->
@@ -76,7 +76,7 @@
       </div>
     </div>
     <div style="margin-top:8px; display:flex; gap:8px;">
-      <input id="wifRestore" placeholder="貼上 WIF 私鑰恢復訪客地址" autocomplete="off" style="flex:1; min-width:0; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;">
+      <input id="wifRestore" placeholder="paste WIF to restore guest address" autocomplete="off" style="flex:1; min-width:0; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;">
       <button type="button" class="bn-copy" onclick="restoreWif()">恢復</button>
     </div>
   </div>
@@ -112,11 +112,11 @@
         <label>付款地址</label>
         <input id="from" value="{{ address }}" autocomplete="off">
         <label>收款地址</label>
-        <input id="to" placeholder="tx0 開頭地址" autocomplete="off">
+        <input id="to" placeholder="tx0 address" autocomplete="off">
         <label>金額</label>
         <input id="amount" placeholder="0.00" autocomplete="off">
         <label>備註</label>
-        <input id="memo" placeholder="選填" autocomplete="off">
+        <input id="memo" placeholder="optional" autocomplete="off">
         <button class="bn-btn" type="submit">確認轉帳</button>
         <div class="bn-msg" id="tfmsg"></div>
       </form>
@@ -222,10 +222,10 @@
     </script>
 
     <div class="bn-panel">
-      <h3>資產說明</h3>
+      <h3>Assets Info</h3>
       <div class="bn-note" style="background:rgba(240,185,11,.07); border:1px solid rgba(240,185,11,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
-        ・錢包僅顯示<b style="color:var(--bn-yellow)">個人資產</b>；<b>全鏈總產出與 TiUSD 總流通</b>請至「挖礦」頁的全鏈總覽查看。<br>
-        ・TiUSD 由<b style="color:var(--bn-yellow)">鏈上機制（供給層鑄造）</b>產生——DeFi 池／交易所結算自動鑄造入帳，<b>禁止私自發行或銷毀</b>。
+        ・Wallet shows only <b style="color:var(--bn-yellow)">personal assets</b>; <b>Total TACm Mined &amp; TiUSD Circulation</b> are on the Mining page's Chain Overview.<br>
+        ・TiUSD is produced by <b style="color:var(--bn-yellow)">on-chain mechanism (supply-layer minting)</b> — DeFi pools / Exchange settlement auto-mint &amp; credit, <b>private issuance or burning prohibited</b>.
       </div>
     </div>
   </div>

@@ -1,6 +1,13 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M38.3）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M38.4）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
+
+## 本版重點（M38.4）
+
+- **預設語言改為英文**：全站預設英文介面，右上角「中文 / EN」按鈕可即時切換中英雙語（中文為第二語言）。
+- 全域英文化：首頁儀表板、錢包、挖礦、交易所、社群、DeFi、C2C、白皮書入口、區塊瀏覽器、儀表板全部英文化；切換中文時可完整切回中文。
+- 所有頁面 title（瀏覽器標籤）英文化：TAC Autonomous Chain · Network / Wallet / Mining / Exchange / Community / DeFi / C2C。
+- 動態內容自動翻譯：挖礦排行、出塊速率、訂單狀態等 JS 即時渲染的內容，會隨語言切換自動翻譯（不需重新整理）。
 
 ## 一、上傳到 GitHub（手機操作）
 
@@ -24,12 +31,12 @@ Render 設定路徑：Render Dashboard → 你的服務 → Settings → Build &
 
 ## 三、驗證
 
-部署成功後開啟：`https://你的服務名稱.onrender.com`，首頁應顯示 TAC 自主智能鏈儀表板（出塊高度持續增加、全鏈總產出 TACm、TiUSD 總流通 900,000 等）。
+部署成功後開啟：`https://你的服務名稱.onrender.com`，首頁應顯示 **TAC Autonomous Chain** 儀表板（英文介面、出塊高度持續增加、Total TACm Mined、TiUSD Circulation 900,000 等），右上角可切換「中文」。
 
 - 區塊瀏覽器：`/`
 - 錢包：`/wallet`
 - 挖礦：`/mining`
 - 交易所：`/exchange`
 - 社群：`/community`
-- DeFi：`/defi`（頂部「☰ 工具」選單內有入口）
-- C2C：`/c2c`（頂部「☰ 工具」選單內有入口）
+- DeFi：`/defi`（頂部「☰ Tools」選單內有入口）
+- C2C：`/c2c`（頂部「☰ Tools」選單內有入口）

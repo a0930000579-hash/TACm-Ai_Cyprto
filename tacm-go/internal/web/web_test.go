@@ -63,7 +63,7 @@ func TestServerPages(t *testing.T) {
 		{"/block/5", http.StatusOK, "blockhash5"},
 		{"/address/tx0proposeraddr", http.StatusOK, "100"},
 		{"/tx/txhash1", http.StatusOK, "txhash1"},
-		{"/wallet", http.StatusOK, "資產總覽"},
+		{"/wallet", http.StatusOK, "Assets Overview"},
 		{"/wallet?address=tx0proposeraddr", http.StatusOK, "1250000000000000000"},
 		{"/static/css/style.css", http.StatusOK, "var(--bg)"},
 	}

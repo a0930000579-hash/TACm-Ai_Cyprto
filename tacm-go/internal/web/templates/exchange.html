@@ -90,14 +90,14 @@
         <tbody id="marketsBody"></tbody></table>
         <div class="mini">下單</div>
         <form class="bn-form" id="orderForm">
-          <input id="oUid" placeholder="交易帳號 (tx0...)" autocomplete="off">
+          <input id="oUid" placeholder="account (tx0...)" autocomplete="off">
           <select id="oMarket">
             <option>TACM/USDT</option><option>TACM/TiUSD</option><option>TiUSD/USDT</option>
           </select>
           <select id="oSide"><option value="buy">買入</option><option value="sell">賣出</option></select>
           <select id="oType"><option value="limit">限價</option><option value="market">市價</option></select>
-          <input id="oPrice" placeholder="價格 (市價可留空)">
-          <input id="oQty" placeholder="數量">
+          <input id="oPrice" placeholder="price (blank = market)">
+          <input id="oQty" placeholder="amount">
           <button class="buy-btn" type="submit" id="oBtn">買入</button>
           <div class="bn-msg" id="oMsg"></div>
         </form>
@@ -124,17 +124,17 @@
       <div class="bn-msg" id="bMsg"></div>
       <div class="mini">入金：扣鏈上錢包（含鏈上轉帳費）後存入交易所帳戶</div>
       <div class="bn-form">
-        <input id="dUid" placeholder="帳號 (tx0...)" autocomplete="off">
+        <input id="dUid" placeholder="account (tx0...)" autocomplete="off">
         <select id="dAsset"><option>TACm</option><option>TiUSD</option><option>USDT</option></select>
-        <input id="dAmt" placeholder="金額">
+        <input id="dAmt" placeholder="amount">
         <button class="bn-btn" onclick="deposit()">入金（鏈上→交易所）</button>
         <div class="bn-msg" id="dMsg"></div>
       </div>
       <div class="mini">提現：扣交易所餘額後轉回鏈上錢包（轉帳費由託管帳戶承擔）</div>
       <div class="bn-form">
-        <input id="wUid" placeholder="帳號 (tx0...)" autocomplete="off">
+        <input id="wUid" placeholder="account (tx0...)" autocomplete="off">
         <select id="wAsset"><option>TACm</option><option>TiUSD</option><option>USDT</option></select>
-        <input id="wAmt" placeholder="金額">
+        <input id="wAmt" placeholder="amount">
         <button class="bn-btn" onclick="withdraw()">提現（交易所→鏈上）</button>
         <div class="bn-msg" id="wMsg"></div>
       </div>
@@ -146,12 +146,12 @@
     <div class="box">
       <h3>閃兌 · 快速兌換</h3>
       <div class="bn-form">
-        <input id="fUid" placeholder="帳號 (tx0...)" autocomplete="off">
+        <input id="fUid" placeholder="account (tx0...)" autocomplete="off">
         <div class="flow">
           <div class="f"><label>從</label><select id="fFrom"><option>TACm</option><option>TiUSD</option><option>USDT</option></select></div>
           <div class="f"><label>到</label><select id="fTo"><option>USDT</option><option>TiUSD</option><option>TACm</option></select></div>
         </div>
-        <input id="fAmt" placeholder="數量">
+        <input id="fAmt" placeholder="amount">
         <button class="bn-btn" onclick="flashSwap()">兌換</button>
         <div class="bn-msg" id="fMsg"></div>
       </div>
@@ -163,12 +163,12 @@
     <div class="box">
       <h3>自動交易機器人 <span class="chip" id="botCount">—</span></h3>
       <div class="bn-form">
-        <input id="btUid" placeholder="帳號 (tx0...)" autocomplete="off">
+        <input id="btUid" placeholder="account (tx0...)" autocomplete="off">
         <select id="btMarket"><option>TACM/USDT</option><option>TACM/TiUSD</option><option>TiUSD/USDT</option></select>
-        <input id="btMid" placeholder="基準價（如 500）">
-        <input id="btSpread" placeholder="價差 bps（如 20）">
-        <input id="btQty" placeholder="每側掛單數量">
-        <input id="btInterval" placeholder="刷新間隔秒（如 10）">
+        <input id="btMid" placeholder="base price (e.g. 500)">
+        <input id="btSpread" placeholder="spread bps (e.g. 20)">
+        <input id="btQty" placeholder="qty per side">
+        <input id="btInterval" placeholder="refresh sec (e.g. 10)">
         <button class="bn-btn" onclick="startBot()">啟動機器人</button>
         <div class="bn-msg" id="btMsg"></div>
       </div>
