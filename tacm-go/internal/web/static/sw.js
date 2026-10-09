@@ -14,6 +14,11 @@ self.addEventListener('fetch', function(e){
   if (e.request.method !== 'GET' || !u.protocol.startsWith('http')) return;
   // M34：API 一律網路直連（不緩存）——避免礦機/錢包/全鏈數據「固定不動」。
   if (u.pathname.indexOf('/api/') === 0) { e.respondWith(fetch(e.request)); return; }
+  // M38.6：i18n 字典一律網路直連（不緩存）——避免部署後語言版本殘留舊快取。
+  if (u.pathname === '/static/js/i18n.js') {
+    e.respondWith(fetch(e.request).catch(function(){ return caches.match(e.request); }));
+    return;
+  }
   if (u.pathname.startsWith('/static/')) {
     // 靜態資源：快取優先、背景更新（stale-while-revalidate）。
     e.respondWith(caches.match(e.request).then(function(hit){

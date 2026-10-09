@@ -91,6 +91,7 @@
     '發行或銷毀': 'issuance or burning', '私自': 'private', '銷毀': 'burn', '最近': 'Recent', '尚無': 'No ', '塊': ' blocks', '每出塊': 'Per Block',
     '最近成交': 'Recent Trades', '區塊交易': 'Block Tx', '我的算力佔比': 'My Hashrate Share',
     '最終化': 'Finalized', '上一區塊': 'Prev Block', '上一': 'Prev ', 'Merkle根': 'Merkle Root', 'Merkle 根': 'Merkle Root',
+    '動態難度': 'Dynamic Difficulty', '線上礦工排行': 'Online Miner Ranking', '線上礦工': 'Online Miner', '排行': 'Ranking',
     '地址': 'Address', '節點': 'Node', '帳號': 'Account', '密碼': 'Password', 'Email': 'Email',
     '請輸入帳號': 'Please enter account', '請填寫帳號與金額': 'Please fill in account and amount',
     '請填寫帳號與數量': 'Please fill in account and quantity', '請輸入密碼': 'Please enter password',
