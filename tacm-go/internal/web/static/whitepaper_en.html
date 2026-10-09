@@ -230,7 +230,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <p>TACM adopts an annual decay issuance model. The first four years are a high-reward period to attract early participants. From the fifth year, it enters linear decay. From the ninth year, it transitions to Tail Emission, maintaining network security and node incentives at a constant annual rate of 2%.</p>
 
 <h3>6.3 On-Chain Block Reward Split</h3>
-<p>Each block rewards 10 TACm (actual value follows the annual-decay emission curve under the supply cap). Rewards are split on-chain in real time: <b>88% to online miners</b> (proportional to each miner’s hashrate share, credited immediately on block production); <b>12% is auto-credited to the reward pool</b> as market-making and operating capital for the exchange. Server-side scheduling with continuous heartbeat ensures real block production even after leaving the page.</p>
+<p>Each block rewards 10 TACm (actual value follows the annual-decay emission curve under the supply cap). Rewards are split on-chain in real time: <b>88% to active (powered-on) online miners</b> (proportional to each miner’s hashrate share, credited immediately on block production); <b>12% is auto-credited to the reward pool</b> as market-making and operating capital for the exchange. The miner is controlled by the user — <b>stopping the miner stops rewards</b>; when no miner is powered on, the miner share is fully credited to the reward pool (exchange capital) and never accrues to arbitrary accounts. Server-side scheduling with continuous heartbeat ensures real block production; mining continues in the background after leaving the page once powered on.</p>
 <div class="kv">
 <div class="k">Miner share</div><div>88% of each block, split by online hashrate</div>
 <div class="k">Reward pool</div><div>12% auto-credited per block (exchange capital pool)</div>
@@ -268,8 +268,8 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s7">7. Financial Ecosystem</h2>
 <p>TACm is not only a blockchain network, but also a complete decentralized financial ecosystem. Above the consensus layer, TACm has built the following financial infrastructure:</p>
 
-<h3>7.1 Binance-Style Exchange</h3>
-<p>A built-in matching-engine exchange (Binance-style): order-book matching, market/limit orders, Flash Swap (instant conversion among open trading assets), automated trading bots (configurable auto buy/sell strategies), deposit/withdraw and a wealth pool. The exchange supports TACM, TiUSD and USDT with differentiated fees (TACm 200bp, TiUSD 50bp, USDT 125bp) to encourage stablecoin adoption. Reward pool funds serve as exchange market-making capital.</p>
+<h3>7.1 Matching-Engine Exchange</h3>
+<p>A built-in matching-engine exchange (self-owned order-book engine): order-book matching, market/limit orders, Flash Swap (instant conversion among open trading assets), automated trading bots (configurable auto buy/sell strategies), deposit/withdraw and a wealth pool. The exchange supports TACM, TiUSD and USDT with differentiated fees (TACm 200bp, TiUSD 50bp, USDT 125bp) to encourage stablecoin adoption. Reward pool funds serve as exchange market-making capital.</p>
 <div class="kv">
 <div class="k">Matching engine</div><div>Order book + market/limit</div>
 <div class="k">Flash swap</div><div>Instant conversion of listed assets</div>

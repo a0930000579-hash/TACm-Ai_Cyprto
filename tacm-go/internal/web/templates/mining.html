@@ -145,8 +145,9 @@ function render(ms, splits, st){
   var me = null;
   (ms||[]).forEach(function(m){ if(m.address===myAddr) me = m; });
   if(me){
-    // M32：在線判定與頂部膠囊一致（窗口內新鮮心跳，不再用 DB status）。
-    var on = !!(me && me.online);
+    // M36：在線判定＝開機(active)且心跳窗口內——節點自身預設礦機(active=0)不算在線；
+    // 訪客/會員關機後立即轉「離線/開機挖礦」，不再顯示「在線挖礦中」。
+    var on = !!(me && me.active && me.online);
     document.getElementById('stBadge').textContent = on ? (window.TAC_I18N&&TAC_I18N.cur()==='en'?'Mining Online':'在線挖礦中') : (window.TAC_I18N&&TAC_I18N.cur()==='en'?'Offline':'離線');
     document.getElementById('stBadge').className = 'mm-badge' + (on?'':' off');
     if (me && me.refs) { document.getElementById('refN').textContent = me.refs; }
@@ -173,6 +174,21 @@ function render(ms, splits, st){
     var ct = document.getElementById('cpuTxt'), gt = document.getElementById('gpuTxt');
     if(ct) ct.textContent = fmtHr(cpu);
     if(gt) gt.textContent = fmtHr(gpu);
+  } else {
+    // M37：訪客/會員尚未開機（無礦機記錄）——顯示固定基礎算力（1vCPU+2vGPU）與離線徽章。
+    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en'?'Offline':'離線');
+    document.getElementById('stBadge').className = 'mm-badge off';
+    document.getElementById('hrCpu').textContent = '1.00M';
+    document.getElementById('hrGpu').textContent = '4.00M';
+    document.getElementById('hrTotal').textContent = '5.00M';
+    var rp2 = document.getElementById('ringPct'); if(rp2) rp2.textContent = '0.0%';
+    var ring2 = document.getElementById('ringFg'); if(ring2) ring2.style.strokeDasharray = '0 251.3';
+    var bc2 = document.getElementById('barCpu'), bg2 = document.getElementById('barGpu');
+    if(bc2) bc2.style.width = '20%';
+    if(bg2) bg2.style.width = '80%';
+    var ct2 = document.getElementById('cpuTxt'), gt2 = document.getElementById('gpuTxt');
+    if(ct2) ct2.textContent = '1.00M';
+    if(gt2) gt2.textContent = '4.00M';
   }
   document.getElementById('height').textContent = st.block_height != null ? '#'+st.block_height : '—';
   document.getElementById('diff').textContent = st.effective_difficulty != null ? st.effective_difficulty : '—';
@@ -199,14 +215,14 @@ function refresh(){
   var pM = get('/api/miners').catch(function(){ return empty; });
   var pS = get('/status').catch(function(){ return {block_height:0}; });
   var pP = get('/api/rewardpool').catch(function(){ return null; });
-  var pE = get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).catch(function(){ return {earned_raw:'0'}; });
+  var pE = get('/api/wallet/info?address=' + encodeURIComponent(myAddr)).catch(function(){ return {tacm:'0'}; });
   var pC = get('/api/chain/stats').catch(function(){ return null; });
   return Promise.all([pM, pS, pP, pE, pC]).then(function(rs){
     try {
       render(rs[0].miners||[], rs[0].splits||[], rs[1]||{});
       myAddrOnline = false;
       var ms2 = rs[0].miners || [];
-      for (var i2 = 0; i2 < ms2.length; i2++) { if (ms2[i2].address === myAddr && ms2[i2].online) { myAddrOnline = true; break; } }
+      for (var i2 = 0; i2 < ms2.length; i2++) { if (ms2[i2].address === myAddr && ms2[i2].active && ms2[i2].online) { myAddrOnline = true; break; } }
       var pl = document.getElementById('miner-label');
       var pd = document.getElementById('miner-dot');
       if (pl && pd) { pl.textContent = myAddrOnline ? '挖礦中' : '待機'; pd.style.background = myAddrOnline ? '#0ecb81' : '#6b7280'; }
@@ -215,7 +231,7 @@ function refresh(){
       var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
       document.getElementById('pool').textContent = pool;
     } catch (e) {}
-    try { document.getElementById('earned').textContent = fmtTacm(rs[3].earned_raw||'0'); } catch (e) {}
+    try { document.getElementById('earned').textContent = (rs[3].tacm||'0') + ' TACm'; } catch (e) {}
     try {
       var c = rs[4] || {};
       document.getElementById('chainMined').textContent = c.total_mined_tacm ? fmtTacmRaw(c.total_mined_tacm) : '—';
@@ -254,8 +270,9 @@ function stopMining(){
 
 
 function bindMiner(){
-  // M34：優先綁定登入會員的鏈上錢包地址（「我的礦機」＝會員自己的礦機）；
-  // 未登入時退回節點地址並標註訪客模式（節點自身為默認礦機）。
+  // M37：優先綁定登入會員的鏈上錢包地址（「我的礦機」＝會員自己的礦機）；
+  // 未登入時使用「訪客獨立地址」（localStorage tac_guest_addr，首次由伺服器生成）——
+  // 訪客不再共用節點地址，錢包/收益/膠囊訊號各自獨立。
   var guest = true;
   fetch('/api/auth/me', {credentials:'same-origin', cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return null; }); }).then(function(j){
     if (j && j.ok && j.logged_in && j.user && j.user.wallet_addr) {
@@ -264,8 +281,10 @@ function bindMiner(){
     }
   }).catch(function(){}).then(function(){
     if (!myAddr) {
-      return get('/status').then(function(st){ myAddr = st.address || ''; }).catch(function(e){
-        document.getElementById('err').textContent = '節點連線失敗（'+base+'）：'+e + '。可在網址後加 ?rpc=端口 指定。';
+      try { myAddr = localStorage.getItem('tac_guest_addr'); } catch (e) {}
+      if (myAddr) { return Promise.resolve(); }
+      return ensureGuestAddr().then(function(a){ myAddr = a; }).catch(function(e){
+        document.getElementById('err').textContent = '訪客地址取得失敗（'+base+'）：' + e;
       });
     }
   }).then(function(){

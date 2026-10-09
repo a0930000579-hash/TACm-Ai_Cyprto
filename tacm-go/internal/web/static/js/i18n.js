@@ -5,7 +5,7 @@
     zh: {
       'nav.home': '首頁', 'nav.wallet': '錢包', 'nav.exchange': '交易所', 'nav.dash': '儀表板',
       'nav.mining': '挖礦', 'nav.community': '社群',
-      'pill.standby': '待機', 'pill.mining': '挖礦中', 'pill.login': '登入',
+      'pill.standby': '待機', 'pill.mining': '挖礦中', 'pill.login': '登入/註冊',
       'pill.tools': '☰ 工具', 'pill.wp': '白皮書', 'pill.en': 'EN', 'pill.lang': '中',
       'mining.start': '⚡ 開機挖礦', 'mining.stop': '停止挖礦', 'mining.online': '在線挖礦中', 'mining.offline': '離線',
       'wallet.title': 'TAC 錢包', 'wallet.ledger': '最近帳本流（審計分錄）', 'wallet.transfer': '站內轉帳', 'wallet.confirm': '確認轉帳',
@@ -18,7 +18,7 @@
     en: {
       'nav.home': 'Home', 'nav.wallet': 'Wallet', 'nav.exchange': 'Exchange', 'nav.dash': 'Dashboard',
       'nav.mining': 'Mining', 'nav.community': 'Community',
-      'pill.standby': 'Idle', 'pill.mining': 'Mining', 'pill.login': 'Log In',
+      'pill.standby': 'Idle', 'pill.mining': 'Mining', 'pill.login': 'Sign In / Sign Up',
       'pill.tools': '☰ Tools', 'pill.wp': 'Whitepaper', 'pill.en': 'EN', 'pill.lang': '中',
       'mining.start': '⚡ Start Mining', 'mining.stop': 'Stop Mining', 'mining.online': 'Mining Online', 'mining.offline': 'Offline',
       'wallet.title': 'TAC Wallet', 'wallet.ledger': 'Recent Ledger (Audit)', 'wallet.transfer': 'Internal Transfer', 'wallet.confirm': 'Confirm Transfer',

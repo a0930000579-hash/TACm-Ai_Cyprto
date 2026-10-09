@@ -62,6 +62,8 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /finality", s.handleFinality)
 	s.addRoute("GET /validators", s.handleValidators)
 	s.addRoute("GET /finality-proof/{height}", s.handleFinalityProof)
+	s.addRoute("GET /api/guest/address", s.handleGuestAddress)
+	s.addRoute("POST /api/guest/restore", s.handleGuestRestore)
 	s.addRoute("POST /api/miner/register", s.handleMinerRegister)
 	s.addRoute("POST /api/miner/tick", s.handleMinerTick)
 	s.addRoute("POST /api/miner/start", s.handleMinerStart)

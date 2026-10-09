@@ -57,11 +57,13 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 				return fmt.Errorf("wallet: coinbase 讀取在線礦工 height=%d: %w", height, err)
 			}
 			if len(splits) == 0 {
+				// M36：無「開機」礦工時，礦工份額全數挹注獎勵池（交易所資金池），
+				// 不再歸入提議者/訪客地址——避免「未開機卻持續進帳」。
 				if rest.Sign() <= 0 {
 					return fmt.Errorf("wallet: coinbase 分潤異常 height=%d", height)
 				}
 				entries = append(entries,
-					Entry(KindReward, tx.ToAddr, AssetTACm, rest, memo+":proposer"),
+					Entry(KindReward, RewardPoolAddr, AssetTACm, rest, memo+":reserve"),
 					Entry(KindReward, RewardPoolAddr, AssetTACm, share, memo+":pool"),
 				)
 				if minedTotal == nil {

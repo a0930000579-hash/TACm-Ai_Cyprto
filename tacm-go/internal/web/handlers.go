@@ -105,13 +105,20 @@ func (s *Server) handleC2C(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {
 	addr := r.URL.Query().Get("address")
 	if addr == "" {
-		addr = s.ds.Status().Address
+		// M37：登入會員優先顯示「會員自己的鏈上錢包」；未登入訪客由前端覆寫訪客獨立地址。
+		if u, err := s.ds.CurrentUser(r); err == nil && u != nil && u.WalletAddr != "" {
+			addr = u.WalletAddr
+		} else {
+			addr = s.ds.Status().Address
+		}
 	}
 	wv, err := s.ds.Wallet(addr)
 	if err != nil {
 		http.Error(w, "錢包讀取失敗: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// M37：「我的地址」渲染當前視圖地址（登入會員＝會員鏈上地址；訪客＝節點地址 fallback，由前端覆寫訪客獨立地址）。
+	wv.NodeAddress = addr
 	// 鏈上獎勵池餘額（coinbase 15% 挹注 + 交易所手續費結算）。
 	pool := "0"
 	if poolAcct, err := s.ds.Wallet(wallet.RewardPoolAddr); err == nil {

@@ -370,6 +370,9 @@ func (n *Node) blockLookup(height int64) (float64, bool) {
 }
 
 // Address 返回節點的鏈上地址。
+// Auth 回傳會員認證服務（供 Web 層讀取登入會員資訊）。
+func (n *Node) Auth() *AuthService { return n.authSvc }
+
 func (n *Node) Address() string { return n.nodeAddress }
 
 // IdentityPubHex 返回節點壓縮公鑰十六進制（用於創世驗證人規格）。

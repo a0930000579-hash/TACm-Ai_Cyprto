@@ -11,7 +11,10 @@
   .bn-logo b { color:var(--bn-yellow); }
   .bn-search { flex:1; }
   .bn-search input { width:100%; background:var(--bn-card); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
-  .bn-addr { font-size:12px; color:var(--bn-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; }
+  .bn-addr { font-size:12px; color:var(--bn-sub); display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; max-width:100%; }
+  .bn-addr-tag { font-size:10px; color:var(--bn-sub); border:1px solid var(--border); border-radius:999px; padding:1px 8px; white-space:nowrap; }
+  .bn-copy { font-size:11px; color:#f0b90b; background:rgba(240,185,11,.08); border:1px solid rgba(240,185,11,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
+  .bn-copy:hover { background:rgba(240,185,11,.15); }
   main { max-width:900px; margin:0 auto; padding:16px; }
   .bn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .asset-card { background:var(--bn-card); border:1px solid var(--bn-line); border-radius:12px; padding:16px; }
@@ -46,13 +49,36 @@
       <input name="address" value="{{ addrParam }}" placeholder="輸入 tx0 開頭地址查詢錢包" autocomplete="off">
     </form>
   </div>
-  <div class="bn-addr mono">{{ wallet.NodeAddress }}</div>
+  <div class="bn-addr mono">
+      <span class="bn-addr-tag">我的地址</span>
+      <span id="myAddrText">{{ wallet.NodeAddress }}</span>
+      <button type="button" class="bn-copy" onclick="copyAddr()">複製</button>
+    </div>
 </div>
 
 <main>
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
     <div style="font-size:13px; color:var(--bn-sub);">資產總覽 · 錢包同步區塊 <span class="bn-chip">#{{ wallet.SyncedBlock }}</span></div>
     <a href="/">← 區塊瀏覽器</a>
+  </div>
+
+  <!-- M38：訪客私鑰備份/恢復（僅未登入訪客顯示） -->
+  <div id="guestBackup" style="display:none; border:1px solid var(--bn-line); border-radius:10px; padding:12px; margin-bottom:12px; background:var(--bn-card);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--bn-yellow); font-weight:600;">訪客錢包（未登入）</span>
+      <button type="button" class="bn-copy" onclick="showBackup()">備份私鑰</button>
+    </div>
+    <div id="wifBox" style="display:none; margin-top:8px;">
+      <textarea id="wifText" readonly style="width:100%; box-sizing:border-box; min-height:64px; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;"></textarea>
+      <div style="margin-top:6px; display:flex; gap:8px;">
+        <button type="button" class="bn-copy" onclick="copyWif()">複製私鑰</button>
+        <span style="font-size:11px; color:var(--bn-sub); align-self:center;">請妥善保管，換裝置時用下方「恢復」取回同一地址</span>
+      </div>
+    </div>
+    <div style="margin-top:8px; display:flex; gap:8px;">
+      <input id="wifRestore" placeholder="貼上 WIF 私鑰恢復訪客地址" autocomplete="off" style="flex:1; min-width:0; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;">
+      <button type="button" class="bn-copy" onclick="restoreWif()">恢復</button>
+    </div>
   </div>
 
   <div class="bn-grid">
@@ -96,20 +122,78 @@
       </form>
     </div>
     <script>
-      // M33：錢包資產與帳本 10s 即時刷新（挖礦出塊入帳立即反映）。
+      function copyAddr() {
+        var t = document.getElementById('myAddrText');
+        if (!t) return;
+        var txt = t.textContent.trim();
+        function done(ok){ var b=document.querySelector('.bn-copy'); if(b){ b.textContent = ok ? '已複製' : '複製失敗'; setTimeout(function(){ b.textContent='複製'; }, 1500); } }
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(function(){ done(true); }).catch(function(){ done(false); }); }
+        else { var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(true); }catch(e){ done(false); } document.body.removeChild(ta); }
+      }
+      // M37：訪客獨立地址覆寫——未登入且未指定查詢地址時，改用本機訪客地址（首次由伺服器生成），
+      // 不再共用節點地址；登入會員由伺服器渲染為其鏈上錢包地址（不覆寫）。
       (function () {
         var waddr = "{{ address }}";
-        function fresh() {
-          fetch(base + '/api/wallet/info?address=' + encodeURIComponent(waddr), { credentials: 'same-origin' })
+        var qAddr = new URLSearchParams(location.search).get('address');
+        if (!qAddr) {
+          var applyGuest = function (a) {
+            if (!a) return;
+            waddr = a;
+            var ft = document.getElementById('myAddrText'); if (ft) ft.textContent = a;
+            var fm = document.getElementById('from'); if (fm) fm.value = a;
+            fresh();
+          };
+          var ensureGuest = function () {
+            var g = null; try { g = localStorage.getItem('tac_guest_addr'); } catch (e) {}
+            if (g && g.indexOf('tx0') === 0) { applyGuest(g); }
+            else { ensureGuestAddr().then(applyGuest).catch(function () {}); }
+          };
+          // 先確認登入狀態：已登入會員保留伺服器渲染（會員鏈上地址）；未登入才走訪客獨立地址。
+          fetch('/api/auth/me', { credentials: 'same-origin' })
             .then(function (r) { return r.json().catch(function () { return null; }); })
             .then(function (j) {
-              if (!j || !j.ok) return;
+              if (j && j.ok && j.logged_in) { fresh(); return; }
+              ensureGuest(); showGuestBackup();
+            }).catch(function () { ensureGuest(); showGuestBackup(); });
+        }
+        // M38：訪客私鑰備份/恢復。
+        function showGuestBackup() {
+          var gb = document.getElementById('guestBackup'); if (gb) gb.style.display = 'block';
+        }
+        window.showBackup = function () {
+          var wif = null; try { wif = localStorage.getItem('tac_guest_wif'); } catch (e) {}
+          var t = document.getElementById('wifText'); if (t) t.value = wif || '（此訪客地址為舊版生成，無可備份私鑰；新訪客首次產生時會自動保存 WIF）';
+          var b = document.getElementById('wifBox'); if (b) b.style.display = 'block';
+        };
+        window.copyWif = function () {
+          var t = document.getElementById('wifText');
+          if (t && t.value) { try { if (navigator.clipboard) navigator.clipboard.writeText(t.value); } catch (e) {} alert('已複製 WIF 私鑰，請妥善保管'); }
+        };
+        window.restoreWif = function () {
+          var i = document.getElementById('wifRestore');
+          if (!i || !i.value || !i.value.trim()) { alert('請先貼上 WIF 私鑰'); return; }
+          fetch('/api/guest/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wif: i.value.trim() }) })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (j && j.ok && j.address) {
+                try { localStorage.setItem('tac_guest_addr', j.address); localStorage.setItem('tac_guest_wif', i.value.trim()); } catch (e) {}
+                alert('恢復成功：' + j.address); location.reload();
+              } else { alert('WIF 無效，無法恢復'); }
+            }).catch(function () { alert('恢復失敗，請稍後再試'); });
+        };
+        function fresh() {
+          var u = (typeof base !== 'undefined' && base) ? base : window.location.origin;
+          fetch(u + '/api/wallet/info?address=' + encodeURIComponent(waddr), { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (!j) return;
+              if (j.ok === false) return;
               var els = document.querySelectorAll('.bn-grid .val');
               if (els[0]) els[0].textContent = j.tacm;
               if (els[1]) els[1].textContent = j.tiusd;
               if (els[2]) els[2].textContent = j.usdt;
             }).catch(function () {});
-          fetch(base + '/status', { credentials: 'same-origin' })
+          fetch(u + '/status', { credentials: 'same-origin' })
             .then(function (r) { return r.json().catch(function () { return null; }); })
             .then(function (st) {
               if (st && st.block_height != null) {
@@ -120,6 +204,20 @@
         }
         fresh();
         setInterval(fresh, 10000);
+        fetch('/api/miners').then(function(r){ return r.json(); }).then(function(d){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='M0:'+(d.miners[0].address===d.miners[0].address)+' on:'+d.miners[0].online+' n:'+d.miners.length;
+        }).catch(function(e){ var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='ERR'; });
+        // M37：移除重複 setInterval（僅保留上方 10s 輪詢）。
+        // M36 debug：footer 顯示 pill 判定鏈
+        fetch('/api/auth/me').then(function(r){ return r.json(); }).then(function(j){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='A:'+(j.ok?'ok':'x');
+          return fetch('/status');
+        }).then(function(r){ return r.json(); }).then(function(s){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' S:'+(s.address?('Y'):'N');
+          return fetch('/api/miners');
+        }).then(function(r){ return r.json(); }).then(function(d){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' M:'+(d.miners[0].online?'ON':'OFF');
+        }).catch(function(e){ var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='ERR:'+e.message; });
       })();
     </script>
 

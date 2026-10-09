@@ -42,22 +42,18 @@ func TestWalletSyncCoinbase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if acc.TACmBalance.Sign() <= 0 {
-		t.Fatalf("proposer 應收到 coinbase 獎勵, 餘額=%s", acc.TACmBalance)
-	}
-	// 分潤機制（原本方式）：每塊 10 TACM，12% 挹注獎勵池、其餘 88% 按在線礦工算力瓜分；
-	// 單節點下節點自身為唯一在線礦工（算力 1vCPU）→ 88% 歸節點。
-	want, _ := new(big.Int).SetString("17600000000000000000", 10) // 88%×10×2
-	if acc.TACmBalance.Cmp(want) < 0 {
-		t.Fatalf("節點(礦工)分潤=%s 應 ≥1.76e19 (88pct coinbase×2塊)", acc.TACmBalance)
+	// M36：節點自身預設礦機（active=0）不參與分潤——無「開機」礦工時 coinbase 100% 入獎勵池，
+	// 訪客/未開機地址不再收到 coinbase（避免「未挖礦卻有資產進入」）。
+	if acc.TACmBalance.Sign() != 0 {
+		t.Fatalf("節點自身未開機不應進帳, 餘額=%s", acc.TACmBalance)
 	}
 	pool, err := n.Wallet().Balance(wallet.RewardPoolAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPool, _ := new(big.Int).SetString("2400000000000000000", 10) // 12%×10×2
+	wantPool, _ := new(big.Int).SetString("20000000000000000000", 10) // 100%×10×2
 	if pool.TACmBalance.Cmp(wantPool) != 0 {
-		t.Fatalf("獎勵池挹注=%s want 2.4e18 (12pct coinbase×2塊)", pool.TACmBalance)
+		t.Fatalf("獎勵池挹注=%s want 2e19 (100pct coinbase×2塊)", pool.TACmBalance)
 	}
 }
 
@@ -153,6 +149,11 @@ func TestWalletSyncChainTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	bobAddr := mustAddr(t, bobKP)
+	// M36：節點自身 coinbase 不再入節點錢包（無開機礦工入池）——付款前先為節點地址充值，
+	// 使 wallet 層餘額與鏈上 proposer 獎勵對齊（真實場景由會員/節點自有餘額付款）。
+	if err := n.Wallet().Deposit(n.nodeAddress, wallet.AssetTACm, wallet.Amount{Big: new(big.Int).Mul(big.NewInt(10), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))}, "test-fund"); err != nil {
+		t.Fatal(err)
+	}
 	tx := signedTx(t, n.keypair, bobAddr, "1.5", "0.03", n.DB().GetNonce(n.nodeAddress))
 	if _, err := n.SubmitTransaction(tx); err != nil {
 		t.Fatal(err)

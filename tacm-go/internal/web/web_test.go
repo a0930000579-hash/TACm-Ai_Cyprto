@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"tacm/internal/node"
 )
 
 type fakeDS struct {
@@ -24,6 +26,7 @@ func (f *fakeDS) Transaction(string) (*TxView, error)  { return f.txResult, nil 
 func (f *fakeDS) Address(string) (*AddressView, error) { return f.addrResult, nil }
 func (f *fakeDS) Wallet(string) (*WalletView, error)   { return f.walletResult, nil }
 func (f *fakeDS) ChainStats() ChainStatsView           { return ChainStatsView{} }
+func (f *fakeDS) CurrentUser(*http.Request) (*node.AuthUser, error) { return nil, nil }
 
 func newFake() *fakeDS {
 	now := time.Now().Unix()

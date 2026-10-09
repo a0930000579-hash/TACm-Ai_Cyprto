@@ -39,7 +39,7 @@
     </a>
     <button class="pill tools-toggle" id="toolsToggle" aria-expanded="false" aria-haspopup="menu" data-i18n="pill.tools">☰ 工具</button>
     <div class="member-wrap" id="memberWrap">
-      <a class="member-pill" id="member-pill" href="/auth/login" rel="noopener"><span class="mdot" id="member-dot"></span><span id="member-label">登入</span></a>
+      <a class="member-pill" id="member-pill" href="/auth/login" rel="noopener"><span class="mdot" id="member-dot"></span><span id="member-label">登入/註冊</span></a>
       <div class="member-menu" id="memberMenu" role="menu">
         <span class="mm-name" id="member-email">未登入</span>
         <a href="/wallet" rel="noopener">我的錢包</a>
@@ -83,6 +83,30 @@
 
 <script src="/static/js/i18n.js"></script>
 <script>
+// M37：訪客獨立地址——首次訪問由伺服器生成獨立 tx0 地址並存 localStorage；
+// 訪客不再共用節點地址（錢包/礦機/膠囊各自獨立）。登入會員一律用會員鏈上地址。
+// M38：生成時一併回傳並保存 WIF 私鑰；已有備份 WIF 時以 WIF 恢復同一地址（換裝置不丟資產）。
+function ensureGuestAddr(){
+  var k = 'tac_guest_addr';
+  try { var a = localStorage.getItem(k); if (a && a.indexOf('tx0') === 0) { return Promise.resolve(a); } } catch (e) {}
+  try { var w = localStorage.getItem('tac_guest_wif'); if (w) {
+    return fetch('/api/guest/restore', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({wif:w}), cache:'no-store' })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) {
+        if (j && j.ok && j.address && j.address.indexOf('tx0') === 0) { try { localStorage.setItem(k, j.address); } catch (e) {} return j.address; }
+        try { localStorage.removeItem('tac_guest_wif'); } catch (e) {}
+        return ensureGuestAddr();
+      });
+  } } catch (e) {}
+  return fetch('/api/guest/address', { cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); })
+    .then(function (j) {
+      if (j && j.ok && j.address && j.address.indexOf('tx0') === 0) {
+        try { localStorage.setItem(k, j.address); if (j.wif) localStorage.setItem('tac_guest_wif', j.wif); } catch (e) {}
+        return j.address;
+      }
+      throw new Error('guest_addr_failed');
+    });
+}
 // M35：語言切換鈕（工具選單內）。
 (function(){
   var b=document.getElementById('langToggle');
@@ -94,29 +118,29 @@
   var lab = document.getElementById('miner-label');
   function t18n(k, zh, en) { try { if (window.TAC_I18N && TAC_I18N.cur() === 'en') { return en; } } catch (e) {} return zh; }
   function paint(on) { if (dot) dot.style.background = on ? '#0ecb81' : '#6b7280'; if (lab) lab.textContent = on ? t18n('mining.online','挖礦中','Mining') : t18n('pill.standby','待機','Idle'); }
-  // M34：膠囊訊號反映「我的礦機」——登入會員＝其鏈上錢包地址；訪客＝節點地址。
-  // 開機→綠燈「挖礦中」；未開機/關機→灰燈「待機」；登入但未啟動→待機（不再受節點自身礦機影響）。
+  // M34/M36：膠囊訊號反映「我的礦機」——登入會員＝其鏈上錢包地址；訪客＝節點地址。
+  // 判定與挖礦頁 refresh 同源：miners 中該地址 online（180s 心跳窗口）→ 綠燈「挖礦中」，否則灰燈「待機」。
+  // M36：改併行 fetch（auth/me + status）→ 再查 miners；任一環節失敗都安全降級為「待機」，不再因串聯或頁尾 base 變數而失效。
   function pillSync(){
     try {
       var on = false;
       var finish = function(){ try { paint(on); } catch (e) {} };
-      var my = null;
-      var st = null;
-      var fetchJSON = function (u) { return fetch(u, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); }).catch(function () { return null; }); };
-      fetchJSON('/api/auth/me').then(function (j) {
-        if (j && j.ok && j.logged_in && j.user && j.user.wallet_addr) { my = j.user.wallet_addr; }
-        return fetchJSON('/status');
-      }).then(function (s) {
-        st = s && s.address ? s.address : '';
-        var addr = my || st;
+      var jr = function (r) { return r.json().catch(function () { return null; }); };
+      var jf = function (u) { return fetch(u, { credentials: 'same-origin', cache: 'no-store' }).then(jr).catch(function () { return null; }); };
+      Promise.all([jf('/api/auth/me'), jf('/status')]).then(function (arr) {
+        var j = arr[0], st = arr[1];
+        var my = (j && j.ok && j.logged_in && j.user && j.user.wallet_addr) ? j.user.wallet_addr : null;
+        var g = null; try { g = localStorage.getItem('tac_guest_addr'); } catch (e) {}
+        var addr = my || (g && g.indexOf('tx0') === 0 ? g : '');
+        // M37：訪客不使用節點地址比對礦機（獨立訪客地址）；無地址時保持「待機」。
         if (!addr) { finish(); return; }
-        fetchJSON('/api/miners').then(function (d) {
-          if (d && d.ok && d.miners) {
-            for (var i = 0; i < d.miners.length; i++) { if (d.miners[i].address === addr && d.miners[i].online) { on = true; break; } }
+        jf('/api/miners').then(function (d) {
+          if (d && d.miners) {
+            for (var i = 0; i < d.miners.length; i++) { if (d.miners[i].address === addr && d.miners[i].active && d.miners[i].online) { on = true; break; } }
           }
           finish();
-        });
-      });
+        }).catch(function () { finish(); });
+      }).catch(function () { finish(); });
     } catch (e) { try { paint(false); } catch (e2) {} }
   }
   pillSync();
@@ -138,6 +162,7 @@
   });
   document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); var menu = document.getElementById('toolsMenu'); if (menu) { menu.style.display = ''; } } });
 })();
+</script>
 <script>
 // M32：會員狀態（Python 同款）——未登入「登入」；登入後綠燈＋帳號顯示＋點擊下拉（錢包/礦機/登出）。
 (async function () {
@@ -162,7 +187,7 @@
         if (em) em.textContent = j.user.email;
         if (lo) { lo.style.display = 'block'; lo.onclick = async (ev) => { ev.preventDefault(); await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }; }
       } else {
-        if (pill) { pill.href = '/auth/login'; pill.classList.remove('logged'); label.setAttribute('data-logged','0'); label.textContent = (window.TAC_I18N && TAC_I18N.cur() === 'en') ? 'Log In' : '登入'; }
+        if (pill) { pill.href = '/auth/login'; pill.classList.remove('logged'); label.setAttribute('data-logged','0'); label.textContent = (window.TAC_I18N && TAC_I18N.cur() === 'en') ? 'Sign In / Sign Up' : '登入/註冊'; }
         if (dot) dot.className = 'mdot off';
         if (em) em.textContent = '未登入';
         if (lo) lo.style.display = 'none';

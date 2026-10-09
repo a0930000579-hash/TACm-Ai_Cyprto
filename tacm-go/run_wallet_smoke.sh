@@ -46,15 +46,13 @@ TAC0=$(GET $BASE "/api/wallet/info?address=$A0" | python3 -c 'import json,sys; p
 echo "  w0 TACm raw=$TAC0"
 [ -n "${TAC0:-}" ] && [ "$TAC0" != "0" ] && ok "coinbase 已入帳" || bad "coinbase 未入帳 ($TAC0)"
 
-echo "== 2. TiUSD mint / burn 供給 =="
-curl -s -X POST "http://127.0.0.1:$BASE/api/tiusd/mint" -H 'Content-Type: application/json' \
-	-d "{\"to\":\"$A0\",\"amount\":\"50\",\"note\":\"smoke\"}" >/dev/null
-SUP=$(GET $BASE "/api/tiusd/summary" | python3 -c 'import json,sys; print(json.load(sys.stdin)["supply_raw"])')
-[ "$SUP" = "50000000" ] && ok "mint 50 TiUSD 供給=$SUP" || bad "mint 供給異常=$SUP"
-curl -s -X POST "http://127.0.0.1:$BASE/api/tiusd/burn" -H 'Content-Type: application/json' \
-	-d '{"amount":"20","note":"smoke"}' >/dev/null
-SUP=$(GET $BASE "/api/tiusd/summary" | python3 -c 'import json,sys; print(json.load(sys.stdin)["supply_raw"])')
-[ "$SUP" = "30000000" ] && ok "burn 20 後供給=$SUP" || bad "burn 供給異常=$SUP"
+echo "== 2. TiUSD 供給與禁止私自鑄造（M35：僅鏈上機制鑄造） =="
+SUP=$(GET $BASE "/api/tiusd/summary")
+echo "$SUP" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("ok") and "supply_raw" in d and d.get("peg_price")=="1.0"; print("supply_raw=%s peg=%s（錨定 1 USDT）" % (d["supply_raw"], d["peg_price"]))' \
+	&& ok "TiUSD summary 正常（錨定 1 USDT）" || bad "TiUSD summary 異常"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$BASE/api/tiusd/mint" -H 'Content-Type: application/json' \
+	-d "{\"to\":\"$A0\",\"amount\":\"50\",\"note\":\"smoke\"}")
+[ "$CODE" = "404" ] && ok "公開 mint 路由已關閉（禁止私自鑄造）" || bad "mint 路由狀態異常 code=$CODE"
 
 echo "== 3. TiUSD 0.5% 手續費轉帳 =="
 curl -s -X POST "http://127.0.0.1:$BASE/api/wallet/deposit" -H 'Content-Type: application/json' \

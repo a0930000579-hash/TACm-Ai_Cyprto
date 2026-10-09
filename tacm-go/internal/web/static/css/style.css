@@ -331,6 +331,8 @@ input, select, textarea { font-size: 16px; }
 
 /* 手機：工具收進 ☰ 開關下拉（不橫向滾動） */
 @media (max-width: 700px) {
+  #miner-pill, #toolsToggle, #member-pill { padding: 4px 8px; font-size: 10px; }
+  .bn-addr.mono { font-size: 11px; gap: 6px; }
   .tools-menu {
     display: none;
     position: absolute; top: calc(100% + 10px); right: 0; z-index: 90;

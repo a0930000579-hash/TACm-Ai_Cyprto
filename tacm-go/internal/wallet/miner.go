@@ -202,8 +202,10 @@ func (s *Store) Miners() ([]Miner, error) {
 // OnlineMinerSplits 回傳「窗口內在線」礦工的算力瓜分份額（分子 = 各礦工算力）。
 // now 由呼叫方傳入，保證同一高度下全體一致。
 func (s *Store) OnlineMinerSplits(now int64) ([]MinerSplit, error) {
+	// M36：分潤僅限「開機（active=1）且在心跳窗口內」的礦工——節點自身預設礦機（active=0）不參與，
+	// 訪客/會員「關機」後即停發收益（不再受節點出塊心跳影響而持續進帳）。
 	rows, err := s.db.Query(`SELECT address, hashrate FROM miners
-WHERE status='online' AND last_heartbeat_ts >= ? ORDER BY hashrate DESC`, now-MinerOnlineWindow)
+WHERE active=1 AND status='online' AND last_heartbeat_ts >= ? ORDER BY hashrate DESC`, now-MinerOnlineWindow)
 	if err != nil {
 		return nil, fmt.Errorf("wallet: 查詢在線礦工: %w", err)
 	}

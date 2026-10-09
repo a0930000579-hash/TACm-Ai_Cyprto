@@ -54,6 +54,10 @@ func TestMinerStore(t *testing.T) {
 	if err := st.RegisterMiner("m1", 1, 0); err != nil {
 		t.Fatal(err)
 	}
+	// M36：分潤僅限「開機(active=1)」礦工——測試需先開機。
+	if err := st.SetActiveMiner("m1", true); err != nil {
+		t.Fatal(err)
+	}
 	if err := st.TickMiner("m1"); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +88,13 @@ func TestMinerStore(t *testing.T) {
 	if err := st.RegisterMiner("m2", 0, 0); err != nil {
 		t.Fatal(err)
 	}
-	// 離線後不參與瓜分。
+	if err := st.SetActiveMiner("m2", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.TickMiner("m2"); err != nil {
+		t.Fatal(err)
+	}
+	// 離線後不參與瓜分（active=0）。
 	if err := st.StopMiner("m1"); err != nil {
 		t.Fatal(err)
 	}

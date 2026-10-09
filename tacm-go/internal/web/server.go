@@ -127,6 +127,9 @@ func (s *Server) routes() {
 func (s *Server) Handler() http.Handler { return s.mux }
 
 func (s *Server) render(w http.ResponseWriter, name string, ctx pongo2.Context) {
+	// M38：HTML 一律不緩存——避免瀏覽器/Service Worker 快取舊版頁面導致「功能沒更新」。
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
 	tpl, err := s.tplSet.FromCache(name)
 	if err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)

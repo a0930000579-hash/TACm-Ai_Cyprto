@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"math/big"
+	"net/http"
 
 	"tacm/internal/chaindb"
 	"tacm/internal/node"
@@ -18,9 +19,16 @@ type DataSource interface {
 	Address(addr string) (*AddressView, error)
 	Wallet(addr string) (*WalletView, error)
 	ChainStats() ChainStatsView
+	// M37：讀取登入會員（session），供錢包/首頁等頁面依會員綁定地址渲染。
+	CurrentUser(r *http.Request) (*node.AuthUser, error)
 }
 
 type nodeDS struct{ n *node.Node }
+
+// CurrentUser 讀取登入會員（session cookie）。
+func (d *nodeDS) CurrentUser(r *http.Request) (*node.AuthUser, error) {
+	return d.n.Auth().CurrentUser(r)
+}
 
 // NewNodeDataSource 把運行中的節點適配為 Web 數據源。
 func NewNodeDataSource(n *node.Node) DataSource { return &nodeDS{n: n} }
