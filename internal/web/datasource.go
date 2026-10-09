@@ -147,7 +147,8 @@ func (d *nodeDS) ChainStats() ChainStatsView {
 		out.RewardPool = wallet.FormatAmountBig(acc.TACmBalance)
 	}
 	if sup, err := d.n.Wallet().TiUSDSummary(); err == nil && sup != nil {
-		out.TiUSDSupply = wallet.FormatAmountBig(new(big.Int).SetInt64(sup.Supply))
+		// M38.1：TiUSD 最小單位為 1e6（micro），須以 TiUSD 精度縮放，不能用 TACm 的 1e18（FormatAmountBig）。
+		out.TiUSDSupply = wallet.FormatAmountI64(sup.Supply, wallet.AssetTiUSD)
 	}
 	if ms, err := d.n.Wallet().Store().Miners(); err == nil {
 		var totalHr float64
