@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"tacm/internal/chaindb"
 	"tacm/internal/crypto"
@@ -49,8 +50,8 @@ func (n *Node) SubmitTransaction(tx map[string]any) (string, error) {
 	txHash := hex.EncodeToString(crypto.DoubleSHA256(raw))
 	tx["tx_hash"] = txHash
 
-	// nonce 順序校驗（防重放/亂序）。
-	expectedNonce := n.db.GetNonce(from)
+	// nonce 順序校驗（防重放/亂序）；官方代簽連續交易以 pending 佔用 nonce。
+	expectedNonce := n.db.GetNonce(from) + n.pendingTxCount(from)
 	if getInt64(tx, "nonce") != expectedNonce {
 		return "", fmt.Errorf("bad nonce: expected %d, got %d",
 			expectedNonce, getInt64(tx, "nonce"))
@@ -87,9 +88,43 @@ func (n *Node) SubmitTransaction(tx map[string]any) (string, error) {
 	if err := n.db.AddMempoolTx(txHash, tx, signature, getString(tx, "fee")); err != nil {
 		return "", err
 	}
+	n.pendingTxInc(from)
 
 	if n.p2pNet != nil {
 		n.p2pNet.BroadcastTx(tx)
 	}
 	return txHash, nil
+}
+
+// SubmitSignedContractCall 以節點金鑰代簽一筆鏈上合約呼叫交易（前端無私鑰
+// 時的官方/演示入口）：from=節點金鑰地址、amount=0、fee=0，memo=vmCallPrefix+hex。
+// 返回交易哈希。
+func (n *Node) SubmitSignedContractCall(contractAddr, calldataHex string) (string, error) {
+	return n.submitSignedContractCallAs(n.keypair, contractAddr, calldataHex)
+}
+
+// submitSignedContractCallAs 以指定簽名者（節點金鑰或 DEX 池派生密鑰）代簽
+// 一筆鏈上合約呼叫交易。from=簽名者地址、amount=0、fee=0，memo=vmCallPrefix+hex。
+func (n *Node) submitSignedContractCallAs(kp *crypto.KeyPair, contractAddr, calldataHex string) (string, error) {
+	if kp == nil {
+		return "", errors.New("node key unavailable")
+	}
+	from, err := kp.Address()
+	if err != nil {
+		return "", err
+	}
+	nonce := n.db.GetNonce(from) + n.pendingTxCount(from)
+	tx := map[string]any{
+		"from": from, "to": contractAddr,
+		"amount": "0", "fee": "0",
+		"nonce": nonce, "ts": time.Now().Unix(),
+		"pubkey": hex.EncodeToString(kp.PublicKeyCompressed()),
+		"memo":   vmCallPrefix + calldataHex,
+	}
+	sig, err := crypto.SignTransaction(tx, kp.PrivateKey())
+	if err != nil {
+		return "", err
+	}
+	tx["signature"] = sig
+	return n.SubmitTransaction(tx)
 }

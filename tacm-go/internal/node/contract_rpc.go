@@ -1,6 +1,7 @@
 package node
 
 import (
+	"math/big"
 	"net/http"
 	"strconv"
 
@@ -89,11 +90,16 @@ func (s *RPCServer) handleContractStorage(w http.ResponseWriter, r *http.Request
 }
 
 // handleContractList 列出全部合約：GET /contract/list
+// M44：額外回傳標準代幣元資料（supply=slot0 / name=slot1 / symbol=slot2），
+// 供前端 Token Studio 直接展示，無需逐個模擬呼叫。
 func (s *RPCServer) handleContractList(w http.ResponseWriter, r *http.Request) {
 	infos := s.node.contracts.List()
 	out := make([]map[string]any, 0, len(infos))
 	for _, info := range infos {
 		tx0, _ := evmToTx0(info.Address)
+		supply := s.node.contracts.StorageAt(info.Address, big.NewInt(0))
+		name := metaString(s.node.contracts.StorageAt(info.Address, big.NewInt(1)))
+		symbol := metaString(s.node.contracts.StorageAt(info.Address, big.NewInt(2)))
 		out = append(out, map[string]any{
 			"address":       tx0,
 			"evm_address":   info.Address,
@@ -101,6 +107,9 @@ func (s *RPCServer) handleContractList(w http.ResponseWriter, r *http.Request) {
 			"code_hash":     info.CodeHash,
 			"storage_count": info.StorageCount,
 			"balance":       info.Balance,
+			"supply":        supply.String(),
+			"name":          name,
+			"symbol":        symbol,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

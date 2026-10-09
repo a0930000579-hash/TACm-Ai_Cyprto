@@ -152,6 +152,28 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /contract/list", s.handleContractList)
 	s.addRoute("GET /contract/get/{address}", s.handleContractGet)
 	s.addRoute("GET /contract/storage/{address}/{key}", s.handleContractStorage)
+	// M44：代幣發行閉環（節點官方金鑰代簽發行/呼叫＋只讀模擬查詢）。
+	s.addRoute("POST /contract/deploy", s.handleContractDeploy)
+	s.addRoute("GET /contract/call/{address}", s.handleContractCallQuery)
+	s.addRoute("POST /contract/call", s.handleContractCallSubmit)
+	// M44：標準代幣便利查詢/轉帳（前端免組 calldata）。
+	s.addRoute("GET /contract/erc20/{address}", s.handleContractERC20Info)
+	s.addRoute("POST /contract/erc20/transfer", s.handleContractERC20Transfer)
+
+	// M45：鏈上 DEX（AMM）。
+	s.addRoute("GET /dex/pools", s.handleDexPools)
+	s.addRoute("POST /dex/create", s.handleDexCreate)
+	s.addRoute("POST /dex/liquidity/add", s.handleDexLiquidityAdd)
+	s.addRoute("POST /dex/liquidity/remove", s.handleDexLiquidityRemove)
+	s.addRoute("POST /dex/swap", s.handleDexSwap)
+	s.addRoute("GET /dex/quote", s.handleDexQuote)
+	s.addRoute("POST /dex/stake/create", s.handleDexStakeCreate)
+	s.addRoute("POST /dex/stake/fund", s.handleDexStakeFund)
+	s.addRoute("POST /dex/stake", s.handleDexStake)
+	s.addRoute("POST /dex/stake/unstake", s.handleDexStakeUnstake)
+	s.addRoute("POST /dex/stake/claim", s.handleDexStakeClaim)
+	s.addRoute("GET /dex/stake/pools", s.handleDexStakePools)
+	s.addRoute("GET /dex/stake/pending", s.handleDexStakePending)
 
 	s.addRoute("GET /api/status", s.handleAggStatus)
 	s.addRoute("POST /tx/submit", s.handleTxSubmit)
@@ -181,6 +203,10 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("POST /bridge/mint", s.handleBridgeMint)
 	s.addRoute("POST /bridge/unlock", s.handleBridgeUnlock)
 	s.addRoute("POST /bridge/status", s.handleBridgeStatus)
+	s.addRoute("GET /api/governance/proposals", s.handleGovernanceProposals)
+	s.addRoute("GET /api/governance/params", s.handleGovernanceParams)
+	s.addRoute("POST /api/governance/propose", s.handleGovernancePropose)
+	s.addRoute("POST /api/governance/vote", s.handleGovernanceVote)
 
 	return s
 }

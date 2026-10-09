@@ -12,6 +12,8 @@ import (
 type Status struct {
 	NodeID       string `json:"node_id"`
 	Address      string `json:"address"`
+	Network      string `json:"network"`
+	ChainID      string `json:"chain_id"`
 	BlockHeight  int64  `json:"block_height"`
 	FinalHeight  int64  `json:"final_block_height"`
 	MempoolSize  int64  `json:"mempool_size"`
@@ -37,6 +39,8 @@ func (n *Node) GetStatus() Status {
 	st := Status{
 		NodeID:      n.nodeID,
 		Address:     n.nodeAddress,
+		Network:     n.cfg.Network,
+		ChainID:     n.cfg.ChainID,
 		BlockHeight: n.db.GetTipHeight(),
 		FinalHeight: n.FinalizedHeight(),
 		MempoolSize: n.db.MempoolSize(),

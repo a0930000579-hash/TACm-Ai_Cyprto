@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -8,6 +9,11 @@ import (
 
 	"tacm/internal/wallet"
 )
+
+// writeJSON 寫出 JSON 回應（M39 健康/指標 API 共用）。
+func writeJSON(w http.ResponseWriter, v any) {
+	_ = json.NewEncoder(w).Encode(v)
+}
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -90,6 +96,12 @@ func (s *Server) handleCommunity(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "community.html", pongo2.Context{})
 }
 
+// handleGovernance GET /governance — 鏈上治理（提案/投票/參數，App 化）。
+// 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
+func (s *Server) handleGovernance(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "governance.html", pongo2.Context{})
+}
+
 // handleDefi GET /defi — DeFi 中心（流動性挖礦＋借貸市場，App 化）。
 // 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
 func (s *Server) handleDefi(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +111,18 @@ func (s *Server) handleDefi(w http.ResponseWriter, r *http.Request) {
 // handleC2C GET /c2c — C2C 場外交易（法幣兌加密貨幣，App 化）。
 func (s *Server) handleC2C(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "c2c.html", pongo2.Context{})
+}
+
+// handleTokens GET /tokens — 代幣工作室（Token Studio）：鏈上標準代幣發行
+// （節點官方金鑰代簽）＋列表/詳情/轉帳，App 化。實時數據由前端讀取 RPC。
+func (s *Server) handleTokens(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "tokens.html", pongo2.Context{})
+}
+
+// handleDex GET /dex — 鏈上 DEX（AMM 恆定乘積）：池列表/建池/流動性/即時兌換，
+// 與 Token Studio 打通（發幣→建池→交易閉環）。實時數據由前端讀取 RPC。
+func (s *Server) handleDex(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "dex.html", pongo2.Context{})
 }
 
 // handleWallet GET /wallet?address=tx0xxx — 幣安風多資產錢包頁面。
@@ -137,4 +161,40 @@ func (s *Server) handleAuthLoginPage(w http.ResponseWriter, r *http.Request) {
 // handleAuthRegisterPage 會員註冊頁（JS 呼叫 /api/auth/register）。
 func (s *Server) handleAuthRegisterPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "auth.html", pongo2.Context{"activeTab": "auth"})
+}
+
+// handleHealth GET /api/health — 節點存活探針（監控告警/負載均衡用）。
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	st := s.ds.Status()
+	w.Header().Set("Content-Type", "application/json")
+	writeJSON(w, map[string]any{
+		"ok":                 true,
+		"node_id":            st.NodeID,
+		"address":            st.Address,
+		"block_height":       st.Height,
+		"final_block_height": st.FinalizedHeight,
+		"uptime_sec":         st.UptimeSec,
+		"consensus":          st.Consensus,
+	})
+}
+
+// handleMetrics GET /api/metrics — 節點運行指標（區塊高度/難度/礦工/算力/供應）。
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	st := s.ds.Status()
+	cs := s.ds.ChainStats()
+	w.Header().Set("Content-Type", "application/json")
+	writeJSON(w, map[string]any{
+		"ok":               true,
+		"height":           st.Height,
+		"finalized_height": st.FinalizedHeight,
+		"difficulty":       st.Difficulty,
+		"mempool_size":     st.MempoolSize,
+		"uptime_sec":       st.UptimeSec,
+		"consensus":        st.Consensus,
+		"online_miners":    cs.OnlineMiners,
+		"network_hashrate": cs.TotalHashrate,
+		"total_mined_tacm": cs.TotalMinedTacm,
+		"tiusd_supply":     cs.TiUSDSupply,
+		"reward_pool":      cs.RewardPool,
+	})
 }

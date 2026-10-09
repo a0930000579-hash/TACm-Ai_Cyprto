@@ -106,16 +106,26 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /dashboard", s.handleDashboard)
 	s.mux.HandleFunc("GET /mining", s.handleMining)
 	s.mux.HandleFunc("GET /community", s.handleCommunity)
+	s.mux.HandleFunc("GET /governance", s.handleGovernance)
 	s.mux.HandleFunc("GET /defi", s.handleDefi)
 	s.mux.HandleFunc("GET /c2c", s.handleC2C)
+	s.mux.HandleFunc("GET /tokens", s.handleTokens)
+	s.mux.HandleFunc("GET /dex", s.handleDex)
 	s.mux.HandleFunc("GET /auth/login", s.handleAuthLoginPage)
 	s.mux.HandleFunc("GET /auth/register", s.handleAuthRegisterPage)
+	// M39：節點健康檢查與運行指標（商業營運/監控告警必備）。
+	s.mux.HandleFunc("GET /api/health", s.handleHealth)
+	s.mux.HandleFunc("GET /api/metrics", s.handleMetrics)
 	// 白皮書（中/英）——直接服務嵌入 static 成品（TAC 自主智能鏈，無第三方品牌）。
 	s.mux.HandleFunc("GET /whitepaper", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/whitepaper_zh.html", http.StatusFound)
 	})
 	s.mux.HandleFunc("GET /whitepaper-en", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/whitepaper_en.html", http.StatusFound)
+	})
+	// M41：技術黃皮書（完整技術規格，中英雙語內容單頁）。
+	s.mux.HandleFunc("GET /yellowpaper", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/yellowpaper_en.html", http.StatusFound)
 	})
 
 	staticRoot, _ := fs.Sub(staticFS, "static")

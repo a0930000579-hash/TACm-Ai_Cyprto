@@ -22,6 +22,7 @@ import (
 func main() {
 	nodeID := flag.String("node-id", "node1", "節點 ID")
 	port := flag.Int("port", 8332, "RPC 端口")
+	networkFlag := flag.String("network", "mainnet", "網路段：mainnet | testnet（testnet 自動分離資料目錄與鏈 ID）")
 	dataDir := flag.String("data-dir", "", "數據目錄")
 	blockTime := flag.Int("block-time", 3, "目標出塊間隔（秒）")
 	difficulty := flag.Int("difficulty", 2, "基礎 PoW 難度")
@@ -42,10 +43,19 @@ func main() {
 	cfg := config.Default()
 	cfg.RPCPort = *port
 	cfg.BlockTime = *blockTime
+	cfg.Network = strings.ToLower(*networkFlag)
 	if *dataDir != "" {
 		cfg.DataDir = *dataDir
+	} else if cfg.Network == "testnet" {
+		cfg.DataDir = "./tac_data_testnet/" + *nodeID
 	} else {
 		cfg.DataDir = "./tac_data/" + *nodeID
+	}
+	if cfg.Network == "testnet" && strings.HasPrefix(cfg.ChainID, "tacm-mainnet") {
+		cfg.ChainID = "tacm-testnet-1"
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("配置校驗失敗: %v", err)
 	}
 	cfg.EnableL2 = *enableL2
 	cfg.EnableBridge = *enableBridge

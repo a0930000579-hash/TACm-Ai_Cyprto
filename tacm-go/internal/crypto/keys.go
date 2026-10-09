@@ -1,8 +1,11 @@
 package crypto
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
@@ -24,6 +27,26 @@ func GenerateKeyPair() (*KeyPair, error) {
 		return nil, fmt.Errorf("crypto: 生成密鑰對失敗: %w", err)
 	}
 	return &KeyPair{priv: priv}, nil
+}
+
+// DeriveKey 以 HMAC-SHA256(seed, label) 確定性派生子密鑰對。
+// 用於 DEX 等需要「無私鑰保管的確定性帳戶」場景（池帳戶）；同一
+// (seed,label) 恆得到同一地址，且不暴露主私鑰。
+func DeriveKey(seed []byte, label string) (*KeyPair, error) {
+	if len(seed) == 0 {
+		return nil, errors.New("crypto: 派生種子為空")
+	}
+	mac := hmac.New(sha256.New, seed)
+	if _, err := mac.Write([]byte(label)); err != nil {
+		return nil, fmt.Errorf("crypto: 派生失敗: %w", err)
+	}
+	digest := mac.Sum(nil)
+	// 私鑰需落在 [1, N-1]；取 mod N 保證有效（N 為 secp256k1 階）。
+	n := btcec.S256().N
+	k := new(big.Int).SetBytes(digest)
+	k.Mod(k, new(big.Int).Sub(n, big.NewInt(1)))
+	k.Add(k, big.NewInt(1))
+	return KeyPairFromPrivateKey(k.FillBytes(make([]byte, 32)))
 }
 
 // KeyPairFromPrivateKey 從 32 字節私鑰恢復密鑰對。

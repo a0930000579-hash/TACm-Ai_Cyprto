@@ -31,11 +31,13 @@ func main() {
 	enableBridge := flag.Bool("bridge", false, "啟用跨鏈橋（Lock&Mint / Burn&Unlock）")
 	bridgeGuardians := flag.String("bridge-guardians", "",
 		"跨鏈守衛規格：addr:pubkey 逗號分隔（配置後啟用守衛網絡：提案經 P2P 多簽聚合）")
+	networkFlag := flag.String("network", "mainnet", "網路段：mainnet | testnet（testnet 自動分離資料目錄與鏈 ID）")
 	flag.Parse()
 
 	cfg := config.Default()
 	cfg.RPCPort = *rpcPort
 	cfg.BlockTime = *blockTime
+	cfg.Network = strings.ToLower(*networkFlag)
 	cfg.EnableL2 = *enableL2
 	cfg.EnableBridge = *enableBridge
 	if *dataDir != "" {
@@ -43,8 +45,16 @@ func main() {
 	} else if env := os.Getenv("DATA_DIR"); env != "" {
 		// 容器/平台部署標準：DATA_DIR 環境變數優先於預設目錄。
 		cfg.DataDir = env
+	} else if cfg.Network == "testnet" {
+		cfg.DataDir = "./tac_data_testnet/" + *nodeID
 	} else {
 		cfg.DataDir = "./tac_data/" + *nodeID
+	}
+	if cfg.Network == "testnet" && strings.HasPrefix(cfg.ChainID, "tacm-mainnet") {
+		cfg.ChainID = "tacm-testnet-1"
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("配置校驗失敗: %v", err)
 	}
 
 	n, err := node.New(cfg, *nodeID, *difficulty)

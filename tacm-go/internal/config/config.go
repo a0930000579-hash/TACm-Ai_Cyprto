@@ -63,6 +63,15 @@ func Load() (*Config, error) {
 	c.LogDir = envStr("TACM_LOG_DIR", c.LogDir)
 	c.LogLevel = strings.ToLower(envStr("TACM_LOG_LEVEL", c.LogLevel))
 
+	// M41：主網/測試網資料目錄分離——未顯式指定 data-dir 時，testnet 使用獨立目錄，
+	// 避免主網/測試網帳本混用（鏈 ID 亦隨網段區分）。
+	if c.Network == "testnet" && c.DataDir == "./data" {
+		c.DataDir = "./data-testnet"
+	}
+	if c.Network == "testnet" && strings.HasPrefix(c.ChainID, "tacm-mainnet") {
+		c.ChainID = "tacm-testnet-1"
+	}
+
 	c.AddrHRP = strings.ToLower(strings.TrimSpace(envStr("TAC_ADDR_HRP", c.AddrHRP)))
 
 	if v := strings.ToLower(strings.TrimSpace(envStr("TACM_ENABLE_L2", ""))); v == "1" || v == "true" {

@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
 	"tacm/internal/chaindb"
+	"tacm/internal/dex"
 	"tacm/internal/config"
 	"tacm/internal/consensus/bft"
 	"tacm/internal/consensus/difficulty"
@@ -22,6 +24,7 @@ import (
 	"tacm/internal/community"
 	"tacm/internal/defi"
 	"tacm/internal/exchange"
+	"tacm/internal/governance"
 	"tacm/internal/wallet"
 	"tacm/internal/crypto"
 	"tacm/internal/p2p"
@@ -77,6 +80,9 @@ type Node struct {
 	c2cSvc       *c2c.Store
 	authSvc      *AuthService
 
+	// M40 鏈上治理（提案/投票/參數執行；高度驅動）。
+	gov *governance.Governance
+
 	// M12 view-change 硬化：多數認證票集（>2/3 驗證人簽名才切輪）。
 	vcMu          sync.Mutex
 	viewChangeTk  *viewChangeTickets
@@ -86,6 +92,18 @@ type Node struct {
 
 	// 智能合約執行層（TAC VM）
 	contracts *vm.ContractManager
+
+	// 鏈上 DEX（AMM 恆定乘積交易所；nil=合約層未啟用時不初始化）
+	dex *dex.Engine
+
+	// 官方代簽的 mempool pending nonce（同 from 連續多筆合約交易佔用 nonce；
+	// 入塊後 db.GetNonce 已含全部，resetPendingTx 清空）。
+	txNonceMu      sync.Mutex
+	txNoncePending map[string]int64
+
+	// DEX 池簽名對映（poolID → token0:token1；建池時記錄，供簽名派生）。
+	dexPoolMu   sync.Mutex
+	dexPoolKeys map[string]string
 
 	// Layer2 Optimistic Rollup（可選；nil=不啟用）
 	l2    *rollup.Rollup
@@ -158,6 +176,15 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 	}
 	n.communitySvc = cs
 
+	// M40 鏈上治理：governance.db（提案/投票/參數執行）。
+	gs, gerr := governance.New(filepath.Join(dataDir, "governance.db"))
+	if gerr != nil {
+		_ = db.Close()
+		return nil, gerr
+	}
+	gs.SetApplyFunc(n.applyGovernanceParam)
+	n.gov = gs
+
 	// DeFi（流動性挖礦＋借貸市場）：defi.db，資產對接 wallet 帳本。
 	ds, err := defi.Open(dataDir)
 	if err != nil {
@@ -217,6 +244,12 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 		return nil, err
 	}
 	n.contracts = cm
+
+	// 鏈上 DEX（AMM）：以節點金鑰做官方做市、池帳戶以 DeriveKey 派生；
+	// 合約層未啟用時 dex 為 nil（RPC 回「未啟用」）。
+	if e, derr := dex.New(dataDir, n.nodeAddress, n.dexTransfer, n.dexBalance); derr == nil {
+		n.dex = e
+	}
 
 	// 可選：啟用 Layer2 Optimistic Rollup（含後台批量/提交服務）。
 	if cfg.EnableL2 {
@@ -373,6 +406,45 @@ func (n *Node) blockLookup(height int64) (float64, bool) {
 // Auth 回傳會員認證服務（供 Web 層讀取登入會員資訊）。
 func (n *Node) Auth() *AuthService { return n.authSvc }
 
+// Governance 回傳鏈上治理管理器。
+func (n *Node) Governance() *governance.Governance { return n.gov }
+
+// applyGovernanceParam 治理參數執行回調：熱更新可運行時套用的參數。
+// block_time/difficulty 立即生效；其餘參數儲存供 API 查詢與重啟後讀取。
+func (n *Node) applyGovernanceParam(key, value string) error {
+	if value == "" {
+		return errors.New("node: 治理參數值為空")
+	}
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return fmt.Errorf("node: 治理參數值非數字: %w", err)
+	}
+	switch key {
+	case "block_time":
+		if v < 0.5 || v > 60 {
+			return errors.New("node: block_time 超出允許範圍")
+		}
+		n.mu.Lock()
+		n.blockTime = time.Duration(v * float64(time.Second))
+		n.mu.Unlock()
+		return nil
+	case "difficulty":
+		if v < 1 || v > 100 {
+			return errors.New("node: difficulty 超出允許範圍")
+		}
+		n.mu.Lock()
+		n.baseDiff = int(v)
+		n.adjDiff = int(v)
+		n.mu.Unlock()
+		return nil
+	case "tx_fee_bps", "tiusd_floor_bps":
+		// 已通過參數：儲存於治理庫，API 可查詢；重啟後由節點讀取套用。
+		return nil
+	default:
+		return fmt.Errorf("node: 未知治理參數 %q", key)
+	}
+}
+
 func (n *Node) Address() string { return n.nodeAddress }
 
 // IdentityPubHex 返回節點壓縮公鑰十六進制（用於創世驗證人規格）。
@@ -466,6 +538,9 @@ func (n *Node) Close() error {
 		if n.contracts != nil {
 			n.contracts.Close()
 		}
+		if n.dex != nil {
+			_ = n.dex.Close()
+		}
 		if n.l2svc != nil {
 			n.l2svc.Close()
 		}
@@ -490,6 +565,9 @@ func (n *Node) Close() error {
 	if n.contracts != nil {
 		n.contracts.Close()
 	}
+	if n.dex != nil {
+		_ = n.dex.Close()
+	}
 	if n.l2svc != nil {
 		n.l2svc.Close()
 	}
@@ -510,6 +588,9 @@ func (n *Node) Close() error {
 	}
 	if n.authSvc != nil {
 		_ = n.authSvc.Close()
+	}
+	if n.gov != nil {
+		_ = n.gov.Close()
 	}
 	return n.db.Close()
 }
@@ -790,6 +871,8 @@ func (n *Node) produceBlock() error {
 	if err := n.db.InsertBlock(block, txs); err != nil {
 		return err
 	}
+	n.resetPendingTx()
+	n.dexStakeTick(height)
 
 	// 執行塊內合約交易（部署/調用），持久化 code/storage。
 	if err := n.executeBlockContracts(txs); err != nil {
@@ -816,6 +899,11 @@ func (n *Node) produceBlock() error {
 		newBase := difficulty.ComputeRetarget(n.adjDiff, win, n.blockTime.Seconds())
 		n.adjDiff = newBase
 		n.mu.Unlock()
+	}
+
+	// M40 鏈上治理：每個新區塊驅動到期提案統計與參數執行。
+	if n.gov != nil {
+		n.gov.TallyAndExecute(height)
 	}
 	return nil
 }
