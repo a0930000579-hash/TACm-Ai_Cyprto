@@ -26,7 +26,7 @@
   th { color:var(--bn-sub); text-align:left; padding:7px 6px; border-bottom:1px solid var(--bn-line); font-weight:500; }
   td { padding:7px 6px; border-bottom:1px solid var(--bn-line); }
   .pair { font-weight:700; }
-  .sub { color:var(--bn-sub); font-size:11px; }
+  .sub { color:var(--bn-sub); font-size:11px; word-break:break-word; }
   .up { color:var(--bn-green); } .warn { color:var(--bn-yellow); }
   .bn-form { display:grid; gap:9px; }
   .bn-form label { font-size:12px; color:var(--bn-sub); }
@@ -83,10 +83,12 @@
     <div class="grid">
       <div class="box">
         <h3>流動性池 <span class="chip">APR 動態</span></h3>
-        <table>
-          <thead><tr><th>交易對</th><th>儲備 T0</th><th>儲備 T1</th><th>總 LP</th><th>APR</th><th></th></tr></thead>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table style="min-width:540px">
+          <thead><tr><th>交易對</th><th>儲備 T0</th><th>儲備 T1</th><th>總 LP</th><th>APR</th><th>獎勵</th></tr></thead>
           <tbody id="pools"></tbody>
         </table>
+        </div>
         <div class="mini">＋ 添加流動性</div>
         <div class="bn-form">
           <select id="lpPool"><option value="">選擇交易對…</option></select>
@@ -132,10 +134,12 @@
     <div class="grid">
       <div class="box">
         <h3>借貸市場 <span class="chip">抵押率＝可借上限</span></h3>
-        <table>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table style="min-width:540px">
           <thead><tr><th>資產</th><th>總存款</th><th>總借款</th><th>存款 APR</th><th>借款 APR</th><th>抵押率</th></tr></thead>
           <tbody id="markets"></tbody>
         </table>
+        </div>
         <div class="mini">存款／取款</div>
         <div class="bn-form">
           <select id="lendAsset"><option value="">選擇資產…</option></select>

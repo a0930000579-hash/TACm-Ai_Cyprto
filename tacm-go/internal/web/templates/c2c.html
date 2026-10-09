@@ -98,7 +98,7 @@ async function loadAds(){
     el.innerHTML = (d.ads||[]).map(ad=>{
       const isSell=ad.side==='sell';
       return `<div class="card">
-        <div class="sub" style="display:flex;justify-content:space-between"><b style="color:${isSell?'#f6465d':'#0ecb81'}">${isSell?'售':'買'} ${ad.asset}/${ad.fiat}</b><span class="chip">${ad.price.toFixed(2)} ${ad.fiat}</span></div>
+        <div class="sub" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><b style="color:${isSell?'#f6465d':'#0ecb81'}">${isSell?'售':'買'} ${ad.asset}/${ad.fiat}</b><span class="chip">${ad.price.toFixed(2)} ${ad.fiat}</span></div>
         <div class="sub">限額 ${ad.min_amount}–${ad.max_amount} ${ad.asset} · 完成 ${ad.completed_orders} 單 · 評分 ${ad.rating.toFixed(1)}</div>
         <div class="sub">支付：${(ad.payment_methods||[]).map(m=>'<span class="chip">'+m+'</span>').join(' ')}</div>
         <div style="display:flex;gap:8px;margin-top:8px">
@@ -135,7 +135,7 @@ async function pubAd(){
 async function loadMyAds(){
   if(!W)return; const el=document.getElementById('my-ads');
   const r=await fetch('/api/c2c/my-ads?address='+W.addr); const d=await r.json();
-  el.innerHTML=(d.ads||[]).map(a=>`<div class="card"><div class="sub" style="display:flex;justify-content:space-between"><b>${a.side==='sell'?'售':'買'} ${a.asset}/${a.fiat}</b><span class="chip">${a.price} ${a.fiat}</span><span class="chip ${a.status==='active'?'g':'y'}">${a.status}</span></div>
+  el.innerHTML=(d.ads||[]).map(a=>`<div class="card"><div class="sub" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><b>${a.side==='sell'?'售':'買'} ${a.asset}/${a.fiat}</b><span class="chip">${a.price} ${a.fiat}</span><span class="chip ${a.status==='active'?'g':'y'}">${a.status}</span></div>
     <div class="sub">限額 ${a.min_amount}–${a.max_amount} ${a.asset} · 完成 ${a.completed_orders} 單</div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="bn-btn gray" onclick="adStat(${a.id},'paused')">暫停</button>
@@ -154,7 +154,7 @@ async function loadMyOrders(){
     if(o.status==='pending')step=`<span class="st now">① 法幣付款</span><span class="st">② 賣家放行</span>`;
     else if(o.status==='paid')step=`<span class="st done">① 已付款</span><span class="st now">② 賣家放行</span>`;
     else if(o.status==='completed')step=`<span class="st done">① 已付款</span><span class="st done">② 已完成</span>`;
-    return `<div class="card"><div class="sub" style="display:flex;justify-content:space-between"><b>${o.order_no}</b><span class="chip ${o.status==='completed'?'g':(o.status==='disputed'?'r':(o.status==='cancelled'?'y':'y'))}">${stMap[o.status]}</span></div>
+    return `<div class="card"><div class="sub" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><b>${o.order_no}</b><span class="chip ${o.status==='completed'?'g':(o.status==='disputed'?'r':(o.status==='cancelled'?'y':'y'))}">${stMap[o.status]}</span></div>
       <div class="sub">${o.asset} × ${o.amount} = <b>${o.total_fiat} ${o.fiat}</b> · ${o.payment_method}</div>
       <div class="order-steps">${step}</div>
       ${isBuyer&&o.status==='pending'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="bn-btn" style="flex:1" onclick="cfm(${o.id})">確認已付款</button><button class="bn-btn gray" onclick="cnl(${o.id})">取消</button><button class="bn-btn red" onclick="dsp(${o.id})">申訴</button></div>`:''}
