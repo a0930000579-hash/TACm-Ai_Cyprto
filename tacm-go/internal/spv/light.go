@@ -84,10 +84,10 @@ func (lc *LightClient) LoadValidators() (bool, error) {
 
 // SyncResult 為頭同步結果。
 type SyncResult struct {
-	Synced int    `json:"synced"`
-	ChainOK bool  `json:"chain_ok"`
-	Reason string `json:"reason"`
-	Tip    int64  `json:"tip"`
+	Synced  int    `json:"synced"`
+	ChainOK bool   `json:"chain_ok"`
+	Reason  string `json:"reason"`
+	Tip     int64  `json:"tip"`
 }
 
 // SyncHeaders 拉取最新一組區塊頭並驗證鏈接。

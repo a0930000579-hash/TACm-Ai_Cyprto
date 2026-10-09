@@ -93,8 +93,8 @@ func BenchmarkGetBlocks(b *testing.B) {
 func BenchmarkMempoolDrain(b *testing.B) {
 	db := newBenchDB(b)
 	payload := map[string]any{
-		"from": "tx01PAK8RojPnZ5mRNJ5hUBSBqe9V37qgLGed",
-		"to":   "tx01PAK8RojPnZ5mRNJ5hUBSBqe9V37qgLGed",
+		"from":   "tx01PAK8RojPnZ5mRNJ5hUBSBqe9V37qgLGed",
+		"to":     "tx01PAK8RojPnZ5mRNJ5hUBSBqe9V37qgLGed",
 		"amount": "1", "fee": "0.02", "nonce": 1, "ts": 1700000000,
 		"signature": "sig", "pubkey": "pub",
 	}

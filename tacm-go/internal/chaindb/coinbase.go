@@ -20,7 +20,7 @@ func CoinbaseTxHash(height int64, proposer string, reward float64, ts int64) str
 func BuildCoinbaseTx(height int64, proposerAddr string, ts int64) Transaction {
 	reward := BlockReward(height)
 	return Transaction{
-		TxHash: CoinbaseTxHash(height, proposerAddr, reward, ts),
+		TxHash:   CoinbaseTxHash(height, proposerAddr, reward, ts),
 		FromAddr: "", ToAddr: proposerAddr,
 		Amount: FormatFloat(reward), Fee: "0", Nonce: 0, Ts: ts,
 		Memo: "coinbase", Status: "confirmed",

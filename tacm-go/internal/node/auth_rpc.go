@@ -11,8 +11,8 @@ import (
 // handleAuthRegister 註冊：email＋password，成功即登入（設定 cookie）。
 func (s *RPCServer) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	var p struct {
-		Email       string `json:"email"`
-		Password    string `json:"password"`
+		Email        string `json:"email"`
+		Password     string `json:"password"`
 		ReferralCode string `json:"referral_code"`
 	}
 	if err := decodeJSON(r, &p); err != nil {
@@ -81,4 +81,3 @@ func decodeJSON(r *http.Request, v any) error {
 	}
 	return json.Unmarshal(body, v)
 }
-

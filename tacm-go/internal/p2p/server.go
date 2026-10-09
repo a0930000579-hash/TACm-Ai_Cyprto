@@ -65,15 +65,15 @@ func (n *Network) handleHello(w http.ResponseWriter, r *http.Request) {
 }
 
 type gossipReq struct {
-	Kind     string                 `json:"kind"`
-	TTL      int                    `json:"ttl"`
-	From     string                 `json:"from"`
-	Block    *chaindb.Block         `json:"block"`
-	BlockTxs []chaindb.Transaction  `json:"block_txs"`
-	Tx       map[string]any         `json:"tx"`
-	Vote     *bft.Vote              `json:"vote"`
-	ViewChg  *ViewChangeMsg         `json:"view_change"`
-	Bridge   *BridgeGossip          `json:"bridge"`
+	Kind     string                `json:"kind"`
+	TTL      int                   `json:"ttl"`
+	From     string                `json:"from"`
+	Block    *chaindb.Block        `json:"block"`
+	BlockTxs []chaindb.Transaction `json:"block_txs"`
+	Tx       map[string]any        `json:"tx"`
+	Vote     *bft.Vote             `json:"vote"`
+	ViewChg  *ViewChangeMsg        `json:"view_change"`
+	Bridge   *BridgeGossip         `json:"bridge"`
 }
 
 // ViewChangeMsg 為提議超時後的輪次切換消息（M12：帶驗證人簽名，多數認證才生效）。

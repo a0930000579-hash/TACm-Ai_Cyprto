@@ -100,9 +100,9 @@ func applyDelta(tx *sql.Tx, address string, delta float64, incNonce bool) error 
 		address).Scan(&balStr, &nonce, &pubkey, &firstSeen)
 
 	var (
-		bal, non  float64
-		pub       any
-		first     int64
+		bal, non float64
+		pub      any
+		first    int64
 	)
 	switch err {
 	case nil:

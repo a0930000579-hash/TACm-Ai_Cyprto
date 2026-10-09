@@ -208,7 +208,7 @@ func TestBridgeRelayerTACtoBSC(t *testing.T) {
 	t.Cleanup(func() { b.Close() })
 
 	st := &bscStub{t: t, chainID: "0x61", nonce: "0x0", gasPrice: "0x1",
-		estimate: "0x5208", sendRawH: "0x"+strings.Repeat("f1", 32),
+		estimate: "0x5208", sendRawH: "0x" + strings.Repeat("f1", 32),
 		tokenAddr: "0x" + "11" + strings.Repeat("00", 18) + "22",
 		lockProxy: "0x" + "33" + strings.Repeat("00", 18) + "44"}
 	url := startBSCStub(t, st)
@@ -284,7 +284,7 @@ func TestBridgeRelayerBSCtoTAC(t *testing.T) {
 	from := "0x" + "aa" + strings.Repeat("00", 18) + "bb"
 	to := "0x" + "cc" + strings.Repeat("00", 18) + "dd"
 	st := &bscStub{t: t, chainID: "0x61", blockNum: "0x64",
-		logs: []BSClog{depositLog(t, token, from, to, 8880000000000000000, 1, 100, "0x"+strings.Repeat("d1", 32))},
+		logs:      []BSClog{depositLog(t, token, from, to, 8880000000000000000, 1, 100, "0x"+strings.Repeat("d1", 32))},
 		tokenAddr: token, lockProxy: lockProxy}
 	url := startBSCStub(t, st)
 

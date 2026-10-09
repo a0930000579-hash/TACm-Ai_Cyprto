@@ -8,11 +8,11 @@ import (
 
 // DistributionResult 為一次收益分發結果。
 type DistributionResult struct {
-	Distributed  float64 `json:"distributed"`
-	StakesCount  int     `json:"stakes_count"`
-	Duration     int64   `json:"duration"`
-	Skipped      bool    `json:"skipped"`
-	Message      string  `json:"message"`
+	Distributed float64 `json:"distributed"`
+	StakesCount int     `json:"stakes_count"`
+	Duration    int64   `json:"duration"`
+	Skipped     bool    `json:"skipped"`
+	Message     string  `json:"message"`
 }
 
 const yearSeconds = 365 * 24 * 3600
@@ -73,9 +73,9 @@ func (s *Store) DistributeRewards() (*DistributionResult, error) {
 		return nil, err
 	}
 	type stakeRec struct {
-		id, uid     int64
-		amount      float64
-		staked,last int64
+		id, uid      int64
+		amount       float64
+		staked, last int64
 	}
 	var recs []stakeRec
 	for rows.Next() {

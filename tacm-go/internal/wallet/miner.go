@@ -109,8 +109,6 @@ type MinerSplit struct {
 	Share   *big.Int `json:"share"`
 }
 
-
-
 // TickMiner 礦機心跳：更新最後心跳時間並維持在線。
 func (s *Store) TickMiner(address string) error {
 	if address == "" {

@@ -104,7 +104,7 @@ func (v *MessageVerifier) Verify(m *CrossChainMessage,
 
 	if valid < v.required {
 		return &VerifyResult{
-			OK: false,
+			OK:                 false,
 			SignaturesVerified: valid,
 			Error: fmt.Sprintf("insufficient signatures: need %d, have %d",
 				v.required, valid),

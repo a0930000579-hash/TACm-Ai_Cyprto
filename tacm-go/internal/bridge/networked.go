@@ -291,7 +291,7 @@ func (b *Bridge) executeProposal(m *CrossChainMessage) (*ExecResult, error) {
 	}
 	srcTx, _ := m.Payload["source_tx_hash"].(string)
 	targetTx := "target-" + hex.EncodeToString(
-		crypto.SHA256([]byte(m.MessageID+":"+srcTx)))[:32]
+		crypto.SHA256([]byte(m.MessageID + ":" + srcTx)))[:32]
 	now := time.Now().Unix()
 	tx.Status = StatusConfirmed
 	tx.SourceTxHash = srcTx

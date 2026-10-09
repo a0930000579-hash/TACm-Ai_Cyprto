@@ -18,8 +18,8 @@ const (
 )
 
 type callOpResult struct {
-	ok                        bool
-	outOffset, outSize        uint64
+	ok                 bool
+	outOffset, outSize uint64
 }
 
 func (in *Interpreter) messageCallOp(kind CallKind) *callOpResult {

@@ -17,9 +17,9 @@ import (
 
 // 提案類型。
 const (
-	TypeParam    = "param"     // 參數調整（出塊時間/難度/手續費/TiUSD 下限…）
-	TypeTreasury = "treasury"  // 國庫支出（獎勵池撥款）
-	TypeMeta     = "meta"      // 治理決議（公告/方向）
+	TypeParam    = "param"    // 參數調整（出塊時間/難度/手續費/TiUSD 下限…）
+	TypeTreasury = "treasury" // 國庫支出（獎勵池撥款）
+	TypeMeta     = "meta"     // 治理決議（公告/方向）
 )
 
 // 提案狀態。

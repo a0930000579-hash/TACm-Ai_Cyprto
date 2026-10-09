@@ -78,11 +78,11 @@ type Validator struct {
 
 // Config 為跨鏈橋參數。
 type Config struct {
-	DataDir             string
-	RequiredSignatures  int
-	FeeRate             float64
-	MinAmount           float64
-	LockTime            int64
+	DataDir            string
+	RequiredSignatures int
+	FeeRate            float64
+	MinAmount          float64
+	LockTime           int64
 }
 
 // DefaultConfig 返回默認跨鏈橋配置。

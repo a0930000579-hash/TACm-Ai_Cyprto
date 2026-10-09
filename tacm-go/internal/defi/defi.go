@@ -1,6 +1,7 @@
 // Package defi 提供 TAC 自主智能鏈 DeFi 模組（照 Python 原版搬運＋真實資產進出）：
 //   - 流動性挖礦（pools / add / remove / claim reward，LP=sqrt 公式、APR 每日獎勵）
 //   - 借貸市場（deposit / withdraw / borrow / repay，抵押率與 10% 年息）
+//
 // 資產流動全部對接 wallet 帳本：用戶入池走 Transfer（鏈上費 2% 入資金池）、
 // 獎勵與借款發放走 Reward（鑄造）、池出資金走 InternalTransfer（免二次費）。
 package defi
@@ -17,11 +18,11 @@ import (
 
 // 系統帳戶（wallet ledger 用）。
 const (
-	LendingAccount  = "defi_lending" // 借貸市場資金池帳戶
-	IDOAccount      = "defi_ido"     // IDO 認購資金池帳戶
-	RewardAccount   = "defi_rewards" // 流動性獎勵結算帳戶（預留）
-	annualInterest  = 0.10           // 借貸年利率（照 Python）
-	poolPrefix      = "defi_lp_"     // 流動性池帳戶前綴（defi_lp_{pool_id}）
+	LendingAccount = "defi_lending" // 借貸市場資金池帳戶
+	IDOAccount     = "defi_ido"     // IDO 認購資金池帳戶
+	RewardAccount  = "defi_rewards" // 流動性獎勵結算帳戶（預留）
+	annualInterest = 0.10           // 借貸年利率（照 Python）
+	poolPrefix     = "defi_lp_"     // 流動性池帳戶前綴（defi_lp_{pool_id}）
 )
 
 // Store DeFi 資料庫（SQLite）。
@@ -90,21 +91,21 @@ type LendingDeposit struct {
 
 // Loan 用戶貸款視圖。
 type Loan struct {
-	ID                 int64   `json:"id"`
-	Address            string  `json:"address"`
-	CollateralAsset    string  `json:"collateral_asset"`
-	CollateralAmount   float64 `json:"collateral_amount"`
-	BorrowAsset        string  `json:"borrow_asset"`
-	BorrowAmount       float64 `json:"borrow_amount"`
-	CollateralValue    float64 `json:"collateral_value"`
-	LoanValue          float64 `json:"loan_value"`
-	LTV                float64 `json:"ltv"`
-	LiquidationPrice   float64 `json:"liquidation_price"`
-	InterestAccrued    float64 `json:"interest_accrued"`
-	Status             string  `json:"status"`
-	LastUpdate         int64   `json:"last_update"`
-	CreatedAt          int64   `json:"created_at"`
-	InterestNow        float64 `json:"interest_now"` // 截至查詢的應計利息
+	ID               int64   `json:"id"`
+	Address          string  `json:"address"`
+	CollateralAsset  string  `json:"collateral_asset"`
+	CollateralAmount float64 `json:"collateral_amount"`
+	BorrowAsset      string  `json:"borrow_asset"`
+	BorrowAmount     float64 `json:"borrow_amount"`
+	CollateralValue  float64 `json:"collateral_value"`
+	LoanValue        float64 `json:"loan_value"`
+	LTV              float64 `json:"ltv"`
+	LiquidationPrice float64 `json:"liquidation_price"`
+	InterestAccrued  float64 `json:"interest_accrued"`
+	Status           string  `json:"status"`
+	LastUpdate       int64   `json:"last_update"`
+	CreatedAt        int64   `json:"created_at"`
+	InterestNow      float64 `json:"interest_now"` // 截至查詢的應計利息
 }
 
 const defiSchema = `
@@ -300,9 +301,9 @@ func (s *Store) seedDefault() error {
 	}
 	day := int64(86400)
 	projects := []struct {
-		name, symbol, asset, desc string
+		name, symbol, asset, desc     string
 		price, target, minBuy, maxBuy float64
-		startIn, endIn int64
+		startIn, endIn                int64
 	}{
 		{"TACm Governance", "TACG", "USDT", "TACm 生態治理代幣，參與社區投票和提案", 0.5, 50000, 50, 5000, startOff, startOff + day*2},
 		{"TACm AI", "TACA", "USDT", "TACm AI 智能合約和預言機服務代幣", 1.0, 100000, 100, 10000, startOff + day*6, startOff + day*9},
@@ -317,7 +318,7 @@ func (s *Store) seedDefault() error {
 	// 默認收益聚合器 Vault（照 Python：TACM 穩健收益 / USDT 高收益 / TiUSD 活利寶）。
 	vaults := []struct {
 		name, strategy, asset, desc string
-		total, apr, minDep, fee float64
+		total, apr, minDep, fee     float64
 	}{
 		{"TACM 穩健收益", "stable_farming", "TACm", "自動復投流動性挖礦收益，穩健型策略", 100000, 0.18, 100, 0.1},
 		{"USDT 高收益", "yield_optimization", "USDT", "優化借貸和流動性收益，自動調配資金", 500000, 0.12, 50, 0.1},
@@ -789,37 +790,37 @@ func (s *Store) MyLoans(address string) ([]Loan, error) {
 
 // IDOProject IDO 項目視圖。
 type IDOProject struct {
-	ID               int64   `json:"id"`
-	Name             string  `json:"name"`
-	Symbol           string  `json:"symbol"`
-	TokenPrice       float64 `json:"token_price"`
-	RaiseTarget      float64 `json:"raise_target"`
-	RaiseAsset       string  `json:"raise_asset"`
-	MinBuy           float64 `json:"min_buy"`
-	MaxBuy           float64 `json:"max_buy"`
-	StartTime        int64   `json:"start_time"`
-	EndTime          int64   `json:"end_time"`
-	Status           string  `json:"status"`
-	Description      string  `json:"description"`
-	TotalRaised      float64 `json:"total_raised"`
-	TotalParticipants int64  `json:"total_participants"`
-	CreatedAt        int64   `json:"created_at"`
+	ID                int64   `json:"id"`
+	Name              string  `json:"name"`
+	Symbol            string  `json:"symbol"`
+	TokenPrice        float64 `json:"token_price"`
+	RaiseTarget       float64 `json:"raise_target"`
+	RaiseAsset        string  `json:"raise_asset"`
+	MinBuy            float64 `json:"min_buy"`
+	MaxBuy            float64 `json:"max_buy"`
+	StartTime         int64   `json:"start_time"`
+	EndTime           int64   `json:"end_time"`
+	Status            string  `json:"status"`
+	Description       string  `json:"description"`
+	TotalRaised       float64 `json:"total_raised"`
+	TotalParticipants int64   `json:"total_participants"`
+	CreatedAt         int64   `json:"created_at"`
 }
 
 // IDOSubscription 用戶認購視圖。
 type IDOSubscription struct {
-	ID               int64   `json:"id"`
-	Address          string  `json:"address"`
-	ProjectID        int64   `json:"project_id"`
-	SubscribeAmount  float64 `json:"subscribe_amount"`
-	AllocatedTokens  float64 `json:"allocated_tokens"`
-	Claimed          bool    `json:"claimed"`
-	CreatedAt        int64   `json:"created_at"`
-	Name             string  `json:"name"`
-	Symbol           string  `json:"symbol"`
-	TokenPrice       float64 `json:"token_price"`
-	Status           string  `json:"status"`
-	EndTime          int64   `json:"end_time"`
+	ID              int64   `json:"id"`
+	Address         string  `json:"address"`
+	ProjectID       int64   `json:"project_id"`
+	SubscribeAmount float64 `json:"subscribe_amount"`
+	AllocatedTokens float64 `json:"allocated_tokens"`
+	Claimed         bool    `json:"claimed"`
+	CreatedAt       int64   `json:"created_at"`
+	Name            string  `json:"name"`
+	Symbol          string  `json:"symbol"`
+	TokenPrice      float64 `json:"token_price"`
+	Status          string  `json:"status"`
+	EndTime         int64   `json:"end_time"`
 }
 
 // IDOProjects 全部 IDO 項目（開始時間升序）。

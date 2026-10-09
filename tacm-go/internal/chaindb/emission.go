@@ -59,9 +59,10 @@ func envInt(name string, def int) int {
 }
 
 // LoadEmission 依環境變數載入供應模型；blockTimeSec 為節點實際出塊間隔（秒）。
-//   TACM_MAX_SUPPLY         總供應上限（設定即啟用 annual_decay）
-//   TACM_EMISSION_YEARS     發行年數（預設 6）
-//   TACM_ANNUAL_DECAY_PCT   每年衰減（預設 0.25）
+//
+//	TACM_MAX_SUPPLY         總供應上限（設定即啟用 annual_decay）
+//	TACM_EMISSION_YEARS     發行年數（預設 6）
+//	TACM_ANNUAL_DECAY_PCT   每年衰減（預設 0.25）
 func LoadEmission(blockTimeSec int64) (EmissionConfig, error) {
 	emissionOnce.Do(func() {
 		maxSupply := envFloat("TACM_MAX_SUPPLY", 0)
@@ -122,8 +123,9 @@ type EmissionError struct{ msg string }
 func (e *EmissionError) Error() string { return e.msg }
 
 // EmissionAmount 依高度計算本塊增發量（TACm）。
-//  annual_decay：INITIAL_SUBSIDY * DecayRatio^year；發行期結束後為 0。
-//  halving：沿用 BlockReward（每 HalvingInterval 減半）。
+//
+//	annual_decay：INITIAL_SUBSIDY * DecayRatio^year；發行期結束後為 0。
+//	halving：沿用 BlockReward（每 HalvingInterval 減半）。
 func EmissionAmount(height int64, blockTimeSec int64) float64 {
 	cfg, err := LoadEmission(blockTimeSec)
 	if err != nil {

@@ -121,7 +121,7 @@ func (s *Store) GetBridgeTx(id string) (*BridgeTx, error) {
 	tx := &BridgeTx{}
 	var (
 		sourceTx, targetTx, lockTx, unlockTx, errStr, sigs sql.NullString
-		confirmed                                         sql.NullInt64
+		confirmed                                          sql.NullInt64
 	)
 	err := row.Scan(&tx.ID, &tx.BridgeTxID, &tx.SourceChain, &tx.TargetChain,
 		&tx.SourceAddress, &tx.TargetAddress, &tx.Amount, &tx.Fee,

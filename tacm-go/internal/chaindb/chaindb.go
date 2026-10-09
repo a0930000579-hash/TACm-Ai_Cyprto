@@ -20,7 +20,7 @@ const (
 
 // 內存池參數。
 const (
-	MaxMempoolSize  = 5000
+	MaxMempoolSize   = 5000
 	MempoolExpireSec = 3600
 )
 

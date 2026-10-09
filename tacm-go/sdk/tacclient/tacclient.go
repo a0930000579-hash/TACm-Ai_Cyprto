@@ -22,19 +22,19 @@ import (
 
 // Status 為節點對外狀態（GET /status）。
 type Status struct {
-	NodeID       string  `json:"node_id"`
-	Address      string  `json:"address"`
-	Network      string  `json:"network"`
-	ChainID      string  `json:"chain_id"`
-	BlockHeight  int64   `json:"block_height"`
-	FinalHeight  int64   `json:"final_block_height"`
-	MempoolSize  int64   `json:"mempool_size"`
-	Difficulty   int     `json:"effective_difficulty"`
-	UptimeSec    int64   `json:"uptime_sec"`
-	Consensus    string  `json:"consensus"`
-	EmissionModel string `json:"emission_model"`
-	MaxSupply    float64 `json:"max_supply"`
-	EmissionYears int    `json:"emission_years"`
+	NodeID         string  `json:"node_id"`
+	Address        string  `json:"address"`
+	Network        string  `json:"network"`
+	ChainID        string  `json:"chain_id"`
+	BlockHeight    int64   `json:"block_height"`
+	FinalHeight    int64   `json:"final_block_height"`
+	MempoolSize    int64   `json:"mempool_size"`
+	Difficulty     int     `json:"effective_difficulty"`
+	UptimeSec      int64   `json:"uptime_sec"`
+	Consensus      string  `json:"consensus"`
+	EmissionModel  string  `json:"emission_model"`
+	MaxSupply      float64 `json:"max_supply"`
+	EmissionYears  int     `json:"emission_years"`
 	AnnualDecayPct float64 `json:"annual_decay_pct"`
 }
 
@@ -85,7 +85,7 @@ type Account struct {
 
 // Key 封裝 secp256k1 密鑰對與 tx0 地址。
 type Key struct {
-	kp  *crypto.KeyPair
+	kp   *crypto.KeyPair
 	addr string
 }
 

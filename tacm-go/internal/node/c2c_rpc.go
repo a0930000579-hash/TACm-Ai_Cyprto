@@ -127,10 +127,10 @@ func (s *RPCServer) handleC2COrderCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var req struct {
-		AdID     int64   `json:"ad_id"`
-		Buyer    string  `json:"buyer"`
-		Amount   float64 `json:"amount"`
-		PayMethod string `json:"payment_method"`
+		AdID      int64   `json:"ad_id"`
+		Buyer     string  `json:"buyer"`
+		Amount    float64 `json:"amount"`
+		PayMethod string  `json:"payment_method"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json")

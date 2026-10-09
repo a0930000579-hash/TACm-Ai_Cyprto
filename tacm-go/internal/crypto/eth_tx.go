@@ -341,4 +341,3 @@ func hexVal(c byte) int {
 	}
 	return -1
 }
-

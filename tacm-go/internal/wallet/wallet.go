@@ -9,9 +9,9 @@ import (
 // Service 為錢包高層操作：多資產轉帳（含手續費）、TiUSD 發行/銷毀、
 // 充值/提現/獎勵入帳。所有操作走單一事務 + 雙分錄審計。
 type Service struct {
-	st             *Store
-	mu             sync.Mutex
-	tacmMaxSupply  float64 // M35：TACm 總供應上限（TiUSD 錨定基準）
+	st            *Store
+	mu            sync.Mutex
+	tacmMaxSupply float64 // M35：TACm 總供應上限（TiUSD 錨定基準）
 }
 
 // NewService 創建錢包服務。

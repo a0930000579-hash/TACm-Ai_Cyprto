@@ -37,7 +37,7 @@ const (
 
 	// 事件。
 	// Deposit(address indexed token, address indexed from, address indexed to, uint256 amount, uint256 nonce)
-	EventDeposit  = "Deposit(address,address,address,uint256,uint256)"
+	EventDeposit = "Deposit(address,address,address,uint256,uint256)"
 	// Withdraw(address indexed token, address indexed to, uint256 amount, uint256 nonce)
 	EventWithdraw = "Withdraw(address,address,uint256,uint256)"
 )
@@ -90,8 +90,8 @@ type bscRPCReq struct {
 }
 
 type bscRPCRes struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
+	JSONRPC string          `json:"jsonrpc"`
+	ID      int             `json:"id"`
 	Result  json.RawMessage `json:"result"`
 	Error   *struct {
 		Code    int    `json:"code"`
@@ -262,8 +262,8 @@ func (c *BSCClient) Logs(ctx context.Context, fromBlock, toBlock int64, addresse
 
 // BridgeContract 封裝 BSC 側橋合約（MintBurn 代幣＋LockProxy）。
 type BridgeContract struct {
-	client       *BSCClient
-	tokenAddr    string // 0x
+	client        *BSCClient
+	tokenAddr     string // 0x
 	lockProxyAddr string // 0x
 }
 

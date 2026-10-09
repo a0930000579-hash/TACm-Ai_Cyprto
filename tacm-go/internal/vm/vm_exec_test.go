@@ -19,7 +19,7 @@ func newTestVM(gas uint64) (*Interpreter, *WorldState) {
 func appendReturn(code []byte) []byte {
 	return append(code,
 		0x60, 0x00, // PUSH0 offset
-		0x52, // MSTORE
+		0x52,       // MSTORE
 		0x60, 0x20, // PUSH32 size
 		0x60, 0x00, // PUSH0 offset
 		0xF3) // RETURN
@@ -33,12 +33,12 @@ func TestArithmetic(t *testing.T) {
 		code []byte
 		want int64
 	}{
-		{"add", []byte{0x60, 0x03, 0x60, 0x05, 0x01}, 8},        // 3+5
-		{"sub", []byte{0x60, 0x0A, 0x60, 0x03, 0x03}, 7},        // 10-3
-		{"mul", []byte{0x60, 0x06, 0x60, 0x07, 0x02}, 42},       // 6*7
-		{"div", []byte{0x60, 0x14, 0x60, 0x04, 0x04}, 5},        // 20/4
-		{"mod", []byte{0x60, 0x11, 0x60, 0x03, 0x06}, 2},        // 17%3
-		{"exp", []byte{0x60, 0x02, 0x60, 0x03, 0x0A}, 8},        // 2^3
+		{"add", []byte{0x60, 0x03, 0x60, 0x05, 0x01}, 8},  // 3+5
+		{"sub", []byte{0x60, 0x0A, 0x60, 0x03, 0x03}, 7},  // 10-3
+		{"mul", []byte{0x60, 0x06, 0x60, 0x07, 0x02}, 42}, // 6*7
+		{"div", []byte{0x60, 0x14, 0x60, 0x04, 0x04}, 5},  // 20/4
+		{"mod", []byte{0x60, 0x11, 0x60, 0x03, 0x06}, 2},  // 17%3
+		{"exp", []byte{0x60, 0x02, 0x60, 0x03, 0x0A}, 8},  // 2^3
 	}
 	for _, c := range cases {
 		in, _ := newTestVM(0)
@@ -71,7 +71,7 @@ func TestStorage(t *testing.T) {
 	code := []byte{
 		0x60, 0x2A, // PUSH42
 		0x60, 0x00, // PUSH0 key
-		0x55, // SSTORE
+		0x55,       // SSTORE
 		0x60, 0x00, // PUSH0
 		0x54, // SLOAD
 	}
@@ -85,10 +85,10 @@ func TestStorage(t *testing.T) {
 func TestJump(t *testing.T) {
 	code := []byte{
 		0x60, 0x06, // PUSH6 dest
-		0x56, // JUMP → pc6
-		0x5B, // JUMPDEST pc3
+		0x56,       // JUMP → pc6
+		0x5B,       // JUMPDEST pc3
 		0x60, 0x63, // PUSH99 (dead) pc4-5
-		0x5B, // JUMPDEST pc6
+		0x5B,       // JUMPDEST pc6
 		0x60, 0x07, // PUSH7
 	}
 	in, _ := newTestVM(0)
@@ -154,7 +154,7 @@ func initFor(runtime []byte) []byte {
 	rl := len(runtime)
 	initLen := 12
 	init := []byte{
-		0x60, byte(rl),   // PUSH size
+		0x60, byte(rl), // PUSH size
 		0x60, byte(initLen), // PUSH src offset
 		0x60, 0x00, // PUSH dest
 		0x39, // CODECOPY
@@ -211,7 +211,7 @@ func TestCreateOpcode(t *testing.T) {
 		0x60, byte(len(initFull)), // size
 		0x60, 0x00, // offset
 		0x60, 0x00, // value
-		0xF0, // CREATE
+		0xF0,             // CREATE
 		0x60, 0x00, 0x52, // 把地址 MSTORE@0
 		0x60, 0x20, 0x60, 0x00, 0xF3) // RETURN addr
 

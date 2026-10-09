@@ -99,9 +99,9 @@ func TestStateTransition(t *testing.T) {
 		t.Fatalf("插入 height1 失敗: %v", err)
 	}
 
-	assertBalance(t, c, alice, 898)    // 1000 - 100 - 2
-	assertBalance(t, c, bob, 100)      // 收款
-	assertBalance(t, c, proposer, 12)  // coinbase 10 + fee 2
+	assertBalance(t, c, alice, 898)   // 1000 - 100 - 2
+	assertBalance(t, c, bob, 100)     // 收款
+	assertBalance(t, c, proposer, 12) // coinbase 10 + fee 2
 
 	// 總量 = 初始 1000 + coinbase 10 = 1010。
 	total, _ := strconv.ParseFloat(c.GetBalance(alice), 64)

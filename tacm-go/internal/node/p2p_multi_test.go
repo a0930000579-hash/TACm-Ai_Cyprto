@@ -150,7 +150,6 @@ func TestP2PTransactionGossip(t *testing.T) {
 	waitBalance(t, C.n, bob, 50, 15*time.Second)
 }
 
-
 // 晚啟動節點通過主動同步追平網絡。
 func TestP2PLateSync(t *testing.T) {
 	A := startFullNode(t, "nodeA", nil, false, "")

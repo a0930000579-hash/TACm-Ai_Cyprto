@@ -15,14 +15,14 @@ import (
 
 // L1Proof 為提交到 Layer1 的 Rollup 狀態證明（狀態承諾）。
 type L1Proof struct {
-	L2Height         int64  `json:"l2_height"`
-	BatchIndex       int64  `json:"batch_index"`
-	TxCount          int    `json:"tx_count"`
-	StateRoot        string `json:"state_root"`
-	PrevStateRoot    string `json:"prev_state_root"`
-	Proposer         string `json:"proposer"`
-	Timestamp        int64  `json:"timestamp"`
-	ChallengeDeadline int64 `json:"challenge_deadline"`
+	L2Height          int64  `json:"l2_height"`
+	BatchIndex        int64  `json:"batch_index"`
+	TxCount           int    `json:"tx_count"`
+	StateRoot         string `json:"state_root"`
+	PrevStateRoot     string `json:"prev_state_root"`
+	Proposer          string `json:"proposer"`
+	Timestamp         int64  `json:"timestamp"`
+	ChallengeDeadline int64  `json:"challenge_deadline"`
 }
 
 // L1Submitter 抽象「把 L2 狀態根提交到 Layer1」。

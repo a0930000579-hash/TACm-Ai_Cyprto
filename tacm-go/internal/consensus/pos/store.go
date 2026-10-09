@@ -120,12 +120,12 @@ func (s *Store) initSchema() error {
 func (s *Store) initParams() error {
 	now := time.Now().Unix()
 	defaults := map[string]string{
-		"total_staked":             "0",
-		"total_validators":         "0",
+		"total_staked":              "0",
+		"total_validators":          "0",
 		"total_rewards_distributed": "0",
-		"last_reward_distribution": "0",
-		"annual_yield_rate":        strconv.FormatFloat(s.cfg.AnnualYield, 'f', -1, 64),
-		"unlock_period":            strconv.FormatInt(s.cfg.UnlockPeriod, 10),
+		"last_reward_distribution":  "0",
+		"annual_yield_rate":         strconv.FormatFloat(s.cfg.AnnualYield, 'f', -1, 64),
+		"unlock_period":             strconv.FormatInt(s.cfg.UnlockPeriod, 10),
 	}
 	for k, v := range defaults {
 		if _, err := s.db.Exec(

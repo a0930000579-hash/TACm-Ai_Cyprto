@@ -155,7 +155,7 @@ func (s *RPCServer) handleTiUSDSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true,
+		"ok":           true,
 		"supply":       wallet.FormatAmountI64(sup.Supply, wallet.AssetTiUSD),
 		"supply_raw":   sup.Supply,
 		"total_minted": wallet.FormatAmountI64(sup.TotalMinted, wallet.AssetTiUSD),

@@ -16,19 +16,19 @@ type StatusView struct {
 
 // TxView 為交易視圖。
 type TxView struct {
-	Hash        string `json:"hash"`
-	BlockHeight int64  `json:"block_height"`
-	TxIndex     int    `json:"tx_index"`
-	From        string `json:"from"`
-	To          string `json:"to"`
-	Amount      string `json:"amount"`
-	Fee         string `json:"fee"`
-	Nonce       int64  `json:"nonce"`
-	Ts          int64  `json:"ts"`
-	Memo        string `json:"memo"`
-	Status      string `json:"status"`
-	Signature   string `json:"signature"`
-	Pubkey      string `json:"pubkey"`
+	Hash        string        `json:"hash"`
+	BlockHeight int64         `json:"block_height"`
+	TxIndex     int           `json:"tx_index"`
+	From        string        `json:"from"`
+	To          string        `json:"to"`
+	Amount      string        `json:"amount"`
+	Fee         string        `json:"fee"`
+	Nonce       int64         `json:"nonce"`
+	Ts          int64         `json:"ts"`
+	Memo        string        `json:"memo"`
+	Status      string        `json:"status"`
+	Signature   string        `json:"signature"`
+	Pubkey      string        `json:"pubkey"`
 	Contract    *ContractView `json:"contract,omitempty"`
 }
 

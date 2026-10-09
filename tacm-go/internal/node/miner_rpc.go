@@ -167,7 +167,8 @@ func (s *RPCServer) handleMinerEarnings(w http.ResponseWriter, r *http.Request) 
 }
 
 // handleChainStats GET /api/chain/stats — 全鏈統計（顯示於礦機頁）：
-//   總產出 TACm（累計出塊獎勵已分配）、TiUSD 總流通、獎勵池、總供應上限。
+//
+//	總產出 TACm（累計出塊獎勵已分配）、TiUSD 總流通、獎勵池、總供應上限。
 func (s *RPCServer) handleChainStats(w http.ResponseWriter, r *http.Request) {
 	if s.node.walletSvc == nil {
 		writeErr(w, http.StatusServiceUnavailable, "錢包未初始化")
@@ -184,7 +185,7 @@ func (s *RPCServer) handleChainStats(w http.ResponseWriter, r *http.Request) {
 		pool = pa.TACmBalance
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true,
+		"ok":               true,
 		"total_mined_tacm": wallet.FormatAmountBig(total),
 		"tiusd_supply":     sup.Supply,
 		"reward_pool":      wallet.FormatAmountBig(pool),

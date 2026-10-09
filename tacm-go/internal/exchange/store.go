@@ -460,7 +460,7 @@ func quoteAssetOf(market string) Asset {
 		return AssetUSDT
 	}
 	return m.Quote
-}// ordersByUID 依用戶（可選市場）讀取訂單（新→舊）。
+} // ordersByUID 依用戶（可選市場）讀取訂單（新→舊）。
 func (s *Store) ordersByUID(uid, market string) ([]*Order, error) {
 	var rows *sql.Rows
 	var err error
@@ -490,5 +490,3 @@ func (s *Store) ordersByUID(uid, market string) ([]*Order, error) {
 	}
 	return out, rows.Err()
 }
-
-

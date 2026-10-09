@@ -10,20 +10,20 @@ import (
 
 // Status 為節點對外狀態（M2 單節點；P2P/BFT 字段在後續里程碑補充）。
 type Status struct {
-	NodeID       string `json:"node_id"`
-	Address      string `json:"address"`
-	Network      string `json:"network"`
-	ChainID      string `json:"chain_id"`
-	BlockHeight  int64  `json:"block_height"`
-	FinalHeight  int64  `json:"final_block_height"`
-	MempoolSize  int64  `json:"mempool_size"`
-	Difficulty   int    `json:"effective_difficulty"`
-	UptimeSec       int64   `json:"uptime_sec"`
-	Consensus       string  `json:"consensus"`
-	EmissionModel   string  `json:"emission_model"`
-	MaxSupply       float64 `json:"max_supply"`
-	EmissionYears   int     `json:"emission_years"`
-	AnnualDecayPct  float64 `json:"annual_decay_pct"`
+	NodeID         string  `json:"node_id"`
+	Address        string  `json:"address"`
+	Network        string  `json:"network"`
+	ChainID        string  `json:"chain_id"`
+	BlockHeight    int64   `json:"block_height"`
+	FinalHeight    int64   `json:"final_block_height"`
+	MempoolSize    int64   `json:"mempool_size"`
+	Difficulty     int     `json:"effective_difficulty"`
+	UptimeSec      int64   `json:"uptime_sec"`
+	Consensus      string  `json:"consensus"`
+	EmissionModel  string  `json:"emission_model"`
+	MaxSupply      float64 `json:"max_supply"`
+	EmissionYears  int     `json:"emission_years"`
+	AnnualDecayPct float64 `json:"annual_decay_pct"`
 }
 
 // GetStatus 返回節點當前狀態。
@@ -37,16 +37,16 @@ func (n *Node) GetStatus() Status {
 		consensus = "pow_bft_distributed"
 	}
 	st := Status{
-		NodeID:      n.nodeID,
-		Address:     n.nodeAddress,
-		Network:     n.cfg.Network,
-		ChainID:     n.cfg.ChainID,
-		BlockHeight: n.db.GetTipHeight(),
-		FinalHeight: n.FinalizedHeight(),
-		MempoolSize: n.db.MempoolSize(),
-		Difficulty:  diff,
-		UptimeSec:   int64(time.Since(n.onlineSince).Seconds()),
-		Consensus:   consensus,
+		NodeID:        n.nodeID,
+		Address:       n.nodeAddress,
+		Network:       n.cfg.Network,
+		ChainID:       n.cfg.ChainID,
+		BlockHeight:   n.db.GetTipHeight(),
+		FinalHeight:   n.FinalizedHeight(),
+		MempoolSize:   n.db.MempoolSize(),
+		Difficulty:    diff,
+		UptimeSec:     int64(time.Since(n.onlineSince).Seconds()),
+		Consensus:     consensus,
 		EmissionModel: "halving",
 	}
 	if cfg, err := chaindb.LoadEmission(int64(n.cfg.BlockTime)); err == nil && cfg.Model == "annual_decay" {

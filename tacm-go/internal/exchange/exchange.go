@@ -18,8 +18,8 @@ const FeeUID = "fee"
 //   - 限價單：能吃多少吃多少，剩餘留簿；市價單：按對端價全部成交（簿無對端則失敗）
 //   - 餘額：下單先鎖定（avail→locked），成交結算後解鎖剩餘/入帳
 type Service struct {
-	st   *Store
-	mu   sync.Mutex // 撮合與餘額操作串行化（Go 慣用：單一寫鎖）
+	st    *Store
+	mu    sync.Mutex // 撮合與餘額操作串行化（Go 慣用：單一寫鎖）
 	books map[string]*OrderBook
 	bots  map[string]*Bot
 }
@@ -49,10 +49,10 @@ func (s *Service) book(m Market) *OrderBook {
 
 // PlaceResult 為下單結果。
 type PlaceResult struct {
-	Order      *Order   `json:"order"`
-	Trades     []*Trade `json:"trades"`
-	FilledQty  Amount   `json:"-"`
-	FilledQtyStr string `json:"filled_qty"`
+	Order        *Order   `json:"order"`
+	Trades       []*Trade `json:"trades"`
+	FilledQty    Amount   `json:"-"`
+	FilledQtyStr string   `json:"filled_qty"`
 }
 
 // PlaceOrder 下單（限價/市價）。先鎖定餘額，再撮合，剩餘留簿/失敗退鎖。
@@ -276,6 +276,7 @@ func (s *Service) matchTaker(taker *Order, m Market, consumeAll bool) ([]*Trade,
 // settleTrade 結算一筆成交：
 //   - taker 買：taker 付 quote（price×qty），得 base×(1-taker_fee)；maker 付 base，得 quote×(1-maker_fee)
 //   - taker 賣：taker 付 base，得 quote×(1-taker_fee)；maker 付 quote，得 base×(1-maker_fee)
+//
 // 鎖定餘額釋放（locked→avail）＋收款入帳。
 func (s *Service) settleTrade(taker, maker *Order, price, qty Amount, fr FeeRates) (*Trade, error) {
 	quoteAmt := mulPrice(qty, price, taker.QuoteBase.Decimals())

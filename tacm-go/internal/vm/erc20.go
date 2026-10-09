@@ -77,10 +77,10 @@ func selNum(sel []byte) *big.Int {
 func Erc20Runtime() []byte {
 	var b []byte
 	// dispatch
-	b = append(b, 0x60, 0x00, 0x35) // CALLDATALOAD(0)
+	b = append(b, 0x60, 0x00, 0x35)                                // CALLDATALOAD(0)
 	b = append(b, push32(new(big.Int).Lsh(big.NewInt(1), 224))...) // 2^224
-	b = append(b, 0x04)             // DIV → sel4
-	b = append(b, 0x80)             // DUP1
+	b = append(b, 0x04)                                            // DIV → sel4
+	b = append(b, 0x80)                                            // DUP1
 	b = append(b, push32(selNum(SelectorTotalSupply))...)
 	b = append(b, 0x14)            // EQ
 	b = append(b, 0x60, 235, 0x57) // JUMPI d1
@@ -92,62 +92,62 @@ func Erc20Runtime() []byte {
 	b = append(b, push32(selNum(SelectorTransfer))...)
 	b = append(b, 0x14)
 	b = append(b, 0x61, 0x01, 0x04, 0x57) // JUMPI d3(260) PUSH2
-	b = append(b, 0x80)                  // DUP1
+	b = append(b, 0x80)                   // DUP1
 	b = append(b, push32(selNum(SelectorName))...)
 	b = append(b, 0x14)
 	b = append(b, 0x61, 0x01, 0x37, 0x57) // JUMPI d4(311) PUSH2
-	b = append(b, 0x80)                  // DUP1
+	b = append(b, 0x80)                   // DUP1
 	b = append(b, push32(selNum(SelectorSymbol))...)
 	b = append(b, 0x14)
-	b = append(b, 0x61, 0x01, 0x43, 0x57) // JUMPI d5(323) PUSH2
+	b = append(b, 0x61, 0x01, 0x43, 0x57)       // JUMPI d5(323) PUSH2
 	b = append(b, 0x60, 0x00, 0x60, 0x00, 0xF3) // fallback RETURN(0,0)
 
 	// d1: totalSupply
-	b = append(b, 0x5B)          // JUMPDEST
+	b = append(b, 0x5B)             // JUMPDEST
 	b = append(b, 0x60, 0x00, 0x54) // SLOAD slot0
 	b = append(b, RET32...)
 
 	// d2: balanceOf
-	b = append(b, 0x5B)          // JUMPDEST
+	b = append(b, 0x5B)             // JUMPDEST
 	b = append(b, 0x60, 0x04, 0x35) // CALLDATALOAD(4) → holder
-	b = append(b, 0x54)          // SLOAD slot[holder]
+	b = append(b, 0x54)             // SLOAD slot[holder]
 	b = append(b, RET32...)
 
 	// d3: transfer(to, amount) — 含餘額檢查：bal < amt 則 REVERT(0,0)，
 	// 防止 uint256 下溢（from 餘額不足不得扣款）。
 	// 檢查段消耗 bal/amt 後，ok 段重載 caller 餘額與金額再扣款／加款。
-	b = append(b, 0x5B)          // JUMPDEST (260)
-	b = append(b, 0x60, 0x04, 0x35) // to = CALLDATALOAD(4)
-	b = append(b, 0x33)          // from = CALLER
-	b = append(b, 0x54)          // bal = SLOAD slot[from]
-	b = append(b, 0x60, 0x24, 0x35) // amt = CALLDATALOAD(36)
-	b = append(b, 0x10)          // LT → bal<amt（棧：to from cond）
-	b = append(b, 0x15)          // ISZERO → ok
-	b = append(b, 0x61, 0x01, 0x18, 0x57) // JUMPI → ok(280)
+	b = append(b, 0x5B)                         // JUMPDEST (260)
+	b = append(b, 0x60, 0x04, 0x35)             // to = CALLDATALOAD(4)
+	b = append(b, 0x33)                         // from = CALLER
+	b = append(b, 0x54)                         // bal = SLOAD slot[from]
+	b = append(b, 0x60, 0x24, 0x35)             // amt = CALLDATALOAD(36)
+	b = append(b, 0x10)                         // LT → bal<amt（棧：to from cond）
+	b = append(b, 0x15)                         // ISZERO → ok
+	b = append(b, 0x61, 0x01, 0x18, 0x57)       // JUMPI → ok(280)
 	b = append(b, 0x60, 0x00, 0x60, 0x00, 0xFD) // REVERT(0,0)
-	b = append(b, 0x5B)          // ok: JUMPDEST (280)；棧：to from
-	b = append(b, 0x33)          // CALLER from
-	b = append(b, 0x54)          // SLOAD slot[from] bal
-	b = append(b, 0x60, 0x24, 0x35) // amt
-	b = append(b, 0x03)          // SUB → newFrom
-	b = append(b, 0x33)          // CALLER
-	b = append(b, 0x55)          // SSTORE slot[caller]=newFrom
-	b = append(b, 0x60, 0x04, 0x35) // to
-	b = append(b, 0x54)          // SLOAD slot[to]
-	b = append(b, 0x60, 0x24, 0x35) // amt
-	b = append(b, 0x01)          // ADD → newTo
-	b = append(b, 0x60, 0x04, 0x35) // to
-	b = append(b, 0x55)          // SSTORE slot[to]=newTo
-	b = append(b, 0x60, 0x01)    // PUSH1 1
+	b = append(b, 0x5B)                         // ok: JUMPDEST (280)；棧：to from
+	b = append(b, 0x33)                         // CALLER from
+	b = append(b, 0x54)                         // SLOAD slot[from] bal
+	b = append(b, 0x60, 0x24, 0x35)             // amt
+	b = append(b, 0x03)                         // SUB → newFrom
+	b = append(b, 0x33)                         // CALLER
+	b = append(b, 0x55)                         // SSTORE slot[caller]=newFrom
+	b = append(b, 0x60, 0x04, 0x35)             // to
+	b = append(b, 0x54)                         // SLOAD slot[to]
+	b = append(b, 0x60, 0x24, 0x35)             // amt
+	b = append(b, 0x01)                         // ADD → newTo
+	b = append(b, 0x60, 0x04, 0x35)             // to
+	b = append(b, 0x55)                         // SSTORE slot[to]=newTo
+	b = append(b, 0x60, 0x01)                   // PUSH1 1
 	b = append(b, RET32...)
 
 	// d4: name
-	b = append(b, 0x5B)          // JUMPDEST
+	b = append(b, 0x5B)             // JUMPDEST
 	b = append(b, 0x60, 0x01, 0x54) // SLOAD slot1
 	b = append(b, RET32...)
 
 	// d5: symbol
-	b = append(b, 0x5B)          // JUMPDEST
+	b = append(b, 0x5B)             // JUMPDEST
 	b = append(b, 0x60, 0x02, 0x54) // SLOAD slot2
 	b = append(b, RET32...)
 	return b
@@ -186,10 +186,10 @@ func Erc20InitWithMeta(totalSupply *big.Int, name, symbol []byte) []byte {
 	initLen := len(b)
 	rl := len(runtime)
 	src := initLen + 15
-	b = append(b, 0x61, byte(rl>>8), byte(rl&0xFF))      // PUSH2 size
-	b = append(b, 0x61, byte(src>>8), byte(src&0xFF))    // PUSH2 src
-	b = append(b, 0x60, 0x00)                            // PUSH dest
-	b = append(b, 0x39)                                  // CODECOPY（dest 棧頂）
+	b = append(b, 0x61, byte(rl>>8), byte(rl&0xFF))                   // PUSH2 size
+	b = append(b, 0x61, byte(src>>8), byte(src&0xFF))                 // PUSH2 src
+	b = append(b, 0x60, 0x00)                                         // PUSH dest
+	b = append(b, 0x39)                                               // CODECOPY（dest 棧頂）
 	b = append(b, 0x61, byte(rl>>8), byte(rl&0xFF), 0x60, 0x00, 0xF3) // RETURN(0, rl)
 	return append(b, runtime...)
 }

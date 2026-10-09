@@ -1,9 +1,9 @@
 package node
 
 import (
-	"fmt"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"

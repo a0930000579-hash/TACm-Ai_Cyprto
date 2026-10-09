@@ -1,8 +1,30 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M54）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M56）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M54）
+## 本版重點（M56）
+
+- **全系統盤點與清理（無 Python 殘留）**：
+  1. 刪除廢棄檔案：`.fix_pools.py`（Python 殘留）、舊二進位 `web`（與 `tacweb` 重複）、全部 `.smoke*` 測試暫存。
+  2. `DEPLOY.md`（M26 舊版）移至 `_legacy/DEPLOY_M26.md`（保留不刪）；97 個歷史 zip 移至專案根 `_archive/`（僅保留最新 `tacm-go-m55.zip`）。
+  3. `gofmt -w` 統一全碼庫格式（Go 慣用）。
+- **整套系統實跑驗證（先測後交）**：
+  1. `go test ./...` 全量全綠（含 node 102s 大套件）、`go vet ./...` 通過。
+  2. 單節點冒煙：RPC（/health /status /api/chain/stats /api/guest/address）全 200；Web 全部路由（/ /wallet /exchange /dashboard /mining /community /governance /defi /c2c /tokens /dex /auth/login /auth/register）全 200；白皮書中/英 302 正確；`eth_blockNumber` 回正確高度；訪客地址產生正常；出塊持續（h1=29→h2=32）。
+  3. **3 節點 P2P 最終確認**：錨點出塊 14，兩個 follower 同步至 13；節點互相發現（B↔C 皆見彼此且 `online:true`）。
+- **MAINNET.md 新增 3.1「Render 免費站改為跟隨節點＋公開入口」**：Render 控制台完整 Build/Start Command（`-p2p -p2p-url https://... -p2p-seed http://錨點:8080 -p2p-follower`）＋防休眠 cron 建議＋驗證方式。
+
+## 上版重點（M55）
+
+- **主網上線包（完全自主主網，不依賴 BSC/第三方）**：
+  1. **tacweb 新增 P2P CLI**：`-p2p`（啟用聯網）、`-p2p-url`（本節點對外 HTTP 基址＝web 端口）、`-p2p-seed`（引導節點，逗號分隔）、`-p2p-follower`（跟隨節點：不主動 PoW 出塊，經 P2P 同步並參與 BFT）——多節點/主網模式現可經 CLI 直接組網。
+  2. **`MAINNET.md`（新，主網上線手冊）**：主網參數、錨點架設（一鍵＋手動）、別人連入三種方式、手機節點（Termux）教學、監控、上線 Checklist、常見問題。
+  3. **`scripts/deploy_mainnet.sh`（新，一鍵部署）**：build→systemd 託管→防火牆，支援 `--follower`／`--seed`。
+  4. **`scripts/monitor.sh`（新，監控）**：健康/高度/全鏈統計/P2P peers。
+  5. **M55 實測證據（本機 3 節點真進程組網）**：錨點 PoW 出塊 A=12，跟隨節點 P2P 同步 B=11，peer `online:true`——主網模式實跑驗證通過。
+- 已知坑（P2P seed）：`-p2p-seed`/`-p2p-url` 填 **web 端口 URL**（http://IP:8080，client 自動加 /p2p/），非獨立端口。
+
+## 上版重點（M54）
 
 - **白皮書 4.0（中英同步更新，Web /whitepaper 已上線）**：
   1. 路線圖「已完成階段」擴充至第八階段（P2P/BFT、VM/Token Studio/DEX/流動性挖礦、L2/eth_*/BSC 橋/SDK），未來規劃僅保留 ZK 與主網激勵階段——與實際進度一致。

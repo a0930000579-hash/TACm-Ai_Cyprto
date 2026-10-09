@@ -139,7 +139,7 @@ func rlpDecodeItem(b []byte) (rlpItem, error) {
 		if err != nil {
 			return rlpItem{}, err
 		}
-		content, total = b[1+h : 1+h+n], 1+h+n
+		content, total = b[1+h:1+h+n], 1+h+n
 	case lead <= 0xF7: // 短 list：長度 = lead-0xC0
 		l, err := shortLen(0xC0)
 		if err != nil {
@@ -151,7 +151,7 @@ func rlpDecodeItem(b []byte) (rlpItem, error) {
 		if err != nil {
 			return rlpItem{}, err
 		}
-		content, total = b[1+h : 1+h+n], 1+h+n
+		content, total = b[1+h:1+h+n], 1+h+n
 	}
 	if lead >= 0xC0 {
 		items, err := rlpDecodeItems(content)
@@ -310,8 +310,6 @@ func VerifyEthTx(tx map[string]any) bool {
 	}
 	return true
 }
-
-
 
 // getStringField 取 map 字串欄位（缺失回空串）。
 func getStringField(m map[string]any, k string) string {

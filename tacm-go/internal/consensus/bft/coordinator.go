@@ -181,8 +181,8 @@ type Checkpoint struct {
 
 // FinalityLog 記錄已最終化檢查點。並發安全。
 type FinalityLog struct {
-	mu           sync.Mutex
-	checkpoints  map[int64]Checkpoint
+	mu          sync.Mutex
+	checkpoints map[int64]Checkpoint
 }
 
 // NewFinalityLog 構造最終化日誌。

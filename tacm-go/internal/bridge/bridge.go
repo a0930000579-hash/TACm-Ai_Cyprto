@@ -153,7 +153,7 @@ func (b *Bridge) createTransfer(source, target, srcAddr, tgtAddr string,
 	bridgeTxID := "bridge-" + hex.EncodeToString(crypto.SHA256([]byte(seed)))[:32]
 
 	tx := &BridgeTx{
-		BridgeTxID: bridgeTxID,
+		BridgeTxID:  bridgeTxID,
 		SourceChain: source, TargetChain: target,
 		SourceAddress: srcAddr, TargetAddress: tgtAddr,
 		Amount: amount, Fee: fee, ReceivedAmount: received,

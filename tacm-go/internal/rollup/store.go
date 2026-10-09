@@ -170,9 +170,9 @@ func (s *Store) LoadBlocks() ([]L2Block, error) {
 	var out []L2Block
 	for rows.Next() {
 		var (
-			b                              L2Block
-			txHashes, preSnap, l1Tx        sql.NullString
-			proposer, stateRoot, prevRoot  sql.NullString
+			b                             L2Block
+			txHashes, preSnap, l1Tx       sql.NullString
+			proposer, stateRoot, prevRoot sql.NullString
 		)
 		if err := rows.Scan(&b.Height, &b.BatchIndex, &b.TxCount, &txHashes,
 			&stateRoot, &prevRoot, &proposer, &b.Timestamp, &l1Tx, &b.Status,
@@ -303,8 +303,8 @@ func (s *Store) GetWithdrawal(id string) (*Withdrawal, error) {
 	row := s.db.QueryRow(`SELECT withdraw_id,address,amount,status,
 		created_at,finalized_at FROM l2_withdrawals WHERE withdraw_id=?`, id)
 	var (
-		w      Withdrawal
-		final  sql.NullInt64
+		w     Withdrawal
+		final sql.NullInt64
 	)
 	err := row.Scan(&w.ID, &w.Address, &w.Amount, &w.Status, &w.CreatedAt, &final)
 	if err == sql.ErrNoRows {

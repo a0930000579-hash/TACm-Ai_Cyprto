@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	MaxStackSize  = 1024
-	MaxCallDepth  = 1024
-	MaxCodeSize   = 0x6000 // 24576
-	AddrByteLen   = 20
-	WordByteLen   = 32
-	MaxExecSteps  = 1_000_000
+	MaxStackSize = 1024
+	MaxCallDepth = 1024
+	MaxCodeSize  = 0x6000 // 24576
+	AddrByteLen  = 20
+	WordByteLen  = 32
+	MaxExecSteps = 1_000_000
 )
 
 var (

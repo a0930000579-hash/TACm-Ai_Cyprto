@@ -32,8 +32,8 @@ func (s *Service) tiUSDSupplies() (floor, cap int64, enabled bool) {
 		return 0, 0, false
 	}
 	// TiUSD 以 1e6（micro）為最小單位且 int64 承載——總供應 52,003,300×1e6＝5.2e13 在 int64 安全範圍。
-	cap = int64(math.Round(s.tacmMaxSupply*1e6)) // 總供應量 1:1 錨定（1e6 最小單位）
-	floor = cap * TiUSDFloorBps / 10000          // 總供應 × 0.330
+	cap = int64(math.Round(s.tacmMaxSupply * 1e6)) // 總供應量 1:1 錨定（1e6 最小單位）
+	floor = cap * TiUSDFloorBps / 10000            // 總供應 × 0.330
 	return floor, cap, true
 }
 

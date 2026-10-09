@@ -4,14 +4,14 @@ package pos
 
 // Config 為 PoS 質押參數。
 type Config struct {
-	MinStake         float64 // 最小質押量
-	MaxStake         float64 // 最大質押量
-	UnlockPeriod     int64   // 解鎖期（秒）
-	AnnualYield      float64 // 年化收益率
-	ValidatorCount   int     // 驗證人數量
-	ValidatorMinStk  float64 // 成為驗證人最小質押
-	RewardInterval   int64   // 收益分配間隔（秒）
-	SlashRate        float64 // 罰沒率
+	MinStake        float64 // 最小質押量
+	MaxStake        float64 // 最大質押量
+	UnlockPeriod    int64   // 解鎖期（秒）
+	AnnualYield     float64 // 年化收益率
+	ValidatorCount  int     // 驗證人數量
+	ValidatorMinStk float64 // 成為驗證人最小質押
+	RewardInterval  int64   // 收益分配間隔（秒）
+	SlashRate       float64 // 罰沒率
 }
 
 // DefaultConfig 返回與系統一致的默認參數。

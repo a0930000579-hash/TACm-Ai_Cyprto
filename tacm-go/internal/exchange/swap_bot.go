@@ -128,13 +128,13 @@ func divPrice(quoteAmt, price Amount, baseDec int) Amount {
 
 // BotConfig 為自動交易機器人配置：在指定交易對兩側定期掛買/賣單。
 type BotConfig struct {
-	UID      string `json:"uid"`
-	Market   string `json:"market"`
-	MidPrice string `json:"mid_price"` // 基準價（quote 最小單位十進制）
-	SpreadPct int   `json:"spread_pct"` // 掛單價差（bps/2 分別為買/賣）
-	Qty      string `json:"qty"`        // 每側掛單數量（base 最小單位十進制）
-	IntervalSec int `json:"interval_sec"` // 刷新間隔（秒）
-	CancelOnRefresh bool `json:"cancel_on_refresh"` // 每次刷新先撤舊單
+	UID             string `json:"uid"`
+	Market          string `json:"market"`
+	MidPrice        string `json:"mid_price"`         // 基準價（quote 最小單位十進制）
+	SpreadPct       int    `json:"spread_pct"`        // 掛單價差（bps/2 分別為買/賣）
+	Qty             string `json:"qty"`               // 每側掛單數量（base 最小單位十進制）
+	IntervalSec     int    `json:"interval_sec"`      // 刷新間隔（秒）
+	CancelOnRefresh bool   `json:"cancel_on_refresh"` // 每次刷新先撤舊單
 }
 
 // Bot 為一個運行中的自動交易機器人。
@@ -152,15 +152,15 @@ type Bot struct {
 
 // BotStatus 為機器人運行視圖。
 type BotStatus struct {
-	ID        string   `json:"id"`
-	Status    string   `json:"status"`
-	Market    string   `json:"market"`
-	MidPrice  string   `json:"mid_price"`
-	SpreadBps int      `json:"spread_bps"`
-	Qty       string   `json:"qty"`
-	OrderIDs  []int64  `json:"order_ids"`
-	Trades    int      `json:"trades"`
-	StartedAt int64    `json:"started_at"`
+	ID        string  `json:"id"`
+	Status    string  `json:"status"`
+	Market    string  `json:"market"`
+	MidPrice  string  `json:"mid_price"`
+	SpreadBps int     `json:"spread_bps"`
+	Qty       string  `json:"qty"`
+	OrderIDs  []int64 `json:"order_ids"`
+	Trades    int     `json:"trades"`
+	StartedAt int64   `json:"started_at"`
 }
 
 // StartBot 啟動自動交易機器人（Goroutine 定期掛買/賣單）。

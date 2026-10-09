@@ -25,6 +25,7 @@ var erc20BalanceOfCode = append([]byte{
 //
 //	calldata[4..36]=to, calldata[36..68]=amount, caller=from
 //	1) slot[from] -= amount   2) slot[to] += amount   3) 回傳 1
+//
 // 棧序依 EVM LIFO 語義設計：SUB 為「次-頂」、SSTORE 棧頂為 key（無需 SWAP1）。
 var erc20TransferCode = append([]byte{
 	0x60, 0x04, 0x35, // to

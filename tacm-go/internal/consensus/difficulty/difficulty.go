@@ -6,10 +6,10 @@ package difficulty
 import "math"
 
 const (
-	RetargetInterval  = 10  // 每 10 個區塊調整一次
-	TargetBlockTime   = 1.0 // 目標出塊間隔（秒）
-	MinDifficulty     = 1
-	MaxDifficulty     = 8   // PoW 前導零上限
+	RetargetInterval   = 10  // 每 10 個區塊調整一次
+	TargetBlockTime    = 1.0 // 目標出塊間隔（秒）
+	MinDifficulty      = 1
+	MaxDifficulty      = 8   // PoW 前導零上限
 	MaxAdjustmentRatio = 4.0 // 單次最多 ×4 / ÷4
 )
 

@@ -15,12 +15,12 @@ import (
 
 // bscStubE2E 為 e2e 的 BSC JSON-RPC 樁（與 bridge 包測試一致的最小實作）。
 type bscStubE2E struct {
-	t          *testing.T
-	rawTxs     []string
-	blockNum   string
-	logs       []bridge.BSClog
-	tokenAddr  string
-	lockProxy  string
+	t         *testing.T
+	rawTxs    []string
+	blockNum  string
+	logs      []bridge.BSClog
+	tokenAddr string
+	lockProxy string
 }
 
 func (s *bscStubE2E) handler(w http.ResponseWriter, r *http.Request) {

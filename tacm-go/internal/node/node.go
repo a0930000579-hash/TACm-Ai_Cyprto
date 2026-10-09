@@ -15,22 +15,22 @@ import (
 	"sync"
 	"time"
 
+	bridgepkg "tacm/internal/bridge"
+	"tacm/internal/c2c"
 	"tacm/internal/chaindb"
-	"tacm/internal/dex"
+	"tacm/internal/community"
 	"tacm/internal/config"
 	"tacm/internal/consensus/bft"
 	"tacm/internal/consensus/difficulty"
-	bridgepkg "tacm/internal/bridge"
-	"tacm/internal/c2c"
-	"tacm/internal/community"
+	"tacm/internal/crypto"
 	"tacm/internal/defi"
+	"tacm/internal/dex"
 	"tacm/internal/exchange"
 	"tacm/internal/governance"
-	"tacm/internal/wallet"
-	"tacm/internal/crypto"
 	"tacm/internal/p2p"
 	"tacm/internal/rollup"
 	"tacm/internal/vm"
+	"tacm/internal/wallet"
 )
 
 const (
@@ -50,7 +50,7 @@ type Node struct {
 	keypair     *crypto.KeyPair
 	nodeAddress string
 
-	blockTime time.Duration
+	blockTime   time.Duration
 	onlineSince time.Time
 
 	mu       sync.Mutex // 保護以下共識狀態
@@ -66,16 +66,16 @@ type Node struct {
 	consensusWake chan struct{}
 
 	// BFT 即時最終性
-	vset          *bft.ValidatorSet
-	bftNode       *bft.BFTNode
-	finalityLog   *bft.FinalityLog
-	finalizedH    int64
-	precommitMu   sync.Mutex
+	vset           *bft.ValidatorSet
+	bftNode        *bft.BFTNode
+	finalityLog    *bft.FinalityLog
+	finalizedH     int64
+	precommitMu    sync.Mutex
 	precommitVotes map[int64]map[string]bft.Vote
 
 	// M13 錢包帳本（多資產：TACm/TiUSD/USDT；隨鏈上區塊同步）。
-	walletSvc   *wallet.Service
-	exchangeSvc *exchange.Service
+	walletSvc    *wallet.Service
+	exchangeSvc  *exchange.Service
 	communitySvc *community.Store
 	defiSvc      *defi.Store
 	c2cSvc       *c2c.Store
@@ -85,8 +85,8 @@ type Node struct {
 	gov *governance.Governance
 
 	// M12 view-change 硬化：多數認證票集（>2/3 驗證人簽名才切輪）。
-	vcMu          sync.Mutex
-	viewChangeTk  *viewChangeTickets
+	vcMu         sync.Mutex
+	viewChangeTk *viewChangeTickets
 
 	// P2P 網絡（可選；nil 時本節點不廣播，作為孤立節點運行）
 	p2pNet *p2p.Network
@@ -111,10 +111,10 @@ type Node struct {
 	l2svc *rollup.Service
 
 	// 跨鏈橋（可選；nil=不啟用）
-	bridge           *bridgepkg.Bridge
-	bscRelay         *bridgepkg.Relayer
-	bscRelayCancel   context.CancelFunc
-	bridgeNetworked  bool // 已配置守衛網絡（跨鏈提案經 P2P 傳播聚合多簽）
+	bridge          *bridgepkg.Bridge
+	bscRelay        *bridgepkg.Relayer
+	bscRelayCancel  context.CancelFunc
+	bridgeNetworked bool // 已配置守衛網絡（跨鏈提案經 P2P 傳播聚合多簽）
 }
 
 // New 創建節點：打開數據庫、重放動態難度、載入或生成節點密鑰。
@@ -137,13 +137,13 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 	}
 
 	n := &Node{
-		cfg:       cfg,
-		db:        db,
-		nodeID:    nodeID,
-		blockTime: bt,
-		baseDiff:  baseDifficulty,
-		adjDiff:   baseDifficulty,
-		stopCh:    make(chan struct{}),
+		cfg:         cfg,
+		db:          db,
+		nodeID:      nodeID,
+		blockTime:   bt,
+		baseDiff:    baseDifficulty,
+		adjDiff:     baseDifficulty,
+		stopCh:      make(chan struct{}),
 		onlineSince: time.Now(),
 	}
 
@@ -653,9 +653,9 @@ func (n *Node) consensusLoop() {
 
 // consensusState 為 consensusLoop 跨輪保留的輪次計時狀態。
 type consensusState struct {
-	target     int64
-	since      time.Time
-	lastRound  int32
+	target    int64
+	since     time.Time
+	lastRound int32
 }
 
 // waitConsensus 等待下一個出塊時機；分佈式模式下可被 view-change 喚醒。

@@ -51,7 +51,7 @@ func (d *nodeDS) Wallet(addr string) (*WalletView, error) {
 	sup, _ := d.n.Wallet().TiUSDSummary()
 	synced, _ := d.n.Wallet().SyncedHeight()
 	w := &WalletView{
-		Address:     addr,
+		Address: addr,
 		// M32：錢包只顯示個人資產（十進制縮放）——raw 不再外洩。
 		TACm:        wallet.FormatAmountBig(acc.TACmBalance),
 		TiUSD:       wallet.FormatAmountI64(acc.TiUSDBalance, wallet.AssetTiUSD),
@@ -75,7 +75,6 @@ func (d *nodeDS) Wallet(addr string) (*WalletView, error) {
 	}
 	return w, nil
 }
-
 
 // formatDelta 帳本變動縮放（依資產精度），保留符號。
 func formatDelta(delta, asset string) string {

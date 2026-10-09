@@ -3,7 +3,7 @@ package vm
 import "errors"
 
 var (
-	ErrStackOverflow = errors.New("vm: stack overflow")
+	ErrStackOverflow  = errors.New("vm: stack overflow")
 	ErrStackUnderflow = errors.New("vm: stack underflow")
 	ErrOutOfGas       = errors.New("vm: out of gas")
 	ErrInvalidJump    = errors.New("vm: invalid jump destination")

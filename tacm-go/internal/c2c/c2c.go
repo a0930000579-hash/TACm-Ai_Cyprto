@@ -50,23 +50,23 @@ type Ad struct {
 
 // Order C2C 訂單。
 type Order struct {
-	ID              int64   `json:"id"`
-	OrderNo         string  `json:"order_no"`
-	AdID            int64   `json:"ad_id"`
-	Buyer           string  `json:"buyer"`
-	Seller          string  `json:"seller"`
-	Asset           string  `json:"asset"`
-	Fiat            string  `json:"fiat"`
-	Price           float64 `json:"price"`
-	Amount          float64 `json:"amount"`
-	TotalFiat       float64 `json:"total_fiat"`
-	PaymentMethod   string  `json:"payment_method"`
-	Status          string  `json:"status"`
-	BuyerPaidAt     int64   `json:"buyer_paid_at"`
-	SellerReleasedAt int64  `json:"seller_released_at"`
-	CreatedAt       int64   `json:"created_at"`
-	DisputeReason   string  `json:"dispute_reason"`
-	DisputeAt       int64   `json:"dispute_at"`
+	ID               int64   `json:"id"`
+	OrderNo          string  `json:"order_no"`
+	AdID             int64   `json:"ad_id"`
+	Buyer            string  `json:"buyer"`
+	Seller           string  `json:"seller"`
+	Asset            string  `json:"asset"`
+	Fiat             string  `json:"fiat"`
+	Price            float64 `json:"price"`
+	Amount           float64 `json:"amount"`
+	TotalFiat        float64 `json:"total_fiat"`
+	PaymentMethod    string  `json:"payment_method"`
+	Status           string  `json:"status"`
+	BuyerPaidAt      int64   `json:"buyer_paid_at"`
+	SellerReleasedAt int64   `json:"seller_released_at"`
+	CreatedAt        int64   `json:"created_at"`
+	DisputeReason    string  `json:"dispute_reason"`
+	DisputeAt        int64   `json:"dispute_at"`
 }
 
 // Store C2C 資料庫（SQLite）。

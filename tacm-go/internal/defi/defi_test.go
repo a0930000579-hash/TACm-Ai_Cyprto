@@ -6,7 +6,6 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite" // 註冊 sqlite driver（測試直接開啟資料庫用）
-
 )
 
 func openTest(t *testing.T) *Store {

@@ -13,13 +13,13 @@ import (
 
 // Rollup 為 Layer2 Optimistic Rollup 引擎。
 type Rollup struct {
-	cfg    Config
-	store  *Store
-	tree   *StateTree
-	mu     sync.Mutex
+	cfg     Config
+	store   *Store
+	tree    *StateTree
+	mu      sync.Mutex
 	mempool []*L2Transaction
-	blocks map[int64]*L2Block
-	l1     L1Submitter
+	blocks  map[int64]*L2Block
+	l1      L1Submitter
 }
 
 // New 建立 Rollup 引擎並從持久層恢復賬戶、塊與待處理交易。
@@ -287,7 +287,7 @@ func (r *Rollup) SubmitToL1(height int64) (*SubmissionView, error) {
 	}
 	return &SubmissionView{
 		OK: true, L2Height: height, L1TxHash: l1Hash,
-		StateRoot: block.StateRoot,
+		StateRoot:         block.StateRoot,
 		ChallengeDeadline: proof.ChallengeDeadline,
 	}, nil
 }
@@ -316,12 +316,12 @@ func (r *Rollup) FinalizeBlock(height int64, now int64) error {
 
 // ChallengeView 為欺詐挑戰結果。
 type ChallengeView struct {
-	OK              bool   `json:"ok"`
-	ChallengeSuccess bool  `json:"challenge_success"`
-	L2Height        int64  `json:"l2_height"`
-	ClaimedRoot     string `json:"claimed_root,omitempty"`
-	CorrectRoot     string `json:"correct_root"`
-	Message         string `json:"message"`
+	OK               bool   `json:"ok"`
+	ChallengeSuccess bool   `json:"challenge_success"`
+	L2Height         int64  `json:"l2_height"`
+	ClaimedRoot      string `json:"claimed_root,omitempty"`
+	CorrectRoot      string `json:"correct_root"`
+	Message          string `json:"message"`
 }
 
 // ChallengeBlock 在挑戰期內基於執行前快照真實重放，比對狀態根。
@@ -437,7 +437,7 @@ func (r *Rollup) DepositToL2(address string, amount float64, l1TxHash string) (*
 	}
 	now := time.Now().Unix()
 	depTx := L2Transaction{
-		TxHash: "deposit_" + l1TxHash,
+		TxHash:   "deposit_" + l1TxHash,
 		FromAddr: "L1_BRIDGE", ToAddr: address,
 		Amount: amount, Status: StatusConfirmed,
 		Ts: now, Signature: "deposit", Pubkey: "L1_BRIDGE",

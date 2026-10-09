@@ -15,7 +15,7 @@ type Network struct {
 	mux    *http.ServeMux
 
 	mu         sync.Mutex
-	peers      map[string]*Peer // nodeID（或臨時 peer@url）-> Peer
+	peers      map[string]*Peer  // nodeID（或臨時 peer@url）-> Peer
 	urlIndex   map[string]string // baseURL -> nodeID
 	seenBlocks map[string]struct{}
 	seenTxs    map[string]struct{}

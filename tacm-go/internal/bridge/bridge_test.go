@@ -91,7 +91,7 @@ func testValidator(t *testing.T, kp *crypto.KeyPair, name string) Validator {
 	return Validator{
 		Address: addr, Name: name,
 		PublicKey: hex.EncodeToString(kp.PublicKeyCompressed()),
-		Active: true, JoinedAt: time.Now().Unix(),
+		Active:    true, JoinedAt: time.Now().Unix(),
 	}
 }
 

@@ -7,22 +7,22 @@ import (
 
 // Order 為一張掛單（最小單位整數價格/數量）。
 type Order struct {
-	ID          int64       `json:"id"`
-	UID         string      `json:"uid"`
-	Market      string      `json:"market"`
-	Side        Side        `json:"side"`
-	Type        OrderType   `json:"type"`
-	Price       Amount      `json:"-"` // 限價單：目標價；市價單：0（以對端價成交）
-	Qty         Amount      `json:"-"`
-	Filled      Amount      `json:"-"`
-	Status      OrderStatus `json:"status"`
-	CreatedTs   int64       `json:"created_ts"`
-	PriceStr    string      `json:"price"`
-	QtyStr      string      `json:"qty"`
-	FilledStr   string      `json:"filled"`
-	RemainingStr string     `json:"remaining"`
-	QuoteBase   Asset       `json:"-"`
-	QuoteQuote  Asset       `json:"-"`
+	ID           int64       `json:"id"`
+	UID          string      `json:"uid"`
+	Market       string      `json:"market"`
+	Side         Side        `json:"side"`
+	Type         OrderType   `json:"type"`
+	Price        Amount      `json:"-"` // 限價單：目標價；市價單：0（以對端價成交）
+	Qty          Amount      `json:"-"`
+	Filled       Amount      `json:"-"`
+	Status       OrderStatus `json:"status"`
+	CreatedTs    int64       `json:"created_ts"`
+	PriceStr     string      `json:"price"`
+	QtyStr       string      `json:"qty"`
+	FilledStr    string      `json:"filled"`
+	RemainingStr string      `json:"remaining"`
+	QuoteBase    Asset       `json:"-"`
+	QuoteQuote   Asset       `json:"-"`
 }
 
 // remaining 返回剩餘數量。
@@ -30,13 +30,13 @@ func (o *Order) remaining() Amount { return o.Qty.Sub(o.Filled) }
 
 // PriceLevel 為訂單簿一檔。
 type PriceLevel struct {
-	Price Amount `json:"-"`
-	Qty   Amount `json:"-"`
-	PriceStr string `json:"price"`
-	QtyStr   string `json:"qty"`
-	OrderCount int  `json:"order_count"`
-	PriceAsset Asset `json:"-"`
-	QtyAsset  Asset `json:"-"`
+	Price      Amount `json:"-"`
+	Qty        Amount `json:"-"`
+	PriceStr   string `json:"price"`
+	QtyStr     string `json:"qty"`
+	OrderCount int    `json:"order_count"`
+	PriceAsset Asset  `json:"-"`
+	QtyAsset   Asset  `json:"-"`
 }
 
 // OrderBook 為價格-時間優先的訂單簿（buy 降序、sell 升序聚合）。

@@ -3,10 +3,10 @@ package main
 
 import (
 	"context"
-	"os"
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"strconv"
 	"strings"
@@ -18,6 +18,7 @@ import (
 	"tacm/internal/config"
 	"tacm/internal/crypto"
 	"tacm/internal/node"
+	"tacm/internal/p2p"
 	"tacm/internal/web"
 )
 
@@ -40,6 +41,10 @@ func main() {
 	bscLockProxy := flag.String("bsc-lock-proxy", "", "BSC 側 LockProxy 合約地址（0x+40hex）")
 	bscPollMs := flag.Int("bsc-poll-ms", 10000, "BSC 中繼輪詢間隔（毫秒）")
 	networkFlag := flag.String("network", "mainnet", "網路段：mainnet | testnet（testnet 自動分離資料目錄與鏈 ID）")
+	p2pEnabled := flag.Bool("p2p", false, "啟用 P2P 聯網（多節點/主網模式）")
+	p2pURL := flag.String("p2p-url", "", "本節點對外可達 HTTP 基址（即 web/rpc 端口，如 http://1.2.3.4:8080；P2P 端點自動位於 /p2p/ 前綴）")
+	p2pSeed := flag.String("p2p-seed", "", "初始引導節點 HTTP 基址（逗號分隔，如 http://1.2.3.4:8080）")
+	p2pFollower := flag.Bool("p2p-follower", false, "以跟隨節點模式啟動（不主動 PoW 出塊，經 P2P 同步區塊並參與 BFT 投票）")
 	flag.Parse()
 
 	cfg := config.Default()
@@ -128,14 +133,46 @@ func main() {
 	rpcHandler := rpcServer.Handler()
 	var rpcSrv *http.Server
 
+	// P2P 聯網（可選）：錨點節點提供 seed，其餘節點以 -p2p-seed 連入；
+	// follower 模式不主動 PoW 出塊，經 P2P 同步區塊並參與 BFT 投票。
+	var p2pNet *p2p.Network
+	if *p2pEnabled {
+		if *p2pURL == "" {
+			log.Fatalf("啟用 -p2p 需提供 -p2p-url（本節點 P2P 對外基址）")
+		}
+		seeds := []string{}
+		for _, s0 := range strings.Split(*p2pSeed, ",") {
+			if s0 = strings.TrimSpace(s0); s0 != "" {
+				seeds = append(seeds, s0)
+			}
+		}
+		netw, err := n.AttachP2P(*p2pURL, seeds)
+		if err != nil {
+			log.Fatalf("掛載 P2P 網絡失敗: %v", err)
+		}
+		p2pNet = netw
+	}
+
 	// Web 區塊瀏覽。
 	wserver, err := web.New(web.NewNodeDataSource(n))
 	if err != nil {
 		log.Fatalf("創建 Web 服務失敗: %v", err)
 	}
 	// 先啟動節點共識/出塊，再暴露 Web/RPC（避免「RPC 可達但尚未出塊」）。
-	n.Start()
-	log.Printf("[node] 節點 %s 已啟動，地址 %s", *nodeID, n.Address())
+	if *p2pEnabled && p2pNet != nil {
+		p2pNet.Start(context.Background())
+		log.Printf("[p2p] P2P 已啟動：%s（seed=%d）", *p2pURL, len(strings.Split(*p2pSeed, ",")))
+	}
+	if *p2pFollower {
+		if !*p2pEnabled {
+			log.Fatalf("-p2p-follower 需與 -p2p 一起使用（跟隨節點依賴 P2P 同步）")
+		}
+		n.StartAsFollower()
+		log.Printf("[node] 節點 %s 以跟隨模式啟動，地址 %s", *nodeID, n.Address())
+	} else {
+		n.Start()
+		log.Printf("[node] 節點 %s 已啟動，地址 %s", *nodeID, n.Address())
+	}
 
 	var webSrv *http.Server
 	if *webPort == *rpcPort {
@@ -146,7 +183,18 @@ func main() {
 			log.Fatalf("Web handler 型別不支援同埠合併")
 		}
 		rpcServer.MountInto(wmux)
-		rpcSrv = &http.Server{Addr: addr(*webPort), Handler: wmux}
+		finalHandler := http.Handler(wmux)
+		if p2pNet != nil {
+			p2pHandler := p2pNet.Handler()
+			finalHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/p2p/") {
+					p2pHandler.ServeHTTP(w, r)
+					return
+				}
+				wmux.ServeHTTP(w, r)
+			})
+		}
+		rpcSrv = &http.Server{Addr: addr(*webPort), Handler: finalHandler}
 		log.Printf("[web+rpc] 同埠合併模式 :%d（RPC /health /status /api/* 已掛載）", *webPort)
 		go func() {
 			if err := rpcSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -154,6 +202,17 @@ func main() {
 			}
 		}()
 	} else {
+		if p2pNet != nil {
+			baseHandler := rpcHandler
+			p2pHandler := p2pNet.Handler()
+			rpcHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/p2p/") {
+					p2pHandler.ServeHTTP(w, r)
+					return
+				}
+				baseHandler.ServeHTTP(w, r)
+			})
+		}
 		rpcSrv = &http.Server{Addr: addr(*rpcPort), Handler: rpcHandler}
 		go func() {
 			log.Printf("[rpc] 節點 RPC: http://0.0.0.0:%d", *rpcPort)
@@ -182,6 +241,9 @@ func main() {
 	}
 	if webSrv != nil {
 		_ = webSrv.Shutdown(ctx)
+	}
+	if p2pNet != nil {
+		p2pNet.Close()
 	}
 	if err := n.Close(); err != nil {
 		log.Printf("[shutdown] 關閉出錯: %v", err)

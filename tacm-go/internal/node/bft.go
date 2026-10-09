@@ -304,12 +304,12 @@ func (n *Node) ValidatorSet() *bft.ValidatorSet { return n.vset }
 
 // FinalityInfo 為最終性狀態。
 type FinalityInfo struct {
-	FinalizedHeight int64           `json:"finalized_height"`
-	TipHeight       int64           `json:"tip_height"`
-	ValidatorCount  int             `json:"validator_count"`
-	TotalPower      int             `json:"total_power"`
-	QuorumPower     int             `json:"quorum_power"`
-	HasBFT          bool            `json:"has_bft"`
+	FinalizedHeight int64 `json:"finalized_height"`
+	TipHeight       int64 `json:"tip_height"`
+	ValidatorCount  int   `json:"validator_count"`
+	TotalPower      int   `json:"total_power"`
+	QuorumPower     int   `json:"quorum_power"`
+	HasBFT          bool  `json:"has_bft"`
 }
 
 // GetFinalityInfo 返回最終性概況。
@@ -326,12 +326,12 @@ func (n *Node) GetFinalityInfo() FinalityInfo {
 
 // FinalityProof 為某高度的最終性證明（precommit 投票集）。
 type FinalityProof struct {
-	Height     int64       `json:"height"`
-	BlockHash  string      `json:"block_hash"`
-	Votes      []bft.Vote  `json:"votes"`
-	VotePower  int         `json:"vote_power"`
+	Height      int64      `json:"height"`
+	BlockHash   string     `json:"block_hash"`
+	Votes       []bft.Vote `json:"votes"`
+	VotePower   int        `json:"vote_power"`
 	QuorumPower int        `json:"quorum_power"`
-	Finalized  bool        `json:"finalized"`
+	Finalized   bool       `json:"finalized"`
 }
 
 // GetFinalityProof 返回某高度的 precommit 最終性證明。
