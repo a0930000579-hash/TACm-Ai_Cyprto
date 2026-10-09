@@ -64,6 +64,9 @@ func (c *ChainDB) InsertBlock(block *Block, txs []Transaction) error {
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("chaindb: 提交區塊 %d 失敗: %w", block.Height, err)
 	}
+	if c.cache != nil {
+		c.cache.clear()
+	}
 	return nil
 }
 
@@ -182,7 +185,13 @@ func (c *ChainDB) TruncateFromHeight(height int64) error {
 	if _, err := tx.Exec("DELETE FROM mempool"); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if c.cache != nil {
+		c.cache.clear()
+	}
+	return nil
 }
 
 // RebuildAccounts 從創世起順序重放全部區塊，重建賬戶餘額，返回鏈頂高度。
@@ -231,6 +240,9 @@ func (c *ChainDB) RebuildAccounts() (int64, error) {
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
+	if c.cache != nil {
+		c.cache.clear()
+	}
 	return tip, nil
 }
 
@@ -256,6 +268,9 @@ func (c *ChainDB) SetAccountPubkey(address, pubkey string) error {
 		address, address, pubkey, address, now, now)
 	if err != nil {
 		return fmt.Errorf("chaindb: 設置公鑰失敗: %w", err)
+	}
+	if c.cache != nil {
+		c.cache.clear()
 	}
 	return nil
 }

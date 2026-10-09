@@ -18,6 +18,7 @@ type StatusView struct {
 type TxView struct {
 	Hash        string `json:"hash"`
 	BlockHeight int64  `json:"block_height"`
+	TxIndex     int    `json:"tx_index"`
 	From        string `json:"from"`
 	To          string `json:"to"`
 	Amount      string `json:"amount"`
@@ -26,6 +27,16 @@ type TxView struct {
 	Ts          int64  `json:"ts"`
 	Memo        string `json:"memo"`
 	Status      string `json:"status"`
+	Signature   string `json:"signature"`
+	Pubkey      string `json:"pubkey"`
+	Contract    *ContractView `json:"contract,omitempty"`
+}
+
+// ContractView 為合約交易的瀏覽器視圖（memo 為 vm:deploy/vm:call 時非 nil）。
+type ContractView struct {
+	Kind string `json:"kind"` // deploy / call
+	Gas  uint64 `json:"gas"`
+	Data string `json:"data"`
 }
 
 // BlockView 為區塊視圖（詳情時帶交易）。

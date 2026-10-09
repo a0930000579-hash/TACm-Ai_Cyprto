@@ -1,8 +1,77 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M46）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M54）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M46）
+## 本版重點（M54）
+
+- **白皮書 4.0（中英同步更新，Web /whitepaper 已上線）**：
+  1. 路線圖「已完成階段」擴充至第八階段（P2P/BFT、VM/Token Studio/DEX/流動性挖礦、L2/eth_*/BSC 橋/SDK），未來規劃僅保留 ZK 與主網激勵階段——與實際進度一致。
+  2. **新增第十三章「開發者生態與跨鏈」**（中英）：官方 Go/JS SDK 與跨語言簽章互通、eth_\* 兼容層（MetaMask 直連）、BSC 真實跨鏈橋、供應治理（上限 52,003,300＋TiUSD 0.330 最低流通）。
+  3. 修正中/英檔尾部殘缺（footer/免責聲明補齊），HTML 結構解析驗證通過。
+- **`DEPLOY_OPS.md`（新，部署與運維手冊）**：系統架構、本機啟動＋systemd、Render 部署（含已知坑）、多節點組網（P2P seed）、BSC 橋實裝、備份/恢復、升級流程、監控端點＋常見故障排查表、安全注意。
+- **M54 驗證**：白皮書兩檔 HTML 結構 0 錯誤；tacweb 重建；真節點冒煙 `/whitepaper`、`/whitepaper-en` 皆含「開發者生態」章節與 Version 4.0。
+
+## 上版重點（M53）
+
+- **P3 開發者生態（下）：JS SDK `sdk/tacjs`（新）**——瀏覽器/Node 通用官方 SDK：
+  1. `generateKey/keyFromPrivateKeyHex`（secp256k1）、`addressFromPubkey`（Hash160＋Base58Check，tx0 前綴，與 Go `PubKeyToAddress` 同構）、`txSighash`（白名單 `from/to/amount/fee/memo/ts/nonce/token`＋Canonical 排序 JSON＋DoubleSHA256）、`signTransaction`（SHA256→RFC6979 ECDSA→**DER hex**，與 Go `SignTransaction` 同構）、`Client{status/account/balance/transaction/submit/transfer}`（fetch 一步轉帳：查 nonce→簽署→提交）。
+  2. **跨語言互操作已驗證**：固定私鑰向量 → Go 端 `crypto.VerifyTransactionSignature` 認證通過（`sdk/tacclient/js_interop_test.go`）——**前端 tacjs 簽章，Go 節點可直接驗證入池**。
+  3. 依賴 `@noble/secp256k1`＋`@noble/hashes`（純 JS，已打包 node_modules，開箱即用）；`npm test` 5 項單測全綠（含 stub 節點 Client e2e）。
+- **M53 測試**：JS 5/5（node --test）＋Go 全量 `go test ./...` 0 失敗（含新 js_interop 測試）＋tacjs 冒煙（DER 簽章 142 hex 正常）。
+
+## 上版重點（M52）
+
+- **P3 開發者生態（上）**：
+  1. **官方 Go SDK `sdk/tacclient`**（新）——第三方 dApp 開發者入口：`GenerateKey/KeyFromPrivateKeyHex`（secp256k1＋tx0 地址）、`Client{Status/LatestHeight/Account/Balance/Nonce/Block/Transaction/Mempool}`（節點 RPC 查詢）、`Transfer(key,to,amount,fee,memo)`（查 nonce→ECDSA 簽署→提交，**一步閉環**）、`Submit`（自組交易含合約呼叫）、`example/main.go`（可跑範例，`go run ./sdk/tacclient/example -node <URL>`）。
+  2. **區塊瀏覽器交易詳情深化**——`/tx/{hash}` 頁新增：交易序號、**合約交易解碼**（memo `vm:deploy:<gas>:<hex>`／`vm:call:<gas>:<hex>`／舊格式 → 顯示 kind/gas/calldata）、簽名驗證資訊（公鑰＋簽名）；`TxView` 增 `TxIndex/Signature/Pubkey/Contract *ContractView`（`parseContractMemo` 與節點 `splitContractMemo` 同格式，串連一致）。
+  3. **`DEVELOPER.md`**（新）——SDK 用法、節點 RPC 端點全表、eth_\* 兼容、BSC 跨鏈、安全注意。
+- **M52 測試**：SDK 單測 3 項（金鑰 hex 往返、Client 查詢 stub、Transfer 簽署提交）＋**真節點 e2e `TestTransferEndToEnd`**（內嵌節點＋創世分配→SDK 轉帳 5→出塊後 bob=5／alice=994.9→`GET /tx` 可查）＋ web `TestParseContractMemo` 6 案例；`go test -race ./sdk/...`＋全量 `go test ./...` **全部套件 0 失敗**；tacweb 重建並真節點冒煙（`/status` 出塊正常）。
+- **不亂改**：交易欄位白名單（TxSighash）未動，SDK 簽署與節點驗證同格式；既有 tx/block/address 頁面欄位保留，僅新增。
+
+## 上版重點（M51）
+
+- **P2 效能優化：ChainDB 讀快取（熱點讀路徑）**——節點高頻讀（eth_getBalance／eth_getTransactionCount／錢包/瀏覽器輪詢）不再每請求一次 SQLite，改為**記憶體快取＋寫入後整組失效**：
+  - `internal/chaindb/cache.go`（新）：`ReadCache`（`sync.RWMutex`＋balance/nonce/tx/account 四張 map）；`getTx/getAccount` 回**副本**防外部修改 aliasing；`clear()` 全清。
+  - `read.go`：`GetTransaction/GetAccount/GetBalance/GetNonce` **miss 才查 SQL**，命中直接回快取（"0" 餘額也快取）；`chaindb.go` Open 初始化 cache。
+  - `write.go`：`InsertBlock/TruncateFromHeight/RebuildAccounts/SetAccountPubkey` **Commit/Exec 成功後 clear**——任何鏈寫入後快取整組失效，保證與 SQLite 強一致（出塊 1 秒週期內讀 QPS 由 N×SQL 降為 1×SQL＋N×記憶體）。
+  - **不亂改**：p2p `flood` 廣播已是逐 peer goroutine 並行（P2-B 已達成無需改）；浮點餘額累加屬既有設計（M49 已確認不動）。
+  - **M51 測試**：新增 `cache_test.go` 3 項（`TestReadCacheConsistency`：寫入後失效＋交易回副本防污染；`TestReadCacheInvalidateOnNextBlock`：連續出塊讀新值；`TestReadCacheConcurrent`：8 goroutine×100 讀並發）；`go test -race ./internal/chaindb/` **PASS**；全量 `go test ./...` **22 套件 0 失敗**；本機冒煙：`eth_blockNumber 0x3→0xd` 持續出塊、`eth_getBalance/eth_getTransactionCount` 快取讀值正確 ✓。
+
+## 上版重點（M50）
+
+- **P1：BSC 真實跨鏈橋（TAC ↔ BNB Smart Chain 雙向中繼）**——不再只是橋的「記錄層」，而是**能對 BSC 鏈上真實簽署交易並自動中繼**的完整工程層：
+  - `internal/crypto/eth_tx.go`：EIP-155 交易簽署（`SignEthRawTx`：Keccak256 payload → DER 解析 → 0..3 recid 恢復比對回填 V/R/S）、RLP 編碼、**ABI selector／ABI calldata 編解碼**（uint256/address/bytes32/bool/string/bytes，含動態 offset）、`HexEncode/HexDecode`、`EthKey/EthKeyFromHex`、`EthAddressBytes/EthAddressHex`。
+  - `internal/bridge/bsc.go`：純 HTTP **BSCClient**（eth_chainId/blockNumber/nonce/gasPrice/estimateGas/sendRawTransaction/receipt/getLogs）、**BridgeContract**（MintBurn 代幣 mint/burn＋LockProxy deposit(address,uint256)/withdraw 的 calldata 組裝、Nonce→GasPrice→EstimateGas→簽署→送鏈全自動）、`ParseDepositLogs`（解析 `Deposit(address,address,address,uint256,uint256)` 事件，含目標地址）、`EthSigner`（hex 私鑰→keccak 0x 地址→EIP-155 簽署）。
+  - `internal/bridge/relayer.go`：**雙向自動中繼**（Goroutine＋ticker）——**TAC→BSC**：掃橋上 `locked` 的 tacm→bsc 交易 → 以 Relayer 私鑰簽 `mint(to, amountWei)` 上鏈 → `MintOnTarget` 推進 minted；**BSC→TAC**：掃 LockProxy `Deposit` 事件（進度存橋 store）→ 自動建立 TAC 側解鎖記錄（pending→burning，不重複建單）→ 守衛網絡完成鏈上解鎖。錯誤逐筆記錄、不阻塞其他交易、RPC 不可達優雅降級。
+  - 節點接入：`-bridge -bsc-relay -bsc-rpc -bsc-pk -bsc-chain-id -bsc-token -bsc-lock-proxy -bsc-poll-ms` 八個新 flag；`GET /bridge/bsc/status` 查中繼狀態（enabled/rpc/chain_id/token/lock_proxy/signer_addr/last_scanned）。
+  - **M50 測試**：crypto 5 項（EIP-155 簽署 round-trip＋恢復比對、ERC20 transfer selector=0xa9059cbb、ABI 編解碼、address 轉換）；bridge 5 項（BSCClient、mint calldata、Deposit 事件解析、EthSigner、**Relayer 雙向 e2e：TAC→BSC 自動 mint 上鏈＋BSC→TAC 自動建單且不重複**）；node e2e 2 項（`TestBSCRelayStatusEndpoint`、`TestBSCRelayMintEndToEnd`：25 TACm 扣 0.1% 費 → mint 24.975e18 wei 精確上鏈）。`go test ./...` **全部套件 0 失敗**；本機冒煙：`-bsc-relay` 啟動 → `/bridge/bsc/status` 回 enabled=true＋signer_addr＋RPC 不可達時優雅降級不出錯 ✓。
+  - **BSC 部署教學已寫入 `BSC_DEPLOY.md`**（Solidity 合約摘要＋Remix/Hardhat 部署＋本機/Render 啟動命令＋驗收指令＋安全備註）。
+
+## 上版重點（M49）
+
+- **P1 eth\_\* JSON-RPC 兼容層**——節點新增 `POST /eth` 標準 JSON-RPC 端點，讓 **MetaMask／以太坊生態工具可直連 TAC 自主鏈**（EIP-155 交易、secp256k1 恢復、wei↔TACm 換算）：
+  - 已支援方法：`web3_clientVersion`、`net_version`、`eth_chainId`（0x539）、`eth_blockNumber`、`eth_gasPrice`、`eth_getBalance`（wei）、`eth_getTransactionCount`（nonce）、`eth_getCode`、`eth_call`、`eth_getBlockByNumber`、`eth_sendRawTransaction`。
+  - `eth_sendRawTransaction`：RLP 解碼類型 0 交易 → EIP-155 簽名恢復（RecoverCompact）→ 映射 TAC 鏈上交易（`from=Hash160(pub)`、memo=`vm:call:<gas>:<data>`、**wei→TACm 十進位精確換算**）→ 入池／出塊／錢包同步完整閉環；壞 nonce／壞簽名／gas 超限／合約建立皆拒絕。
+  - 地址互通：`tx0…` ↔ `0x+Hash160`（20 字節）雙向轉換；`eth_getBalance` 以 big.Rat 精確把鏈上 TACm 小數餘額轉 wei。
+- **M49 測試**：crypto 單測 3 項（RLP round-trip／EIP-155 恢復／VerifyEthTx）＋ node e2e 3 項（`TestEthRPCBasics`／`TestEthSendRawTransactionAndCall`：5e18 wei 轉帳入塊＋餘額 ≥5e18＋nonce=0x1＋跳號拒絕＋eth_call totalSupply=777000／`TestEthGetBlockByNumber`）。`go test ./...` **20 套件 0 失敗**；本機冒煙（新節點）：`eth_chainId=0x539`、`eth_blockNumber=0x10`、`eth_getBalance=0x0`、`eth_getBlockByNumber` 結構完整 ✓。
+- **M49 修復（測試抓到 4 個真 bug）**：①RLP 長 list 的長度頭與內容長度混用（slice 越界 panic）→ `longLen` 回 (頭長, 內容長度)；②eth 金額直接傳 wei 被錢包當 TACm 放大 1e18（餘額不足）→ `weiToTacmStr`（÷1e18、去尾零）；③鏈上餘額「15.0」無法被 big.Int 解析（eth_getBalance 誤回 0）→ big.Rat 精確轉 wei；④測試 helper 對 32-byte return 負補零 panic → 取低 20 字節。
+
+## 上版重點（M48）
+
+- **P0 安全硬化：RPC gas_limit 資源治理**——合約交易（部署/呼叫）支援 **自訂 gas 上限並上鏈**：`POST /contract/deploy` 與 `POST /contract/call` body 新增可選 `gas_limit`（1..10,000,000，預設節點 10M；>10M 拒絕）。gas 段寫入交易 memo（新格式 `vm:deploy:<gas>:<hex>`／`vm:call:<gas>:<hex>`，舊格式向後相容），**出塊執行與入池前模擬一致使用該 gas**——過小 gas 的壞合約在**入池前模擬即被拒絕（400）**，防單筆交易耗盡節點資源。
+- **VM gas API 擴充**：`ContractManager` 新增 `ApplyDeployGas/ApplyCallGas/SimulateDeployGas/SimulateCallGas`（帶 gas 執行，均含快照回滾）；原方法委託預設 gas，**既有呼叫全部相容**。
+- **M48 測試**：新增 VM 單測 `TestApplyCallGasLimit`（gas=10 過小 → OOG＋回滾；預設 gas 正常成功）＋ node e2e `TestContractStudioGasLimit`（gas_limit=5M 入塊、=100 被拒 400、=99M 被拒 400）；`go test ./...` **全部套件 0 失敗**；本機冒煙（新節點重跑）：gas_limit=5M 發幣出塊（code_size 335）、=100/99M 皆 400 拒絕 ✓。
+
+## 上版重點（M47）
+
+- **P0 安全硬化：EVM 狀態原子性修復**——`ContractManager.ApplyCall/ApplyDeploy` 在執行前對 WorldState 做快照，**OOG（gas 耗盡）/REVERT/執行失敗時一律回滾**，已寫入的合約 storage 不再殘留（對比模擬路徑 SimulateCall/SimulateDeploy 原有快照，Apply 路徑此前缺失）。
+- **安全防線驗證（新增 3 個 VM 安全測試）**：
+  - `TestInfiniteLoopStoppedByGas`：無限迴圈合約（JUMPDEST→PUSH→JUMP）在 gas 上限內被強制中止，**防合約 DoS 卡死節點**（VM 既有 GasCostTable 計價＋10M 上限＋64MB 記憶體＋code 24576＋呼叫深度 1024 防線全部生效）。
+  - `TestApplyCallRollbackOnOOG`：呼叫先 SSTORE 再迴圈 OOG，驗證 **storage 已回滾、槽位乾淨**（修復前殘留 slot0=1）。
+  - `TestApplyDeployRollbackOnOOG`：部署構造器先寫 storage 再 OOG，驗證 **合約不註冊＋storage 乾淨**（修復前殘留）。
+- **M47 測試**：`internal/vm/manager_test.go` 新增 3 個安全測試；`go test ./...` **22 套件 0 失敗**；本機冒煙閉環（修復後重跑）：發幣 M47Test（supply=1e6）→ 出塊部署（code_size 335）→ transfer 250 入塊 → **alice 餘額精確 = 250（0xfa）**，成功路徑不受快照修復影響。
+
+## 上版重點（M46）
 
 - **DEX 流動性挖礦（Farm）**：`/dex` 頁面新增「流動性挖礦」區塊——**做市者質押 LP 份額賺取獎勵代幣**。鏈上農場（每池一個）：建農場（指定獎勵代幣與每塊獎勵）→ 注資金庫（官方帳戶鏈上轉帳至派生金庫地址）→ 質押/解除質押（已質押份額不可退出流動性）→ 出塊自動累積獎勵（標準 farm 演算法 accPerShare 1e18 定點）→ 領取（金庫鏈上轉帳回帳戶）。全程中英雙語、幣安深色 App 化、8 秒即時輪詢。
 - **Farm RPC**：

@@ -103,8 +103,9 @@ CREATE INDEX IF NOT EXISTS idx_blocks_hash ON blocks(hash);
 
 // ChainDB 為 TAC 自主智能鏈的節點數據庫。
 type ChainDB struct {
-	db   *sql.DB
-	path string
+	db    *sql.DB
+	path  string
+	cache *ReadCache
 }
 
 // Open 打開（或創建）位於 dbPath 的數據庫，套用 WAL 與緩存參數並初始化表結構。
@@ -139,7 +140,7 @@ func Open(dbPath string) (*ChainDB, error) {
 		db.Close()
 		return nil, fmt.Errorf("chaindb: 初始化表結構失敗: %w", err)
 	}
-	return &ChainDB{db: db, path: dbPath}, nil
+	return &ChainDB{db: db, path: dbPath, cache: newReadCache()}, nil
 }
 
 // Close 關閉數據庫連接。

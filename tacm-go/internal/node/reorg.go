@@ -114,7 +114,7 @@ func verifyBlockStructure(b *chaindb.Block, txs []chaindb.Transaction) error {
 			"from": t.FromAddr, "to": t.ToAddr, "amount": t.Amount, "fee": t.Fee,
 			"memo": t.Memo, "ts": t.Ts, "nonce": t.Nonce, "pubkey": t.Pubkey,
 		}
-		if !crypto.VerifyTransactionSignature(m, t.Signature, t.FromAddr) {
+		if !verifyTxSignature(m, t.Signature, t.FromAddr) {
 			return fmt.Errorf("交易 %d（%s）簽名無效", i, t.TxHash)
 		}
 	}

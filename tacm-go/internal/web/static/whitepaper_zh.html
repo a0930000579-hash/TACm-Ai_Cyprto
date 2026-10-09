@@ -358,17 +358,31 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <tr><td>第三階段</td><td>自動交易機器人、C2C 法幣交易、跟單交易、Staking 質押</td><td>已完成</td></tr>
 <tr><td>第四階段</td><td>WebSocket 實時行情、K 線圖、邀請返傭、2FA 雙因素驗證</td><td>已完成</td></tr>
 <tr><td>第五階段</td><td>永續合約交易（125x）、DeFi 生態（流動性/借貸/IDO/聚合器）、PWA 移動端</td><td>已完成</td></tr>
+<tr><td>第六階段</td><td>真實密碼學簽名（secp256k1）、P2P 節點發現與分布式 BFT、動態難度、治理投票上鏈</td><td>已完成</td></tr>
+<tr><td>第七階段</td><td>智能合約虛擬機（gas 治理/原子回滾）、Token Studio 發幣、鏈上 DEX（AMM）、流動性挖礦</td><td>已完成</td></tr>
+<tr><td>第八階段</td><td>Layer2 Rollup（欺詐證明/SPV）、以太坊 eth_* 兼容層、BSC 真實跨鏈橋、Go/JS 開發者 SDK</td><td>已完成</td></tr>
 </table>
 
 <h3>11.2 未來規劃</h3>
 <table>
 <tr><th>階段</th><th>核心內容</th><th>預計時間</th></tr>
-<tr><td>第六階段</td><td>共識機制升級（真實密碼學簽名、P2P 節點發現、難度動態調整）</td><td>Q1</td></tr>
-<tr><td>第七階段</td><td>智能合約虛擬機、跨鏈橋協議、與主流公鏈測試網對接</td><td>Q2</td></tr>
-<tr><td>第八階段</td><td>DAO 治理上鏈、去中心化交易所（DEX）遷移、治理代幣發行</td><td>Q3</td></tr>
-<tr><td>第九階段</td><td>Layer2 擴容方案、零知識證明（ZK）隱私交易、跨鏈資產橋</td><td>Q4</td></tr>
-<tr><td>第十階段</td><td>主網上線、全球節點激勵計劃、基金會成立、生態夥伴拓展</td><td>次年</td></tr>
+<tr><td>第九階段</td><td>零知識證明（ZK）隱私交易、隱私保護與監管合規工具</td><td>Q4</td></tr>
+<tr><td>第十階段</td><td>主網正式上線、全球節點激勵計劃、基金會成立、生態夥伴拓展</td><td>次年</td></tr>
 </table>
+
+<h2 id="s13">十三、開發者生態與跨鏈</h2>
+
+<h3>13.1 官方開發者 SDK</h3>
+<p>TACm 提供 Go（<code>sdk/tacclient</code>）與 JavaScript（<code>sdk/tacjs</code>）雙語官方 SDK，封裝密鑰生成、地址推導、交易簽章與節點 RPC 查詢/提交。兩端簽章格式完全互通（白名單字段 Canonical 序列化 → DoubleSHA256 → RFC6979 ECDSA → DER），並由固定向量互操作測試驗證：<b>前端 tacjs 簽署的交易，Go 節點可直接驗證入池</b>，第三方 dApp 與錢包可無縫接入。</p>
+
+<h3>13.2 以太坊兼容層（eth_* JSON-RPC）</h3>
+<p>節點提供全套 eth_* JSON-RPC（eth_blockNumber、eth_getBalance、eth_getTransactionCount、eth_call、eth_sendRawTransaction 等），支持 MetaMask 等標準以太坊錢包直連；地址體系與以太坊地址互通（tx0 地址 ↔ 0x+Hash160），wei 金額自動換算 TACm。</p>
+
+<h3>13.3 真實跨鏈橋（TAC ↔ BSC）</h3>
+<p>內建 BSC 雙向中繼：TAC 資產經鎖定（lock）後在 BSC 側自動 mint 映射代幣 TACMBSC；BSC 側銷毀（burn）後在 TAC 自動解鎖。跨鏈訊息由中繼器以 BSC 私鑰簽名上鏈，支持測試網（chain-id 97）與主網（chain-id 56），部署細節見 BSC_DEPLOY.md。</p>
+
+<h3>13.4 資產發行與供應治理</h3>
+<p>TACm 供應總量上限 52,003,300 枚，由鏈上規則強制執行；Token Studio 支持在鏈上發行自定義代幣與呼叫合約。穩定幣 TiUSD 按市值自動增發/銷毀，且保有總供應量 0.330 倍的最低流通量以維持幣值穩定，防止脫錨崩盤。</p>
 
 <h2 id="s12">十二、結論</h2>
 <p>TACm 提出了一種基於時間權證的聯盟鏈改進型 PoW 共識機制，為區塊鏈共識領域的算力壟斷、能源浪費與參與門檻等問題提供了一種新的解決思路。通過將「時間」這一最公平的資本作為共識基礎，TACm 實現了公平、節能且高效的區塊確認機制。</p>
@@ -376,13 +390,12 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <p>我們相信，TACm 的時間權證共識機制與完整金融生態將為區塊鏈技術的大規模應用與金融普惠做出積極貢獻。我們邀請全球開發者、研究者與用戶參與 TACm 生態建設，共同推動區塊鏈技術的創新與發展。</p>
 
 <div class="note">
-<b>免責聲明：</b>本白皮書僅供技術參考，不構成任何投資建議。數字貨幣交易存在高風險，投資者應自行承擔投資風險。白皮書中描述的功能與參數可能因技術升級或治理投票而調整，最終以鏈上實際運行為準。
 </div>
 
 <footer>
-<p>TACm Whitepaper Version 3.0</p>
+<p>TACm Whitepaper Version 4.0</p>
 <p>Time Asset Crypto Mining — 時間權證共識驅動的區塊鏈金融網絡</p>
-<p>最後更新：2026 年 9 月</p>
+<p>最後更新：2026 年 10 月</p>
 </footer>
 
 </main>

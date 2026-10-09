@@ -106,7 +106,7 @@ func (n *Node) dexTransfer(poolID, from, to, contract string, amount *big.Int) e
 		return err
 	}
 	calldata := vm.Erc20TransferCalldata(to0x, amount)
-	h, err := n.submitSignedContractCallAs(kp, contract, hex.EncodeToString(calldata))
+	h, err := n.submitSignedContractCallAs(kp, contract, hex.EncodeToString(calldata), 0)
 	if err != nil {
 		return err
 	}

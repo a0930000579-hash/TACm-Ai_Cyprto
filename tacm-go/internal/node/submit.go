@@ -32,7 +32,7 @@ func (n *Node) SubmitTransaction(tx map[string]any) (string, error) {
 	if !crypto.IsValidAddress(to) {
 		return "", errors.New("invalid to address")
 	}
-	if !crypto.VerifyTransactionSignature(tx, signature, from) {
+	if !verifyTxSignature(tx, signature, from) {
 		return "", errors.New("invalid signature")
 	}
 
@@ -100,12 +100,18 @@ func (n *Node) SubmitTransaction(tx map[string]any) (string, error) {
 // 時的官方/演示入口）：from=節點金鑰地址、amount=0、fee=0，memo=vmCallPrefix+hex。
 // 返回交易哈希。
 func (n *Node) SubmitSignedContractCall(contractAddr, calldataHex string) (string, error) {
-	return n.submitSignedContractCallAs(n.keypair, contractAddr, calldataHex)
+	return n.SubmitSignedContractCallGas(contractAddr, calldataHex, 0)
+}
+
+// SubmitSignedContractCallGas 同 SubmitSignedContractCall，但可在 memo 指定
+// gas 上限（gas>0 時格式 vmCallPrefix:<gas>:<hex>；gas=0 用節點預設 10M）。
+func (n *Node) SubmitSignedContractCallGas(contractAddr, calldataHex string, gas uint64) (string, error) {
+	return n.submitSignedContractCallAs(n.keypair, contractAddr, calldataHex, gas)
 }
 
 // submitSignedContractCallAs 以指定簽名者（節點金鑰或 DEX 池派生密鑰）代簽
 // 一筆鏈上合約呼叫交易。from=簽名者地址、amount=0、fee=0，memo=vmCallPrefix+hex。
-func (n *Node) submitSignedContractCallAs(kp *crypto.KeyPair, contractAddr, calldataHex string) (string, error) {
+func (n *Node) submitSignedContractCallAs(kp *crypto.KeyPair, contractAddr, calldataHex string, gas uint64) (string, error) {
 	if kp == nil {
 		return "", errors.New("node key unavailable")
 	}
@@ -114,12 +120,16 @@ func (n *Node) submitSignedContractCallAs(kp *crypto.KeyPair, contractAddr, call
 		return "", err
 	}
 	nonce := n.db.GetNonce(from) + n.pendingTxCount(from)
+	memo := vmCallPrefix + calldataHex
+	if gas > 0 {
+		memo = fmt.Sprintf("%s%d:%s", vmCallPrefix, gas, calldataHex)
+	}
 	tx := map[string]any{
 		"from": from, "to": contractAddr,
 		"amount": "0", "fee": "0",
 		"nonce": nonce, "ts": time.Now().Unix(),
 		"pubkey": hex.EncodeToString(kp.PublicKeyCompressed()),
-		"memo":   vmCallPrefix + calldataHex,
+		"memo":   memo,
 	}
 	sig, err := crypto.SignTransaction(tx, kp.PrivateKey())
 	if err != nil {

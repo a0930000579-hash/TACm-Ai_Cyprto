@@ -41,6 +41,9 @@ func (c *ChainDB) GetTransaction(txHash string) (*Transaction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("chaindb: 查交易失敗: %w", err)
 	}
+	if c.cache != nil {
+		c.cache.putTx(txHash, t)
+	}
 	return t, nil
 }
 
@@ -112,6 +115,11 @@ func (c *ChainDB) GetContractTransactions(prefixes ...string) ([]Transaction, er
 
 // GetAccount 按地址取賬戶；不存在返回 (nil, nil)。
 func (c *ChainDB) GetAccount(address string) (*Account, error) {
+	if c.cache != nil {
+		if a, ok := c.cache.getAccount(address); ok {
+			return a, nil
+		}
+	}
 	var (
 		a      Account
 		pubkey sql.NullString
@@ -126,25 +134,44 @@ func (c *ChainDB) GetAccount(address string) (*Account, error) {
 		return nil, fmt.Errorf("chaindb: 查賬戶失敗: %w", err)
 	}
 	a.Pubkey = pubkey.String
+	if c.cache != nil {
+		c.cache.putAccount(address, &a)
+	}
 	return &a, nil
 }
 
 // GetBalance 返回地址餘額字符串（無賬戶時為 "0"）。
 func (c *ChainDB) GetBalance(address string) string {
+	if c.cache != nil {
+		if v, ok := c.cache.getBalance(address); ok {
+			return v
+		}
+	}
 	var bal string
 	err := c.db.QueryRow("SELECT balance FROM accounts WHERE address = ?", address).Scan(&bal)
 	if err != nil {
-		return "0"
+		bal = "0"
+	}
+	if c.cache != nil {
+		c.cache.putBalance(address, bal)
 	}
 	return bal
 }
 
 // GetNonce 返回地址交易序號（防重放）。
 func (c *ChainDB) GetNonce(address string) int64 {
+	if c.cache != nil {
+		if v, ok := c.cache.getNonce(address); ok {
+			return v
+		}
+	}
 	var nonce int64
 	err := c.db.QueryRow("SELECT nonce FROM accounts WHERE address = ?", address).Scan(&nonce)
 	if err != nil {
-		return 0
+		nonce = 0
+	}
+	if c.cache != nil {
+		c.cache.putNonce(address, nonce)
 	}
 	return nonce
 }

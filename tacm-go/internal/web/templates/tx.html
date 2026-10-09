@@ -24,8 +24,24 @@
     <dt>交易金額</dt><dd class="amount strong">{{ t.Amount }} TACM</dd>
     <dt>手續費</dt><dd>{{ t.Fee }} TACM</dd>
     <dt>Nonce</dt><dd class="mono">{{ t.Nonce }}</dd>
+    <dt>交易序號</dt><dd>{{ t.TxIndex }}</dd>
     <dt>時間</dt><dd>{{ t.Ts|timefmt }}</dd>
     {% if t.Memo %}<dt>備註</dt><dd class="break-all">{{ t.Memo }}</dd>{% endif %}
+    {% if t.Contract %}
+    <dt>合約類型</dt><dd><span class="tag in">{{ t.Contract.Kind }}</span></dd>
+    <dt>Gas</dt><dd class="mono">{{ t.Contract.Gas }}</dd>
+    <dt>Calldata</dt><dd class="mono break-all">{{ t.Contract.Data }}</dd>
+    {% endif %}
   </dl>
 </section>
+
+{% if t.Pubkey %}
+<section class="panel">
+  <div class="panel-head"><h2>簽名驗證資訊</h2></div>
+  <dl class="detail-list">
+    <dt>公鑰</dt><dd class="mono break-all">{{ t.Pubkey }}</dd>
+    <dt>簽名</dt><dd class="mono break-all">{{ t.Signature }}</dd>
+  </dl>
+</section>
+{% endif %}
 {% endblock %}

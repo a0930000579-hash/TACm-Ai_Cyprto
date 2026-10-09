@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"tacm/internal/bridge"
 	"tacm/internal/chaindb"
 	"tacm/internal/config"
 	"tacm/internal/crypto"
@@ -31,6 +32,13 @@ func main() {
 	enableBridge := flag.Bool("bridge", false, "啟用跨鏈橋（Lock&Mint / Burn&Unlock）")
 	bridgeGuardians := flag.String("bridge-guardians", "",
 		"跨鏈守衛規格：addr:pubkey 逗號分隔（配置後啟用守衛網絡：提案經 P2P 多簽聚合）")
+	enableBSC := flag.Bool("bsc-relay", false, "啟用 BSC 雙向中繼（TAC↔BSC 自動 mint/unlock）")
+	bscRPC := flag.String("bsc-rpc", "", "BSC RPC URL（測試網或主網）")
+	bscPK := flag.String("bsc-pk", "", "BSC 側中繼私鑰（hex 32 字節）")
+	bscChainID := flag.Int64("bsc-chain-id", 97, "BSC 鏈 ID（97=測試網 56=主網）")
+	bscToken := flag.String("bsc-token", "", "BSC 側 TACM 映射代幣地址（0x+40hex）")
+	bscLockProxy := flag.String("bsc-lock-proxy", "", "BSC 側 LockProxy 合約地址（0x+40hex）")
+	bscPollMs := flag.Int("bsc-poll-ms", 10000, "BSC 中繼輪詢間隔（毫秒）")
 	networkFlag := flag.String("network", "mainnet", "網路段：mainnet | testnet（testnet 自動分離資料目錄與鏈 ID）")
 	flag.Parse()
 
@@ -76,6 +84,23 @@ func main() {
 		} else if err := n.AttachBridge(); err != nil {
 			log.Fatalf("啟用跨鏈橋失敗: %v", err)
 		}
+	}
+	// BSC 雙向中繼（需 -bridge；僅配置 RPC/合約時才啟動）。
+	if *enableBSC {
+		if !*enableBridge {
+			log.Fatalf("BSC 中繼需同時指定 -bridge")
+		}
+		bscCfg := bridge.DefaultRelayerConfig()
+		bscCfg.BSCTestRPC = *bscRPC
+		bscCfg.BSCPrivateKeyHex = *bscPK
+		bscCfg.BSCChainID = *bscChainID
+		bscCfg.BSCTokenAddr = *bscToken
+		bscCfg.BSCLockProxyAddr = *bscLockProxy
+		bscCfg.PollInterval = time.Duration(*bscPollMs) * time.Millisecond
+		if err := n.StartBSCRelay(bscCfg); err != nil {
+			log.Fatalf("啟動 BSC 中繼失敗: %v", err)
+		}
+		log.Printf("[bsc-relay] BSC 雙向中繼已啟動（chain=%d）", *bscChainID)
 	}
 
 	// 數據庫為空時生成創世區塊。

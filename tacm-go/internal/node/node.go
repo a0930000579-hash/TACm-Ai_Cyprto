@@ -4,6 +4,7 @@
 package node
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -111,6 +112,8 @@ type Node struct {
 
 	// 跨鏈橋（可選；nil=不啟用）
 	bridge           *bridgepkg.Bridge
+	bscRelay         *bridgepkg.Relayer
+	bscRelayCancel   context.CancelFunc
 	bridgeNetworked  bool // 已配置守衛網絡（跨鏈提案經 P2P 傳播聚合多簽）
 }
 
@@ -550,6 +553,7 @@ func (n *Node) Close() error {
 		if n.bridge != nil {
 			_ = n.bridge.Close()
 		}
+		n.stopBSCRelay()
 		if n.walletSvc != nil {
 			_ = n.walletSvc.Store().Close()
 		}
@@ -577,6 +581,7 @@ func (n *Node) Close() error {
 	if n.bridge != nil {
 		_ = n.bridge.Close()
 	}
+	n.stopBSCRelay()
 	if n.walletSvc != nil {
 		_ = n.walletSvc.Store().Close()
 	}

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"encoding/hex"
 	"encoding/json"
 	"math/big"
@@ -37,9 +38,10 @@ func metaString(v *big.Int) string {
 // body: {name, symbol, supply}（supply 必填，1..1e12；name/symbol ≤32 bytes 可空）
 func (s *RPCServer) handleContractDeploy(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name   string `json:"name"`
-		Symbol string `json:"symbol"`
-		Supply string `json:"supply"`
+		Name     string `json:"name"`
+		Symbol   string `json:"symbol"`
+		Supply   string `json:"supply"`
+		GasLimit uint64 `json:"gas_limit,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad JSON body")
@@ -52,6 +54,10 @@ func (s *RPCServer) handleContractDeploy(w http.ResponseWriter, r *http.Request)
 	}
 	if len(req.Name) > 32 || len(req.Symbol) > 32 {
 		writeErr(w, http.StatusBadRequest, "name/symbol must be ≤32 bytes")
+		return
+	}
+	if req.GasLimit > vm.NewContext().Gas {
+		writeErr(w, http.StatusBadRequest, "gas_limit exceeds node maximum (10000000)")
 		return
 	}
 	kp := s.node.keypair
@@ -82,12 +88,16 @@ func (s *RPCServer) handleContractDeploy(w http.ResponseWriter, r *http.Request)
 	} else {
 		init = vm.Erc20Init(supply)
 	}
+	memo := vmDeployPrefix + hex.EncodeToString(init)
+	if req.GasLimit > 0 {
+		memo = fmt.Sprintf("%s%d:%s", vmDeployPrefix, req.GasLimit, hex.EncodeToString(init))
+	}
 	tx := map[string]any{
 		"from": from, "to": to,
 		"amount": "0", "fee": "0",
 		"nonce": nonce, "ts": time.Now().Unix(),
 		"pubkey": hex.EncodeToString(kp.PublicKeyCompressed()),
-		"memo":   vmDeployPrefix + hex.EncodeToString(init),
+		"memo":   memo,
 	}
 	sig, err := crypto.SignTransaction(tx, kp.PrivateKey())
 	if err != nil {
@@ -153,6 +163,7 @@ func (s *RPCServer) handleContractCallSubmit(w http.ResponseWriter, r *http.Requ
 	var req struct {
 		To       string `json:"to"`
 		Calldata string `json:"calldata"`
+		GasLimit uint64 `json:"gas_limit,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad JSON body")
@@ -167,7 +178,11 @@ func (s *RPCServer) handleContractCallSubmit(w http.ResponseWriter, r *http.Requ
 		writeErr(w, http.StatusBadRequest, "invalid calldata hex")
 		return
 	}
-	txHash, err := s.node.SubmitSignedContractCall(req.To, req.Calldata)
+	if req.GasLimit > vm.NewContext().Gas {
+		writeErr(w, http.StatusBadRequest, "gas_limit exceeds node maximum (10000000)")
+		return
+	}
+	txHash, err := s.node.SubmitSignedContractCallGas(req.To, req.Calldata, req.GasLimit)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return

@@ -132,3 +132,37 @@ func readAllString(resp *http.Response) string {
 	}
 	return string(buf)
 }
+
+func TestParseContractMemo(t *testing.T) {
+	cases := []struct {
+		memo string
+		kind string
+		gas  uint64
+		data string
+		nil  bool
+	}{
+		{"", "", 0, "", true},
+		{"hello", "", 0, "", true},
+		{"vm:deploy:5000000:6001", "deploy", 5000000, "6001", false},
+		{"vm:call:100:aa11bb", "call", 100, "aa11bb", false},
+		{"vm:deploy:6001", "deploy", 0, "6001", false}, // 舊格式無 gas
+		{"vm:call:", "call", 0, "", false},             // 空 calldata 合法
+	}
+	for _, c := range cases {
+		got := parseContractMemo(c.memo)
+		if c.nil {
+			if got != nil {
+				t.Errorf("memo %q 應為 nil，得 %+v", c.memo, got)
+			}
+			continue
+		}
+		if got == nil {
+			t.Errorf("memo %q 應解析，得 nil", c.memo)
+			continue
+		}
+		if got.Kind != c.kind || got.Gas != c.gas || got.Data != c.data {
+			t.Errorf("memo %q → %+v, want kind=%s gas=%d data=%s",
+				c.memo, got, c.kind, c.gas, c.data)
+		}
+	}
+}

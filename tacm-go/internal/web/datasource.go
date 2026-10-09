@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"tacm/internal/chaindb"
 	"tacm/internal/node"
@@ -100,10 +102,38 @@ func formatDelta(delta, asset string) string {
 
 func txView(t *chaindb.Transaction) TxView {
 	return TxView{
-		Hash: t.TxHash, BlockHeight: t.BlockHeight, From: t.FromAddr, To: t.ToAddr,
+		Hash: t.TxHash, BlockHeight: t.BlockHeight, TxIndex: t.TxIndex,
+		From: t.FromAddr, To: t.ToAddr,
 		Amount: t.Amount, Fee: t.Fee, Nonce: t.Nonce, Ts: t.Ts,
 		Memo: t.Memo, Status: t.Status,
+		Signature: t.Signature, Pubkey: t.Pubkey,
+		Contract: parseContractMemo(t.Memo),
 	}
+}
+
+// parseContractMemo 解析合約交易 memo（與節點 splitContractMemo 同格式）：
+// vm:deploy:<gas>:<hex> / vm:call:<gas>:<hex> 新格式與 vm:deploy:<hex> /
+// vm:call:<hex> 舊格式；非合約 memo 返回 nil。
+func parseContractMemo(memo string) *ContractView {
+	var kind, rest string
+	switch {
+	case strings.HasPrefix(memo, "vm:deploy:"):
+		kind, rest = "deploy", memo[len("vm:deploy:"):]
+	case strings.HasPrefix(memo, "vm:call:"):
+		kind, rest = "call", memo[len("vm:call:"):]
+	default:
+		return nil
+	}
+	cv := &ContractView{Kind: kind}
+	if i := strings.IndexByte(rest, ':'); i >= 0 {
+		if g, err := strconv.ParseUint(rest[:i], 10, 64); err == nil {
+			cv.Gas = g
+		}
+		cv.Data = rest[i+1:]
+	} else {
+		cv.Data = rest
+	}
+	return cv
 }
 
 func blockView(b *chaindb.Block) BlockView {

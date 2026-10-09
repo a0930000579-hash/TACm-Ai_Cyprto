@@ -265,3 +265,60 @@ func TestContractStudioERC20Convenience(t *testing.T) {
 		t.Fatalf("admin 餘額應為 4923，得到 %v", info3["balance"])
 	}
 }
+
+// TestContractStudioGasLimit 驗證 M48 RPC gas_limit：正常值入塊、過小被模擬拒絕。
+func TestContractStudioGasLimit(t *testing.T) {
+	n, srv, _ := contractStudioSetup(t)
+	defer func() { _ = n.Close() }()
+
+	// 1. gas_limit=5000000 正常部署入塊。
+	out := studioPostJSON(t, srv, "/contract/deploy", map[string]any{
+		"name": "GasCoin", "symbol": "GAS", "supply": "500000",
+		"gas_limit": 5000000,
+	})
+	if out["ok"] != true {
+		t.Fatalf("gas_limit=5M 部署失敗: %v", out)
+	}
+	contractAddr := out["contract_address"].(string)
+	waitFor(t, func() bool {
+		info := n.contracts.Get(must0x(t, contractAddr))
+		return info != nil && info.CodeSize > 0
+	}, 8*time.Second, "gas_limit 部署未入塊")
+
+	// 2. gas_limit=100 過小：入池前模擬 OOG，RPC 應回 400。
+	raw, err := json.Marshal(map[string]any{
+		"name": "BadCoin", "symbol": "BAD", "supply": "1000",
+		"gas_limit": 100,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.Post(srv.URL+"/contract/deploy", "application/json", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("gas_limit=100 應被拒絕(400)，得到 %d", resp.StatusCode)
+	}
+
+	// 3. 過大 gas_limit（>10M）應被拒絕。
+	resp2, err := http.Post(srv.URL+"/contract/deploy", "application/json",
+		bytes.NewReader([]byte(`{"name":"X","symbol":"X","supply":"1000","gas_limit":99999999}`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusBadRequest {
+		t.Fatalf("gas_limit=99M 應被拒絕(400)，得到 %d", resp2.StatusCode)
+	}
+}
+
+func must0x(t *testing.T, tx0 string) string {
+	t.Helper()
+	evm, err := tx0To0x(tx0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return evm
+}

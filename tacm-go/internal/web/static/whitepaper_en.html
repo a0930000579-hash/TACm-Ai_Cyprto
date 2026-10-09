@@ -357,17 +357,31 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <tr><td>Phase 3</td><td>Automated trading bots, C2C fiat trading, copy trading, Staking</td><td>Completed</td></tr>
 <tr><td>Phase 4</td><td>WebSocket real-time market data, K-line charts, referral rebates, 2FA two-factor authentication</td><td>Completed</td></tr>
 <tr><td>Phase 5</td><td>Perpetual contract trading (125x), DeFi ecosystem (liquidity/lending/IDO/aggregator), PWA mobile</td><td>Completed</td></tr>
+<tr><td>Phase 6</td><td>Real cryptographic signatures (secp256k1), P2P node discovery & distributed BFT, dynamic difficulty, on-chain governance voting</td><td>Completed</td></tr>
+<tr><td>Phase 7</td><td>Smart contract VM (gas governance/atomic rollback), Token Studio issuance, on-chain DEX (AMM), liquidity mining</td><td>Completed</td></tr>
+<tr><td>Phase 8</td><td>Layer2 Rollup (fraud proofs/SPV), Ethereum eth_* compatibility layer, real BSC cross-chain bridge, Go/JS developer SDKs</td><td>Completed</td></tr>
 </table>
 
 <h3>11.2 Future Plans</h3>
 <table>
 <tr><th>Phase</th><th>Core Content</th><th>Estimated Time</th></tr>
-<tr><td>Phase 6</td><td>Consensus mechanism upgrade (real cryptographic signatures, P2P node discovery, dynamic difficulty adjustment)</td><td>Q1</td></tr>
-<tr><td>Phase 7</td><td>Smart contract virtual machine, cross-chain bridge protocol, integration with mainstream public chain testnets</td><td>Q2</td></tr>
-<tr><td>Phase 8</td><td>DAO governance on-chain, DEX migration, governance token issuance</td><td>Q3</td></tr>
-<tr><td>Phase 9</td><td>Layer2 scaling solution, Zero-Knowledge (ZK) privacy transactions, cross-chain asset bridge</td><td>Q4</td></tr>
+<tr><td>Phase 9</td><td>Zero-Knowledge (ZK) privacy transactions, privacy and regulatory compliance tooling</td><td>Q4</td></tr>
 <tr><td>Phase 10</td><td>Mainnet launch, global node incentive program, foundation establishment, ecosystem partner expansion</td><td>Next Year</td></tr>
 </table>
+
+<h2 id="s13">13. Developer Ecosystem and Cross-Chain</h2>
+
+<h3>13.1 Official Developer SDKs</h3>
+<p>TACm ships official SDKs in Go (<code>sdk/tacclient</code>) and JavaScript (<code>sdk/tacjs</code>) covering key generation, address derivation, transaction signing, and node RPC query/submit. Signing formats are fully interoperable across both languages (whitelisted-field Canonical serialization &rarr; DoubleSHA256 &rarr; RFC6979 ECDSA &rarr; DER), verified by fixed-vector interop tests: <b>transactions signed by tacjs in the browser are validated directly by the Go node</b>, so third-party dApps and wallets can integrate seamlessly.</p>
+
+<h3>13.2 Ethereum Compatibility Layer (eth_* JSON-RPC)</h3>
+<p>Nodes expose the full eth_* JSON-RPC set (eth_blockNumber, eth_getBalance, eth_getTransactionCount, eth_call, eth_sendRawTransaction, etc.), enabling MetaMask and other standard Ethereum wallets to connect directly; addresses interoperate (tx0 &harr; 0x+Hash160) and wei amounts are converted to TACm automatically.</p>
+
+<h3>13.3 Real Cross-Chain Bridge (TAC &harr; BSC)</h3>
+<p>A built-in BSC two-way relayer: TAC assets locked on TAC mint the mapped token TACMBSC on BSC; burning on BSC unlocks on TAC. Cross-chain messages are signed and submitted on-chain by the relayer's BSC key, supporting testnet (chain-id 97) and mainnet (chain-id 56); deployment details are in BSC_DEPLOY.md.</p>
+
+<h3>13.4 Asset Issuance and Supply Governance</h3>
+<p>TACm has a hard supply cap of 52,003,300 tokens enforced on-chain; Token Studio supports on-chain issuance of custom tokens and contract calls. The TiUSD stablecoin mints/burns by market capitalization while keeping a minimum circulation of 0.330&times; of total supply to maintain stability and prevent de-pegging.</p>
 
 <h2 id="s12">12. Conclusion</h2>
 <p>TACm proposes a Consortium PoW consensus mechanism based on Time Warrant, providing a new solution to the problems of computing power monopolization, energy waste, and participation barriers in the blockchain consensus field. By treating "time" — the fairest resource — as the consensus foundation, TACm achieves a fair, energy-saving, and efficient block confirmation mechanism.</p>
@@ -379,9 +393,9 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 </div>
 
 <footer>
-<p>TACm Whitepaper Version 3.0</p>
+<p>TACm Whitepaper Version 4.0</p>
 <p>Time Asset Crypto Mining — A Time-Warrant Consensus-Driven Blockchain Financial Network</p>
-<p>Last Updated: September 2026</p>
+<p>Last Updated: October 2026</p>
 </footer>
 
 </main>
