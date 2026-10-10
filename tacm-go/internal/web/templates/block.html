@@ -16,6 +16,9 @@
     <dt>當前難度</dt><dd class="mono">{{ b.Difficulty }}</dd>
     <dt>Nonce</dt><dd class="mono">{{ b.Nonce }}</dd>
     <dt>交易數</dt><dd>{{ b.TxCount }}</dd>
+    {% if b.BaseFee %}<dt>Base Fee</dt><dd class="mono">{{ b.BaseFee }} TACm/gas</dd>{% endif %}
+    {% if b.GasUsed %}<dt>Gas Used</dt><dd class="mono">{{ b.GasUsed }} / {{ b.GasLimit }}</dd>{% endif %}
+    {% if b.Burned %}<dt>已銷毀 (Burned)</dt><dd class="mono">{{ b.Burned }} TACm</dd>{% endif %}
     <dt>出塊時間</dt><dd>{{ b.Ts|timefmt }}</dd>
   </dl>
 </section>

@@ -46,6 +46,7 @@ func (s *Server) handleExplorer(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "explorer.html", pongo2.Context{
 		"blocks": blocks, "txs": txs, "chain": s.ds.ChainStats(),
+		"self": s.ds.Status(),
 	})
 }
 

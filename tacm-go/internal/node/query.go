@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"tacm/internal/chaindb"
@@ -9,6 +10,8 @@ import (
 )
 
 // Status 為節點對外狀態（M2 單節點；P2P/BFT 字段在後續里程碑補充）。
+// M74-3：新增 EIP-1559 字段——BaseFee（當前 base fee，TACm/gas）、
+// GasPrice（建議 gas 價）、BlockGasLimit（每塊 gas 上限）、BurnedTotal（全鏈銷毀）。
 type Status struct {
 	NodeID         string  `json:"node_id"`
 	Address        string  `json:"address"`
@@ -24,6 +27,10 @@ type Status struct {
 	MaxSupply      float64 `json:"max_supply"`
 	EmissionYears  int     `json:"emission_years"`
 	AnnualDecayPct float64 `json:"annual_decay_pct"`
+	BaseFee        float64 `json:"base_fee"`
+	GasPrice       float64 `json:"gas_price"`
+	BlockGasLimit  int64   `json:"block_gas_limit"`
+	BurnedTotal    float64 `json:"burned_total_tacm"`
 }
 
 // GetStatus 返回節點當前狀態。
@@ -56,12 +63,28 @@ func (n *Node) GetStatus() Status {
 		Consensus:     consensus,
 		EmissionModel: "halving",
 	}
+	tip := n.db.GetTipHeight()
 	if cfg, err := chaindb.LoadEmission(int64(n.cfg.BlockTime)); err == nil && cfg.Model == "annual_decay" {
 		st.EmissionModel = cfg.Model
 		st.MaxSupply = cfg.MaxSupply
 		st.EmissionYears = cfg.EmissionYears
 		st.AnnualDecayPct = cfg.AnnualDecayPct
 	}
+	// M74-3：EIP-1559 base fee 取鏈頂塊（創世未出塊時用初始值）。
+	st.BaseFee = chaindb.InitialBaseFee
+	st.BlockGasLimit = chaindb.BlockGasLimit
+	if tip > 0 {
+		if b, err := n.db.GetBlock(tip); err == nil && b != nil {
+			if bf, perr := strconv.ParseFloat(b.BaseFee, 64); perr == nil && bf > 0 {
+				st.BaseFee = bf
+			}
+			if b.GasLimit > 0 {
+				st.BlockGasLimit = b.GasLimit
+			}
+		}
+	}
+	// 建議 gas 價 = base fee（+1 微單位小費），供前端/錢包估算費用。
+	st.GasPrice = st.BaseFee + 0.000000001
 	return st
 }
 
@@ -94,6 +117,8 @@ func HeaderOnly(b *chaindb.Block) map[string]any {
 		"merkle_root": b.MerkleRoot, "proposer": b.Proposer,
 		"proposer_address": b.ProposerAddress, "ts": b.Ts,
 		"tx_count": b.TxCount, "nonce": b.Nonce, "difficulty": b.Difficulty,
+		"base_fee": b.BaseFee, "gas_used": b.GasUsed, "gas_limit": b.GasLimit,
+		"burned": b.Burned,
 	}
 }
 

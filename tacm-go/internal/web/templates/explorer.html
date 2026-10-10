@@ -18,6 +18,22 @@
     <div class="card-label">待打包交易</div>
     <div class="card-value" id="eMempool">{{ status.MempoolSize }}</div>
   </div>
+  <div class="card">
+    <div class="card-label">Base Fee (TACm/gas)</div>
+    <div class="card-value mono" id="eBaseFee">{{ self.BaseFee }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Gas Price (建議)</div>
+    <div class="card-value mono" id="eGasPrice">{{ self.GasPrice }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Block Gas Limit</div>
+    <div class="card-value mono" id="eGasLimit">{{ self.BlockGasLimit }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">已銷毀 (Burned TACm)</div>
+    <div class="card-value mono" id="eBurned">{{ self.BurnedTotal }}</div>
+  </div>
 </section>
 
 <!-- M62：搜尋框 —— 支援區塊高度 / 交易哈希 / 地址 -->

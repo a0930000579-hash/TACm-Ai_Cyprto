@@ -43,9 +43,10 @@ type LedgerAuditResult struct {
 	TxBalanceFail int      `json:"tx_balance_fail"`
 	ContractPass  int      `json:"contract_pass"`    // 合約交易格式通過
 	ContractFail  int      `json:"contract_fail"`
-	LedgerOK      bool     `json:"ledger_ok"`        // 守恆：總餘額 == coinbase 增發
+	LedgerOK      bool     `json:"ledger_ok"`        // 守恆：總餘額＋銷毀 == coinbase 增發
 	CoinbaseTotal float64  `json:"coinbase_total_tacm"` // 全鏈 coinbase 增發總額
 	BalancesTotal float64  `json:"balances_total_tacm"` // 重放後全部地址餘額總和
+	BurnedTotal   float64  `json:"burned_total_tacm"`   // 全鏈 EIP-1559 銷毀總額（通縮）
 	Issues        []string `json:"issues"`
 }
 
@@ -78,6 +79,7 @@ func (n *Node) VerifyLedgerOnChain() (LedgerAuditResult, error) {
 	balances := map[string]float64{} // 地址 → 重放餘額（與鏈上 updateBalance 同規則）
 	nonces := map[string]int64{}    // 地址 → 已見 nonce（下一筆期望值，從 0 起）
 	var coinbaseTotal float64
+	var burnedTotal float64 // M74-3：全鏈 EIP-1559 銷毀總額（通縮）
 
 	// 全鏈守恆：sum(balances) 必須 == coinbase 增發總額（誤差容許內）。
 	// 重放同時獨立驗證簽名 / nonce / 餘額 / 合約格式——與鏈上 accounts 表無關，
@@ -187,11 +189,24 @@ func (n *Node) VerifyLedgerOnChain() (LedgerAuditResult, error) {
 				}
 			}
 
+			// M74-3：EIP-1559 銷毀部分從付款人扣除但不入任何帳戶（與 updateBalance 一致）。
+			if t.Burned != "" {
+				if bb, berr := strconv.ParseFloat(strings.TrimSpace(t.Burned), 64); berr == nil && bb > 0 {
+					burnedTotal += bb
+				}
+			}
+
 			// 應用狀態轉換（與 chaindb.updateBalance 完全一致）。
 			balances[t.FromAddr] = bal - amt - fee
 			balances[t.ToAddr] += amt
-			if fee > 0 && proposer != "" && proposer != t.FromAddr {
-				balances[proposer] += fee
+			tip := fee
+			if t.Burned != "" {
+				if bb, berr := strconv.ParseFloat(strings.TrimSpace(t.Burned), 64); berr == nil {
+					tip = fee - bb
+				}
+			}
+			if tip > 0 && proposer != "" && proposer != t.FromAddr {
+				balances[proposer] += tip
 			}
 		}
 	}
@@ -203,11 +218,14 @@ func (n *Node) VerifyLedgerOnChain() (LedgerAuditResult, error) {
 	}
 	out.CoinbaseTotal = roundCoinbase(coinbaseTotal)
 	out.BalancesTotal = roundCoinbase(balTotal)
-	out.LedgerOK = math.Abs(balTotal-coinbaseTotal) <= ledgerAuditEps
+	out.BurnedTotal = roundCoinbase(burnedTotal)
+	// M74-3：守恆恆等式 = 總餘額 + 全鏈銷毀 == coinbase 增發（銷毀是通縮，非漏洞）。
+	out.LedgerOK = math.Abs(balTotal+burnedTotal-coinbaseTotal) <= ledgerAuditEps
 	if !out.LedgerOK {
 		out.Issues = append(out.Issues, fmt.Sprintf(
-			"賬本守恆失敗: 總餘額 %s != coinbase 增發 %s",
+			"賬本守恆失敗: 總餘額 %s + 銷毀 %s != coinbase 增發 %s",
 			strconv.FormatFloat(out.BalancesTotal, 'f', 4, 64),
+			strconv.FormatFloat(burnedTotal, 'f', 4, 64),
 			strconv.FormatFloat(out.CoinbaseTotal, 'f', 4, 64)))
 	}
 

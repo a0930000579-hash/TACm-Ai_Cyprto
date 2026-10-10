@@ -4,14 +4,18 @@ package web
 
 // StatusView 為鏈網絡概況。
 type StatusView struct {
-	NodeID          string `json:"node_id"`
-	Address         string `json:"address"`
-	Height          int64  `json:"height"`
-	FinalizedHeight int64  `json:"finalized_height"`
-	Difficulty      int    `json:"difficulty"`
-	MempoolSize     int    `json:"mempool_size"`
-	UptimeSec       int64  `json:"uptime_sec"`
-	Consensus       string `json:"consensus"`
+	NodeID          string  `json:"node_id"`
+	Address         string  `json:"address"`
+	Height          int64   `json:"height"`
+	FinalizedHeight int64   `json:"finalized_height"`
+	Difficulty      int     `json:"difficulty"`
+	MempoolSize     int     `json:"mempool_size"`
+	UptimeSec       int64   `json:"uptime_sec"`
+	Consensus       string  `json:"consensus"`
+	BaseFee         float64 `json:"base_fee"`
+	GasPrice        float64 `json:"gas_price"`
+	BlockGasLimit   int64   `json:"block_gas_limit"`
+	BurnedTotal     float64 `json:"burned_total_tacm"`
 }
 
 // TxView 為交易視圖。
@@ -53,6 +57,10 @@ type BlockView struct {
 	Difficulty      int      `json:"difficulty"`
 	Nonce           int64    `json:"nonce"`
 	Size            int      `json:"size"`
+	BaseFee         string   `json:"base_fee,omitempty"`
+	GasUsed         int64    `json:"gas_used,omitempty"`
+	GasLimit        int64    `json:"gas_limit,omitempty"`
+	Burned          string   `json:"burned,omitempty"`
 	Transactions    []TxView `json:"transactions"`
 }
 

@@ -4,6 +4,8 @@ package chaindb
 
 // Block 為區塊頭記錄（blocks 表）。ProposerAddress 不寫入 blocks 表，
 // 僅在插入時用於 coinbase 增發與手續費結算。
+// M74-3：新增 EIP-1559 字段——BaseFee（本塊 base fee，TACm/gas）、
+// GasUsed（本塊消耗 gas）、GasLimit（本塊 gas 上限）、Burned（本塊銷毀手續費）。
 type Block struct {
 	Height          int64   `json:"height"`
 	Hash            string  `json:"hash"`
@@ -16,6 +18,10 @@ type Block struct {
 	Difficulty      int     `json:"difficulty"`
 	Nonce           int64   `json:"nonce"`
 	Size            int     `json:"size"`
+	BaseFee         string  `json:"base_fee,omitempty"`
+	GasUsed         int64   `json:"gas_used,omitempty"`
+	GasLimit        int64   `json:"gas_limit,omitempty"`
+	Burned          string  `json:"burned,omitempty"`
 }
 
 // Transaction 為已打包交易記錄（transactions 表）。
@@ -28,6 +34,11 @@ type Transaction struct {
 	ToAddr      string `json:"to"`
 	Amount      string `json:"amount"`
 	Fee         string `json:"fee"`
+	// M74-3 EIP-1559：gas_limit/max_fee/priority_fee（可選；未提供即 legacy 固定費）。
+	GasLimit    int64  `json:"gas_limit,omitempty"`
+	MaxFee      string `json:"max_fee,omitempty"`
+	PriorityFee string `json:"priority_fee,omitempty"`
+	Burned      string `json:"burned,omitempty"`
 	Nonce       int64  `json:"nonce"`
 	Ts          int64  `json:"ts"`
 	Signature   string `json:"signature"`

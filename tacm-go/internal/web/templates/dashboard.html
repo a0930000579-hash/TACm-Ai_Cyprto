@@ -57,6 +57,10 @@ fetch(base+'/api/status').then(function(r){return r.json();}).then(function(d){
     kv('共識', fmt(c.consensus))+
     kv('難度', fmt(c.difficulty))+
     kv('記憶體池', fmt(c.mempool_size)+' 筆')+
+    kv('Base Fee', fmt(c.base_fee)+' TACm/gas')+
+    kv('Gas Price', fmt(c.gas_price))+
+    kv('Block Gas Limit', fmt(c.block_gas_limit))+
+    kv('Burned Total', fmt(c.burned_total_tacm)+' TACm')+
     kv('運行時間', fmt(c.uptime_sec)+' 秒')+
     kv('節點', fmt(c.node_id))+
     kv('地址', fmt(c.address)));

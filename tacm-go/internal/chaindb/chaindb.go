@@ -53,7 +53,11 @@ CREATE TABLE IF NOT EXISTS blocks (
     tx_count INTEGER,
     difficulty INTEGER,
     nonce INTEGER,
-    size INTEGER DEFAULT 0
+    size INTEGER DEFAULT 0,
+    base_fee TEXT,
+    gas_used INTEGER DEFAULT 0,
+    gas_limit INTEGER DEFAULT 0,
+    burned TEXT
 );
 CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT PRIMARY KEY,
@@ -64,6 +68,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     to_addr TEXT,
     amount TEXT,
     fee TEXT,
+    gas_limit INTEGER DEFAULT 21000,
+    max_fee TEXT,
+    priority_fee TEXT,
+    burned TEXT,
     nonce INTEGER,
     ts INTEGER,
     signature TEXT,
@@ -183,7 +191,7 @@ func scanBlock(row interface {
 	var prevHash sql.NullString
 	if err := row.Scan(&b.Height, &b.Hash, &prevHash, &b.MerkleRoot, &b.Proposer,
 		&b.ProposerAddress, &b.Ts, &b.TxCount, &b.Difficulty, &b.Nonce,
-		&b.Size); err != nil {
+		&b.Size, &b.BaseFee, &b.GasUsed, &b.GasLimit, &b.Burned); err != nil {
 		return nil, err
 	}
 	if prevHash.Valid {
@@ -192,7 +200,7 @@ func scanBlock(row interface {
 	return &b, nil
 }
 
-const blockCols = "height, hash, prev_hash, merkle_root, proposer, proposer_address, ts, tx_count, difficulty, nonce, size"
+const blockCols = "height, hash, prev_hash, merkle_root, proposer, proposer_address, ts, tx_count, difficulty, nonce, size, base_fee, gas_used, gas_limit, burned"
 
 // GetLatestBlock 返回最高區塊；空庫返回 (nil, nil)。
 func (c *ChainDB) GetLatestBlock() (*Block, error) {

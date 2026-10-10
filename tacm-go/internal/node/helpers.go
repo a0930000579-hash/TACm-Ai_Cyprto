@@ -51,15 +51,19 @@ func getInt64(m map[string]any, key string) int64 {
 // txFromMap 將內存池交易 map 轉為 chaindb.Transaction。
 func txFromMap(m map[string]any) chaindb.Transaction {
 	return chaindb.Transaction{
-		TxHash:    getString(m, "tx_hash"),
-		FromAddr:  getString(m, "from"),
-		ToAddr:    getString(m, "to"),
-		Amount:    getString(m, "amount"),
-		Fee:       getString(m, "fee"),
-		Nonce:     getInt64(m, "nonce"),
-		Ts:        getInt64(m, "ts"),
-		Signature: getString(m, "signature"),
-		Pubkey:    getString(m, "pubkey"),
-		Memo:      getString(m, "memo"),
+		TxHash:      getString(m, "tx_hash"),
+		FromAddr:    getString(m, "from"),
+		ToAddr:      getString(m, "to"),
+		Amount:      getString(m, "amount"),
+		Fee:         getString(m, "fee"),
+		GasLimit:    getInt64(m, "gas_limit"),
+		MaxFee:      getString(m, "max_fee"),
+		PriorityFee: getString(m, "priority_fee"),
+		Burned:      getString(m, "burned"),
+		Nonce:       getInt64(m, "nonce"),
+		Ts:          getInt64(m, "ts"),
+		Signature:   getString(m, "signature"),
+		Pubkey:      getString(m, "pubkey"),
+		Memo:        getString(m, "memo"),
 	}
 }

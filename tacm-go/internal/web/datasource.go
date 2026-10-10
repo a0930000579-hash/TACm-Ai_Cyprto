@@ -167,6 +167,7 @@ func blockView(b *chaindb.Block) BlockView {
 		Height: b.Height, Hash: b.Hash, PrevHash: prev, MerkleRoot: b.MerkleRoot,
 		Proposer: b.Proposer, ProposerAddress: b.ProposerAddress, Ts: b.Ts,
 		TxCount: b.TxCount, Difficulty: b.Difficulty, Nonce: b.Nonce, Size: b.Size,
+		BaseFee: b.BaseFee, GasUsed: b.GasUsed, GasLimit: b.GasLimit, Burned: b.Burned,
 	}
 	if b.Height > 0 {
 		bv.PrevHeight = b.Height - 1
@@ -236,6 +237,8 @@ func (d *nodeDS) Status() StatusView {
 		FinalizedHeight: d.n.FinalizedHeight(), Difficulty: s.Difficulty,
 		MempoolSize: int(s.MempoolSize), UptimeSec: s.UptimeSec,
 		Consensus: s.Consensus,
+		BaseFee: s.BaseFee, GasPrice: s.GasPrice, BlockGasLimit: s.BlockGasLimit,
+		BurnedTotal: s.BurnedTotal,
 	}
 }
 

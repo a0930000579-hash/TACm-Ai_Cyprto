@@ -800,9 +800,27 @@ func (n *Node) produceBlock() error {
 		return err
 	}
 
+	// M74-3 EIP-1559：本塊 base fee 由父塊的 base fee 與 gas 使用率調整。
+	parentBaseFee := chaindb.InitialBaseFee
+	parentGasUsed := int64(0)
+	parentGasLimit := int64(chaindb.BlockGasLimit)
+	if latest != nil {
+		if pf, perr := strconv.ParseFloat(latest.BaseFee, 64); perr == nil && pf > 0 {
+			parentBaseFee = pf
+		}
+		parentGasUsed = latest.GasUsed
+		parentGasLimit = latest.GasLimit
+		if parentGasLimit <= 0 {
+			parentGasLimit = chaindb.BlockGasLimit
+		}
+	}
+	baseFee := chaindb.ComputeNextBaseFee(parentBaseFee, parentGasUsed, parentGasLimit)
+
 	ts := time.Now().Unix()
 	txHashes := make([]string, 0, len(mempool)+1)
 	txs := make([]chaindb.Transaction, 0, len(mempool)+1)
+	gasUsed := int64(0)
+	burnedTotal := 0.0
 
 	// coinbase 增發交易置於首位（height>0），其哈希進入 Merkle 根。
 	// 供應模型：TACM_MAX_SUPPLY 設定後依年衰減發行（上限 52,003,300）；未設定維持減半模式。
@@ -835,7 +853,31 @@ func (n *Node) produceBlock() error {
 		if h := getString(m, "tx_hash"); h != "" {
 			txHashes = append(txHashes, h)
 		}
-		txs = append(txs, txFromMap(m))
+		t := txFromMap(m)
+		// M74-3：EIP-1559 交易拆分（burn/tip）與 gas 帳本；legacy 交易 burn=0。
+		if t.MaxFee != "" {
+			_, err1 := strconv.ParseFloat(t.MaxFee, 64)
+			_, err2 := strconv.ParseFloat(t.PriorityFee, 64)
+			ff, err3 := strconv.ParseFloat(t.Fee, 64)
+			if err1 == nil && err2 == nil && err3 == nil && ff > 0 {
+				t.GasLimit = chaindb.TxGasLimit(t.GasLimit)
+				burn, _ := chaindb.SplitFee(ff, baseFee, t.GasLimit)
+				t.Burned = chaindb.FormatFloat(burn)
+			}
+		}
+		if t.GasLimit <= 0 {
+			t.GasLimit = chaindb.TxGasBase
+		}
+		gasUsed += t.GasLimit
+		txs = append(txs, t)
+		if t.Burned != "" {
+			if b, berr := strconv.ParseFloat(t.Burned, 64); berr == nil {
+				burnedTotal += b
+			}
+		}
+	}
+	if gasUsed > chaindb.BlockGasLimit {
+		return errors.New("block gas limit exceeded")
 	}
 	mroot, err := crypto.MerkleRootStrings(txHashes)
 	if err != nil {
@@ -895,6 +937,10 @@ func (n *Node) produceBlock() error {
 		TxCount:         len(txs),
 		Difficulty:      diff,
 		Nonce:           int64(pow.Nonce),
+		BaseFee:         chaindb.FormatFloat(baseFee),
+		GasUsed:         gasUsed,
+		GasLimit:        chaindb.BlockGasLimit,
+		Burned:          chaindb.FormatFloat(burnedTotal),
 	}
 	if err := n.db.InsertBlock(block, txs); err != nil {
 		return err

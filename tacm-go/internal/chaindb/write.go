@@ -24,11 +24,13 @@ func (c *ChainDB) InsertBlock(block *Block, txs []Transaction) error {
 	size := len(rawSize)
 	if _, err := tx.Exec(`
 		INSERT OR REPLACE INTO blocks
-		(height, hash, prev_hash, merkle_root, proposer, proposer_address, ts, tx_count, difficulty, nonce, size)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		(height, hash, prev_hash, merkle_root, proposer, proposer_address, ts, tx_count, difficulty, nonce, size,
+		 base_fee, gas_used, gas_limit, burned)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		block.Height, block.Hash, block.PrevHash, block.MerkleRoot,
 		block.Proposer, block.ProposerAddress, block.Ts,
-		txCount(block, txs), block.Difficulty, block.Nonce, size); err != nil {
+		txCount(block, txs), block.Difficulty, block.Nonce, size,
+		strOr(block.BaseFee), block.GasUsed, block.GasLimit, strOr(block.Burned)); err != nil {
 		return fmt.Errorf("chaindb: 寫入區塊 %d 失敗: %w", block.Height, err)
 	}
 
@@ -42,15 +44,17 @@ func (c *ChainDB) InsertBlock(block *Block, txs []Transaction) error {
 		if _, err := tx.Exec(`
 			INSERT OR REPLACE INTO transactions
 			(tx_hash, block_height, block_hash, tx_index, from_addr, to_addr,
-			 amount, fee, nonce, ts, signature, pubkey, memo, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
+			 amount, fee, gas_limit, max_fee, priority_fee, burned, nonce, ts, signature, pubkey, memo, status)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
 			t.TxHash, block.Height, block.Hash, i, t.FromAddr, t.ToAddr,
-			strOr(t.Amount), strOr(t.Fee), t.Nonce, t.Ts,
-			t.Signature, t.Pubkey, t.Memo); err != nil {
+			strOr(t.Amount), strOr(t.Fee), t.GasLimit, strOr(t.MaxFee), strOr(t.PriorityFee),
+			strOr(t.Burned), t.Nonce, t.Ts, t.Signature, t.Pubkey, t.Memo); err != nil {
 			return fmt.Errorf("chaindb: 寫入交易 %s 失敗: %w", t.TxHash, err)
 		}
+		// M74-3 EIP-1559：burn 部分從付款人扣除但不入任何帳戶（銷毀通縮）；
+		// proposer 僅得 tip（fee−burn）。legacy 交易 burn=0 行為與舊版一致。
 		if err := updateBalance(tx, t.FromAddr, t.ToAddr,
-			strOr(t.Amount), strOr(t.Fee), proposer); err != nil {
+			strOr(t.Amount), strOr(t.Fee), strOr(t.Burned), proposer); err != nil {
 			return err
 		}
 		if _, err := tx.Exec("DELETE FROM mempool WHERE tx_hash = ?", t.TxHash); err != nil {
@@ -138,9 +142,10 @@ func applyDelta(tx *sql.Tx, address string, delta float64, incNonce bool) error 
 
 // updateBalance 執行賬戶狀態轉換：發方扣款（含費、nonce+1）、收方入賬、
 // 手續費結給提議者（提議者即付款方時不重複計）。
-func updateBalance(tx *sql.Tx, fromAddr, toAddr, amount, fee, proposer string) error {
+func updateBalance(tx *sql.Tx, fromAddr, toAddr, amount, fee, burned, proposer string) error {
 	amt := parseFloat(amount)
 	feeAmt := parseFloat(fee)
+	burnAmt := parseFloat(burned)
 	if fromAddr != "" {
 		if err := applyDelta(tx, fromAddr, -(amt + feeAmt), true); err != nil {
 			return err
@@ -151,8 +156,10 @@ func updateBalance(tx *sql.Tx, fromAddr, toAddr, amount, fee, proposer string) e
 			return err
 		}
 	}
-	if feeAmt > 0 && proposer != "" && proposer != fromAddr {
-		if err := applyDelta(tx, proposer, feeAmt, false); err != nil {
+	// M74-3：出塊者實得 tip = fee − burn（burn 銷毀、不入任何帳戶）。
+	tip := feeAmt - burnAmt
+	if tip > 0 && proposer != "" && proposer != fromAddr {
+		if err := applyDelta(tx, proposer, tip, false); err != nil {
 			return err
 		}
 	}
@@ -231,7 +238,7 @@ func (c *ChainDB) RebuildAccounts() (int64, error) {
 		}
 		for i := range txs {
 			t := &txs[i]
-			if err := updateBalance(tx, t.FromAddr, t.ToAddr, t.Amount, t.Fee, proposer); err != nil {
+			if err := updateBalance(tx, t.FromAddr, t.ToAddr, t.Amount, t.Fee, t.Burned, proposer); err != nil {
 				return 0, err
 			}
 		}

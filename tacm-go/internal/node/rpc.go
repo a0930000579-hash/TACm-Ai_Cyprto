@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"tacm/internal/chaindb"
 	"tacm/internal/crypto"
 )
 
@@ -50,6 +51,7 @@ func NewRPCServer(n *Node) *RPCServer {
 
 	s.addRoute("GET /health", s.handleHealth)
 	s.addRoute("GET /status", s.handleStatus)
+	s.addRoute("GET /api/gas", s.handleGasOracle)
 	s.addRoute("GET /headers", s.handleHeaders)
 	s.addRoute("GET /header/{height}", s.handleHeader)
 	s.addRoute("GET /proof/{txhash}", s.handleProof)
@@ -264,6 +266,21 @@ func (s *RPCServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *RPCServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.node.GetStatus())
+}
+
+// handleGasOracle GET /api/gas — EIP-1559 建議 gas 參數（前端/錢包組費率用）。
+// 回傳：目前 base_fee、建議 priority_fee、建議 max_fee、單筆交易 gas 上限。
+func (s *RPCServer) handleGasOracle(w http.ResponseWriter, r *http.Request) {
+	st := s.node.GetStatus()
+	baseFee := st.BaseFee
+	priority := 0.000000001 // 建議小費（1e-9 TACm/gas）
+	gasLimit := int64(chaindb.TxGasBase)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "base_fee": baseFee, "priority_fee": priority,
+		"max_fee": baseFee + priority, "gas_limit": gasLimit,
+		"block_gas_limit": st.BlockGasLimit,
+		"total_fee_estimate": (baseFee + priority) * float64(gasLimit),
+	})
 }
 
 func (s *RPCServer) handleHeaders(w http.ResponseWriter, r *http.Request) {

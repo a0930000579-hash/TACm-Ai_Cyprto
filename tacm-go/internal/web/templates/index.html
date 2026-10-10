@@ -18,6 +18,14 @@
     <div class="card-label">待打包交易</div>
     <div class="card-value" id="hMempool">{{ status.MempoolSize }}</div>
   </div>
+  <div class="card">
+    <div class="card-label">Base Fee (TACm/gas)</div>
+    <div class="card-value mono" id="hBaseFee">{{ status.BaseFee }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Burned Total (TACm)</div>
+    <div class="card-value mono" id="hBurned">{{ status.BurnedTotal }}</div>
+  </div>
 </section>
 
 <!-- M34：<span data-i18n="index.overview">全鏈儀表</span>＋全網挖礦速率圈 -->
@@ -83,6 +91,8 @@
         el = document.getElementById('hHeight'); if (el && st.block_height!=null) el.textContent = st.block_height;
         el = document.getElementById('hFinal'); if (el && st.finalized_height!=null) el.textContent = st.finalized_height;
         el = document.getElementById('hDiff'); if (el && st.effective_difficulty!=null) el.textContent = st.effective_difficulty;
+        el = document.getElementById('hBaseFee'); if (el && st.base_fee!=null) el.textContent = st.base_fee;
+        el = document.getElementById('hBurned'); if (el && st.burned_total_tacm!=null) el.textContent = st.burned_total_tacm;
         el = document.getElementById('dcRate'); if (el && st.block_height!=null) el.textContent = st.block_height + ' 塊';
       }).catch(function(){});
     }

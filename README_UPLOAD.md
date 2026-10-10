@@ -1,8 +1,49 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M74-2）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M74-3）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M74-2）——鏈上 NFT（ERC-721 標準：mint/transferFrom/ownerOf/tokenURI）
+## 本版重點（M74-3）——EIP-1559 動態手續費（gas 市場與以太/BSC 對齊）
+
+M74-2（鏈上 NFT）之後，本版把**交易費機制升級為 EIP-1559 動態手續費**——這是主流鏈（以太坊/BSC/Solana）與 TACm 之間最後一塊核心協議缺口（舊版手續費固定為 0）：
+
+- **每塊 base fee（TACm/gas）**：由前塊 gas 使用率自動調整（目標 50% 滿，滿塊每塊最多 +12.5%、空塊最多 −12.5%），有下限保護（1e-8），鏈上每一塊 header 都記錄 `base_fee/gas_used/gas_limit/burned`。
+- **交易可選帶 gas 參數**：`gas_limit / max_fee / priority_fee`（legacy 固定 fee 向後相容）；有效 gas 價＝min(max_fee, base_fee＋priority_fee)，總費＝effective×gas。
+- **費用拆帳（與以太 EIP-1559 同）**：`burn = base_fee × gas` 銷毀（通縮，不入任何帳戶）、`tip = fee − burn` 歸出塊者——礦工激勵與網絡通縮並行。
+- **新 RPC `GET /api/gas`**：錢包/前端組費率用——回傳目前 `base_fee / priority_fee 建議 / max_fee 建議 / gas_limit / block_gas_limit / total_fee_estimate`。
+- **鏈上審計**：守恆恆等式改為「總餘額＋全鏈銷毀 == coinbase 增發」（`/api/audit` 新增 `burned_total_tacm`），銷毀不會被誤判為漏洞。
+- **前端（中英同步）**：首頁/公開瀏覽器（`/explorer`）新增 Base Fee／Gas Price／Block Gas Limit／Burned Total 卡片；區塊詳情頁顯示每塊 base_fee/gas_used/burned。
+- **測試**：`fee.go` 單元測試（base fee 升/降/下限/50% 不變、費用拆分、fee 過低拒絕）＋ EIP-1559 交易 e2e（上鏈→拆帳→審計守恆含銷毀）全過；node 全量回歸（162s）綠；`go build ./...` 綠；冒煙實測 `/status`（base_fee 隨塊遞減）、`/api/gas`、瀏覽器頁面渲染正確。
+
+### M74-3 錨點部署步驟（一次一條，勿一次貼多條）
+
+```bash
+sudo systemctl stop tacnode
+```
+```bash
+rm -rf /var/tac/data
+```
+```bash
+curl -L -o /tmp/tacm-go-m743.zip 'https://aka.doubaocdn.com/s/aWt1JxUygQ'
+```
+```bash
+cd /root && sudo unzip -o /tmp/tacm-go-m743.zip
+```
+```bash
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+```
+```bash
+sudo systemctl restart tacnode
+```
+```bash
+curl -s http://2.28.201.174:8080/status
+```
+```bash
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+> ⚠️ **部署前必讀（重要，與前幾版不同）**：M74-3 是**結構性變更**——blocks/transactions 資料表新增 `base_fee/gas_used/gas_limit/burned` 等欄位（`CREATE TABLE IF NOT EXISTS` 不會為既有資料庫補欄位，舊資料會寫入失敗）。因此**錨點必須執行 `rm -rf /var/tac/data` 全新創世**（上方第 2 條）；Render 端重新部署時也要**清空 data 目錄**（或換新資料夾），否則節點無法啟動。鏈上獎勵規則（node 9%／pool 16%／miner 75%）與 ERC-20/ERC-721 介面（M74-1/M74-2）不受影響，全新創世後照常運作。
+
+## 上版重點（M74-2）——鏈上 NFT（ERC-721 標準：mint/transferFrom/ownerOf/tokenURI）
 
 M74-1（ERC-20 標準授權）之後，本版補上**標準 NFT（ERC-721 風格）**，讓 TACm 主網與主流鏈一樣具備**鏈上 NFT 能力**（收藏品/數位資產/票券等）：
 
