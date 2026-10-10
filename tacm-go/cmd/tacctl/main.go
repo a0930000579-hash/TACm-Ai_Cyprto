@@ -38,6 +38,8 @@ func main() {
 		err = cmdGet(os.Args[2:])
 	case "storage":
 		err = cmdStorage(os.Args[2:])
+	case "audit":
+		err = cmdAudit(os.Args[2:])
 	default:
 		usage()
 	}
@@ -56,6 +58,7 @@ func usage() {
   tacctl call     -node URL -wif WIF -contract ADDR [-calldata HEX] [-amount N] [-fee N]
   tacctl list     -node URL
   tacctl get      -node URL -contract ADDR
+  tacctl audit    -node URL
 `)
 	os.Exit(0)
 }

@@ -186,6 +186,27 @@ func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "block.html", pongo2.Context{"b": b})
 }
 
+// handleBlockAPI GET /api/block/{height} — 鏈上審計 JSON（M66）：
+// 回傳區塊頭與完整交易（含 coinbase 瓜分明細），供 tacctl audit 逐塊驗證
+// 「coinbase 總額 == BlockReward」——任何入口看到同一份鏈上數據。
+func (s *Server) handleBlockAPI(w http.ResponseWriter, r *http.Request) {
+	h, err := strconv.ParseInt(r.PathValue("height"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid height", http.StatusBadRequest)
+		return
+	}
+	bd, err := s.ds.BlockDetail(h)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if bd == nil {
+		http.NotFound(w, r)
+		return
+	}
+	writeJSON(w, bd)
+}
+
 func (s *Server) handleAddress(w http.ResponseWriter, r *http.Request) {
 	addr := r.PathValue("address")
 	a, err := s.ds.Address(addr)

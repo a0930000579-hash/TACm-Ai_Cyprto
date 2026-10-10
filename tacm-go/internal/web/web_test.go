@@ -29,6 +29,7 @@ func (f *fakeDS) Wallet(string) (*WalletView, error)                { return f.w
 func (f *fakeDS) ChainStats() ChainStatsView                        { return ChainStatsView{} }
 func (f *fakeDS) RecentTransactions(int) ([]TxView, error)          { return f.txList, nil }
 func (f *fakeDS) CurrentUser(*http.Request) (*node.AuthUser, error) { return nil, nil }
+func (f *fakeDS) BlockDetail(int64) (*node.BlockDetail, error)      { return nil, nil }
 
 func newFake() *fakeDS {
 	now := time.Now().Unix()

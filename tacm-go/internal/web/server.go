@@ -131,6 +131,9 @@ func (s *Server) routes() {
 	// M64：節點健康度監控（全網狀態統一視界）。
 	s.mux.HandleFunc("GET /network", s.handleNetwork)
 	s.mux.HandleFunc("GET /api/network", s.handleNetworkAPI)
+	// M66：鏈上審計 JSON——區塊頭＋完整交易（含 coinbase 明細），供 tacctl audit 驗證
+	// 「每塊 coinbase 總額 == BlockReward」；/block/{height} 仍為 HTML 瀏覽器頁。
+	s.mux.HandleFunc("GET /api/block/{height}", s.handleBlockAPI)
 	s.mux.HandleFunc("GET /block/{height}", s.handleBlock)
 	s.mux.HandleFunc("GET /address/{address}", s.handleAddress)
 	s.mux.HandleFunc("GET /tx/{hash}", s.handleTx)

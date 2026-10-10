@@ -139,4 +139,26 @@ func TestExplorerRealNode(t *testing.T) {
 		t.Errorf("peers API 異常 狀態=%d", resp.StatusCode)
 	}
 	resp.Body.Close()
+
+	// M66：鏈上審計 JSON——/api/block/{h} 回平鋪區塊欄位＋transactions（含 coinbase）。
+	resp, err = http.Get(ts.URL + "/api/block/1")
+	if err != nil {
+		t.Fatalf("block API: %v", err)
+	}
+	body = readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("block API 狀態=%d", resp.StatusCode)
+	}
+	for _, want := range []string{`"height":1`, `"transactions":[`, `"memo"`, `"coinbase:reserve"`, `"coinbase:pool"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/api/block/1 缺少 %q（body=%s）", want, body)
+		}
+	}
+	resp.Body.Close()
+	// 不存在的高度 → 404（審計器以 404 判定區塊缺失）。
+	resp, _ = http.Get(ts.URL + "/api/block/999999")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("/api/block/999999 應 404，實際 %d", resp.StatusCode)
+	}
+	resp.Body.Close()
 }

@@ -25,6 +25,8 @@ type DataSource interface {
 	RecentTransactions(limit int) ([]TxView, error)
 	// M37：讀取登入會員（session），供錢包/首頁等頁面依會員綁定地址渲染。
 	CurrentUser(r *http.Request) (*node.AuthUser, error)
+	// M66：鏈上審計——回傳區塊頭與完整交易（含 coinbase 明細），供 /api/block/{h} 使用。
+	BlockDetail(height int64) (*node.BlockDetail, error)
 }
 
 type nodeDS struct{ n *node.Node }
@@ -36,6 +38,11 @@ func (d *nodeDS) CurrentUser(r *http.Request) (*node.AuthUser, error) {
 
 // NewNodeDataSource 把運行中的節點適配為 Web 數據源。
 func NewNodeDataSource(n *node.Node) DataSource { return &nodeDS{n: n} }
+
+// BlockDetail 回傳區塊頭與完整交易（含 coinbase 瓜分明細，M66 鏈上審計用）。
+func (d *nodeDS) BlockDetail(height int64) (*node.BlockDetail, error) {
+	return d.n.GetBlockDetail(height)
+}
 
 // walletView 把錢包服務快照轉為 Web 視圖。
 func (d *nodeDS) Wallet(addr string) (*WalletView, error) {
