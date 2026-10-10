@@ -90,6 +90,9 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /api/community/stats", s.handleCommunityStats)
 	s.addRoute("GET /api/community/config", s.handleCommunityConfig)
 
+	// M73-A AI 服務層：鏈上智能助手（規則引擎，無外部依賴）。
+	s.addRoute("GET /api/ai/ask", s.handleAIAssistant)
+
 	// M13 錢包/資產/TiUSD 業務端點。
 	s.addRoute("GET /api/wallet/info", s.handleWalletInfo)
 	s.addRoute("GET /api/wallet/ledger", s.handleWalletLedger)

@@ -257,6 +257,12 @@ func (s *Server) handleCommunity(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "community.html", pongo2.Context{})
 }
 
+// handleAI GET /ai — AI 服務：鏈上智能助手（M73-A）。
+// 實時回答由前端直接讀取節點 RPC（/api/ai/ask，?rpc= 可覆蓋）。
+func (s *Server) handleAI(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "ai.html", pongo2.Context{})
+}
+
 // handleGovernance GET /governance — 鏈上治理（提案/投票/參數，App 化）。
 // 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
 func (s *Server) handleGovernance(w http.ResponseWriter, r *http.Request) {

@@ -144,6 +144,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /dashboard", s.handleDashboard)
 	s.mux.HandleFunc("GET /mining", s.handleMining)
 	s.mux.HandleFunc("GET /community", s.handleCommunity)
+	s.mux.HandleFunc("GET /ai", s.handleAI)
 	s.mux.HandleFunc("GET /governance", s.handleGovernance)
 	s.mux.HandleFunc("GET /defi", s.handleDefi)
 	s.mux.HandleFunc("GET /c2c", s.handleC2C)

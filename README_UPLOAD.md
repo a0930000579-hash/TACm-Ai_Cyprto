@@ -1,8 +1,35 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M72）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M73）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M72）——全站中英完全同步化（英文為主、中文可切換）
+## 本版重點（M73-A）——AI 服務層＋鏈上智能助手
+
+M72 之後，本版新增「AI 助手」服務：一個**零外部依賴、可離線部署**的鏈上智能助手（規則引擎直接讀鏈上真實數據回答，不上送任何第三方 LLM）：
+
+1. **`GET /api/ai/ask?q=&lang=`**：中英（含繁簡）意圖匹配——節點狀態／區塊（最新或指定高度）／鏈上審計（全鏈重放、一致／守恆／賬本）／地址餘額／獎勵分潤（池 16%、節點 9%、礦工 75%）／在線礦工／供應與發行／加入節點指引／轉帳指引／說明清單；回答全部來自鏈上真實數據（`GetStatus/GetBalance/VerifyLedgerOnChain/GetBlockDetail` 等），缺 `q` 回 400；
+2. **`GET /ai`**：AI 助手聊天頁面（建議問句 chips＋對話框＋即時回答，中英雙語隨全域切換），頂部導覽與「☰ Tools」選單均有「AI 助手」入口；
+3. **i18n 同步**：`i18n.js` 新增 15 個 AI 鍵（`nav.ai/pill.ai/ai_assistant/ai_suggest_*` 等），英文模式 `/ai` 頁零中文殘留；
+4. **測試**：`internal/node/ai_rpc_test.go` 新增 4 組（意圖匹配 13 例、回答 15 例中英、缺 q 400、指定高度解析），`go test ./internal/node/` 全過；`go build ./...` 全量編譯通過。
+
+### M73-A 錨點部署步驟（與 M72 相同：先停服務→清資料→解壓→build→重啟，一次一條）
+
+sudo systemctl stop tacnode
+rm -rf /var/tac/data
+curl -L -o /tmp/tacm-go-m73.zip 'https://aka.doubaocdn.com/s/XN5ZjpvNzK'
+cd /root && sudo unzip -o /tmp/tacm-go-m73.zip
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+sudo systemctl restart tacnode
+curl -s http://2.28.201.174:8080/status
+curl -s http://2.28.201.174:8080/api/audit
+
+驗證 AI 助手（部署後）：
+
+curl -s 'http://2.28.201.174:8080/api/ai/ask?q=node%20status&lang=en'
+curl -s 'http://2.28.201.174:8080/api/ai/ask?q=%E8%8A%82%E7%82%B9%E7%8A%B6%E6%80%81&lang=zh'
+
+瀏覽器開啟 `http://2.28.201.174:8080/ai`（或 Render 網址 `/ai`）即可聊天。
+
+## 上版重點（M72）——全站中英完全同步化（英文為主、中文可切換）
 
 M71 之後，本版把**全站 14 個頁面**的英文模式中文殘留全部清空，並補齊前端彈窗（alert/confirm/prompt）、後端回傳訊息與動態渲染文字的雙語支援：
 
