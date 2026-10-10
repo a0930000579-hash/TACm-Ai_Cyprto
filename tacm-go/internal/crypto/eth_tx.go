@@ -341,3 +341,60 @@ func hexVal(c byte) int {
 	}
 	return -1
 }
+
+// EncodeEthRawTxType2 把 type 2 交易編碼為 EIP-1559 RLP raw（0x02 前綴）。
+func EncodeEthRawTxType2(tx *EthTx) []byte {
+	if tx.V == nil {
+		tx.V = big.NewInt(0)
+	}
+	if tx.R == nil {
+		tx.R = big.NewInt(0)
+	}
+	if tx.S == nil {
+		tx.S = big.NewInt(0)
+	}
+	body := rlpEncodeList(
+		rlpEncodeInt(tx.ChainID),
+		rlpEncodeInt(tx.Nonce),
+		rlpEncodeInt(tx.MaxPriorityFee),
+		rlpEncodeInt(tx.MaxFee),
+		rlpEncodeInt(tx.Gas),
+		rlpEncodeBytes(tx.To),
+		rlpEncodeInt(tx.Value),
+		rlpEncodeBytes(tx.Data),
+		rlpEncodeList(), // accessList（空）
+		rlpEncodeInt(tx.V), // yParity
+		rlpEncodeInt(tx.R),
+		rlpEncodeInt(tx.S),
+	)
+	return append([]byte{0x02}, body...)
+}
+
+// SignEthRawTxType2 以 EIP-1559 簽署 type 2 交易：回填 yParity/R/S 並回完整 RLP raw。
+func SignEthRawTxType2(tx *EthTx, priv *btcec.PrivateKey) ([]byte, error) {
+	if priv == nil {
+		return nil, errors.New("eth: 簽署私鑰為空")
+	}
+	if tx.TxType != 2 {
+		tx.TxType = 2
+	}
+	payload := tx.Payload()
+	digest := Keccak256(payload)
+	sig := ecdsa.Sign(priv, digest)
+	r, s, err := parseDERSig(sig.Serialize())
+	if err != nil {
+		return nil, err
+	}
+	var recid byte
+	for i := byte(0); i < 4; i++ {
+		pub, err := RecoverEthSignerType2(payload, r, s, big.NewInt(int64(i)))
+		if err == nil && pub.IsEqual(priv.PubKey()) {
+			recid = i
+			break
+		}
+	}
+	tx.V = big.NewInt(int64(recid))
+	tx.R = r
+	tx.S = s
+	return EncodeEthRawTxType2(tx), nil
+}

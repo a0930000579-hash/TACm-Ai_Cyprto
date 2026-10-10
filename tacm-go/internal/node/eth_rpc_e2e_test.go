@@ -444,3 +444,127 @@ func TestEthLogsAndReceipt(t *testing.T) {
 		t.Fatalf("deploy receipt status 應為 0x1，得到 %v", recD["status"])
 	}
 }
+
+// ---- M76：EIP-1559 type 2 交易（MetaMask 默認類型）＋block 完整交易 ----
+
+// ethSignRawTxType2 構建並簽署 EIP-1559 type 2 交易（空 accessList）。
+func ethSignRawTxType2(t *testing.T, key *btcec.PrivateKey, nonce, maxPrio, maxFee, gas, value int64,
+	to []byte, data []byte, chainID int64) string {
+	t.Helper()
+	tx := &crypto.EthTx{
+		TxType:         2,
+		ChainID:        big.NewInt(chainID),
+		Nonce:          big.NewInt(nonce),
+		MaxPriorityFee: big.NewInt(maxPrio),
+		MaxFee:         big.NewInt(maxFee),
+		Gas:            big.NewInt(gas),
+		To:             to,
+		Value:          big.NewInt(value),
+		Data:           data,
+	}
+	raw, err := crypto.SignEthRawTxType2(tx, key)
+	if err != nil {
+		t.Fatalf("type2 簽名: %v", err)
+	}
+	return hex.EncodeToString(raw)
+}
+
+func TestEthType2SendRawTransactionAndFullBlock(t *testing.T) {
+	n, srv, _ := contractStudioSetup(t)
+	key, from := ethKeyFrom(t)
+	insertGenesisWithAlloc(t, n, from)
+	if err := n.Wallet().Deposit(from, wallet.AssetTACm,
+		wallet.Amount{Big: new(big.Int).Mul(big.NewInt(10), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))},
+		"eth-type2-fund"); err != nil {
+		t.Fatalf("Deposit 失敗: %v", err)
+	}
+	aliceKP, _ := crypto.GenerateKeyPair()
+	alice, _ := aliceKP.Address()
+	alice0x, err := tx0To0x(alice)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. type2 轉帳交易（value=3e18 給 alice, maxPrio=2e9 wei, maxFee=5e12 wei, gas=100）。
+	raw := ethSignRawTxType2(t, key, 0, 2_000_000_000, 5_000_000_000_000, 100,
+		3_000_000_000_000_000_000, mustBytes20(t, alice0x), nil, crypto.EthChainID)
+	out := ethRPC(t, srv, "eth_sendRawTransaction", "0x"+raw)
+	if e, ok := out["error"]; ok {
+		t.Fatalf("type2 eth_sendRawTransaction error: %v", e)
+	}
+	txHash, _ := out["result"].(string)
+	if txHash == "" {
+		t.Fatal("無 tx hash")
+	}
+	waitFor(t, func() bool {
+		tx, err := n.db.GetTransaction(txHash)
+		return err == nil && tx != nil && tx.Status == "confirmed"
+	}, 8*time.Second, "type2 交易未入塊")
+
+	// 2. eth_getTransactionByHash 可查（收件方為 admin 自身地址）。
+	txObj := ethResult(t, srv, "eth_getTransactionByHash", txHash).(map[string]any)
+	if txObj["from"] == "" || txObj["to"] == "" {
+		t.Fatalf("type2 交易 from/to 缺失: %v", txObj)
+	}
+
+	// 3. eth_getBlockByNumber：false → transactions 為 hash 列表；true → 完整物件。
+	blkHashOnly := ethResult(t, srv, "eth_getBlockByNumber", "latest", false).(map[string]any)
+	hashArr, _ := blkHashOnly["transactions"].([]any)
+	if len(hashArr) == 0 {
+		t.Fatalf("block 應含交易 hash，got %v", hashArr)
+	}
+	foundHash := false
+	for _, h := range hashArr {
+		if h == "0x"+txHash {
+			foundHash = true
+		}
+	}
+	if !foundHash {
+		t.Fatalf("block hash 列表缺 type2 交易: %v", hashArr)
+	}
+	blkFull := ethResult(t, srv, "eth_getBlockByNumber", "latest", true).(map[string]any)
+	fullArr, _ := blkFull["transactions"].([]any)
+	if len(fullArr) == 0 {
+		t.Fatalf("fullTx block 應含完整交易")
+	}
+	var foundObj map[string]any
+	for _, x := range fullArr {
+		m := x.(map[string]any)
+		if m["hash"] == "0x"+txHash {
+			foundObj = m
+		}
+	}
+	if foundObj == nil {
+		t.Fatalf("fullTx block 缺 type2 交易: %v", fullArr)
+	}
+	if foundObj["from"] == "" || foundObj["to"] == "" {
+		t.Fatalf("fullTx 交易 from/to 缺失: %v", foundObj)
+	}
+	if foundObj["value"] == "0x0" {
+		t.Fatalf("fullTx 交易 value 應非 0: %v", foundObj)
+	}
+	if foundObj["gasPrice"] == "0x0" {
+		t.Fatalf("fullTx 交易 gasPrice 應非 0: %v", foundObj)
+	}
+
+	// 4. 錯誤 chainId 的 type2 交易被拒（重放防護）。
+	badChain := ethSignRawTxType2(t, key, 1, 2_000_000_000, 5_000_000_000_000, 100,
+		1, mustBytes20(t, alice0x), nil, crypto.EthChainID+999)
+	outBad := ethRPC(t, srv, "eth_sendRawTransaction", "0x"+badChain)
+	if e, ok := outBad["error"]; !ok {
+		t.Fatalf("錯誤 chainId 應被拒，結果=%v", outBad["result"])
+	} else {
+		t.Logf("錯誤 chainId 被拒（符合預期）: %v", e)
+	}
+}
+
+// ethKeyFrom 產生測試私鑰與地址。
+func ethKeyFrom(t *testing.T) (*btcec.PrivateKey, string) {
+	t.Helper()
+	key, err := btcec.NewPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromHash := crypto.Hash160(key.PubKey().SerializeCompressed())
+	return key, crypto.Hash160ToAddress(fromHash)
+}

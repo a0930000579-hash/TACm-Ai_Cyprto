@@ -47,6 +47,35 @@
   <div class="search-tip muted" id="searchTip"></div>
 </section>
 
+<!-- M76：主流錢包接入（MetaMask / Trust 自訂 RPC） -->
+<section class="panel">
+  <div class="panel-head"><h2 data-i18n="wallet.title">錢包接入</h2></div>
+  <p class="muted" data-i18n="wallet.intro">透過自訂 RPC 將 TACm 主網加入 MetaMask / Trust Wallet —— 完整支援 EIP-1559（Type 2）交易、事件日誌與交易收據。</p>
+  <div class="wallet-grid">
+    <div class="wg">
+      <small data-i18n="wallet.rpc">RPC URL</small>
+      <b class="mono" id="wRpc">…</b>
+    </div>
+    <div class="wg">
+      <small data-i18n="wallet.chainId">Chain ID</small>
+      <b class="mono">1337 (0x539)</b>
+    </div>
+    <div class="wg">
+      <small data-i18n="wallet.symbol">代幣符號</small>
+      <b class="mono">TACM</b>
+    </div>
+    <div class="wg">
+      <small data-i18n="wallet.decimals">小數位</small>
+      <b class="mono">18</b>
+    </div>
+  </div>
+  <div class="wallet-actions">
+    <button class="search-btn" id="wAddMeta" data-i18n="wallet.add">加到 MetaMask</button>
+    <button class="search-btn" id="wVerify" data-i18n="wallet.verify">驗證連線</button>
+    <span class="muted" id="wResult"></span>
+  </div>
+</section>
+
 <!-- M62：全鏈統計 -->
 <section class="panel">
   <div class="panel-head"><h2>🌐 全鏈統計</h2></div>
@@ -68,6 +97,11 @@
   .search-input:focus{border-color:#f0b90b}
   .search-btn{background:#f0b90b;color:#0b0e11;font-weight:700;border:0;border-radius:10px;padding:0 20px;font-size:15px;cursor:pointer}
   .search-tip{font-size:13px;margin-top:8px;min-height:18px}
+  .wallet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+  .wg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .wg small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+  .wg b{font-size:14px;color:var(--text);font-variant-numeric:tabular-nums;word-break:break-all}
+  .wallet-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
   .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
   .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
   .cg small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
@@ -146,6 +180,53 @@
         })
         .catch(function () { if (tip) tip.textContent = '搜尋失敗，請稍後再試'; });
     });
+  })();
+</script>
+
+<script>
+  // M76：主流錢包接入 —— 顯示 RPC URL、Add to MetaMask（wallet_addEthereumChain）、驗證連線。
+  (function () {
+    var rpcEl = document.getElementById('wRpc');
+    var addBtn = document.getElementById('wAddMeta');
+    var verBtn = document.getElementById('wVerify');
+    var resEl = document.getElementById('wResult');
+    if (rpcEl) { rpcEl.textContent = location.protocol + '//' + location.host; }
+    var chainParams = {
+      chainId: '0x539',
+      chainName: 'TACm Mainnet',
+      nativeCurrency: { name: 'TACM', symbol: 'TACM', decimals: 18 },
+      rpcUrls: [location.protocol + '//' + location.host],
+      blockExplorerUrls: [location.origin + '/explorer']
+    };
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        if (!window.ethereum) {
+          if (resEl) resEl.textContent = '請先安裝 MetaMask 後重試';
+          return;
+        }
+        window.ethereum.request({ method: 'wallet_addEthereumChain', params: [chainParams] })
+          .then(function () {
+            if (resEl) resEl.textContent = '✅ 已加入網路';
+          })
+          .catch(function (e) {
+            if (resEl) resEl.textContent = (e && e.message) || '加入網路失敗';
+          });
+      });
+    }
+    if (verBtn) {
+      verBtn.addEventListener('click', function () {
+        if (resEl) resEl.textContent = '檢查中…';
+        fetch('/eth', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (resEl) resEl.textContent = (j && j.result === '0x539') ? '✅ 連線正常 (0x539)' : ('⚠️ 異常: ' + JSON.stringify(j || {}));
+          })
+          .catch(function () { if (resEl) resEl.textContent = '驗證失敗'; });
+      });
+    }
   })();
 </script>
 {% endblock %}

@@ -31,19 +31,39 @@ func Keccak256(parts ...[]byte) []byte {
 // EthTx 為解碼後的 EIP-155 類型 0 交易。
 type EthTx struct {
 	Nonce    *big.Int
-	GasPrice *big.Int
+	GasPrice *big.Int // type 0 legacy gas price
 	Gas      *big.Int
 	To       []byte // 20 字節；空 = 合約建立
 	Value    *big.Int
 	Data     []byte
-	V        *big.Int
+	V        *big.Int // type 0: EIP-155 v；type 2: yParity(0/1)
 	R        *big.Int
 	S        *big.Int
 	Raw      []byte // 原始 RLP bytes
+	// EIP-1559 type 2（M76 錢包整合：MetaMask 默認交易類型）。
+	TxType         uint8  // 0 = legacy；2 = EIP-1559
+	ChainID        *big.Int
+	MaxPriorityFee *big.Int
+	MaxFee         *big.Int
 }
 
-// Payload 返回簽名哈希輸入（RLP 前 6 欄，不含 v/r/s）。
+// Payload 返回簽名哈希輸入（不含 v/r/s）。
+// type 0：RLP 前 6 欄；type 2：0x02 || RLP 前 9 欄（含 chainId/accessList）。
 func (t *EthTx) Payload() []byte {
+	if t.TxType == 2 {
+		body := rlpEncodeList(
+			rlpEncodeInt(t.ChainID),
+			rlpEncodeInt(t.Nonce),
+			rlpEncodeInt(t.MaxPriorityFee),
+			rlpEncodeInt(t.MaxFee),
+			rlpEncodeInt(t.Gas),
+			rlpEncodeBytes(t.To),
+			rlpEncodeInt(t.Value),
+			rlpEncodeBytes(t.Data),
+			rlpEncodeList(), // accessList（空）
+		)
+		return append([]byte{0x02}, body...)
+	}
 	return rlpEncodeList(
 		rlpEncodeInt(t.Nonce),
 		rlpEncodeInt(t.GasPrice),
@@ -184,6 +204,34 @@ func (it rlpItem) itemInt() *big.Int {
 
 // DecodeEthRawTx 解碼 EIP-155 類型 0 交易 raw bytes。
 func DecodeEthRawTx(raw []byte) (*EthTx, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("eth: 空交易")
+	}
+	if raw[0] == 0x02 {
+		// EIP-1559 type 2：0x02 || RLP([chainId, nonce, maxPriorityFee, maxFee, gas, to, value, data, accessList, yParity, r, s])
+		item, err := rlpDecodeItem(raw[1:])
+		if err != nil {
+			return nil, fmt.Errorf("eth: type2 RLP 解碼失敗: %w", err)
+		}
+		if item.list == nil || len(item.list) != 12 {
+			return nil, fmt.Errorf("eth: type2 交易需 12 元素 list，got %d", len(item.list))
+		}
+		return &EthTx{
+			TxType:         2,
+			ChainID:        item.list[0].itemInt(),
+			Nonce:          item.list[1].itemInt(),
+			MaxPriorityFee: item.list[2].itemInt(),
+			MaxFee:         item.list[3].itemInt(),
+			Gas:            item.list[4].itemInt(),
+			To:             item.list[5].data,
+			Value:          item.list[6].itemInt(),
+			Data:           item.list[7].data,
+			V:              item.list[9].itemInt(), // yParity
+			R:              item.list[10].itemInt(),
+			S:              item.list[11].itemInt(),
+			Raw:            raw,
+		}, nil
+	}
 	item, err := rlpDecodeItem(raw)
 	if err != nil {
 		return nil, fmt.Errorf("eth: RLP 解碼失敗: %w", err)
@@ -203,6 +251,27 @@ func DecodeEthRawTx(raw []byte) (*EthTx, error) {
 		S:        item.list[8].itemInt(),
 		Raw:      raw,
 	}, nil
+}
+
+// RecoverEthSignerType2 從 type 2 交易簽名恢復簽名者（yParity 即 recid 0/1）。
+func RecoverEthSignerType2(payload []byte, r, s, yParity *big.Int) (*btcec.PublicKey, error) {
+	if r == nil || s == nil || r.Sign() <= 0 || s.Sign() <= 0 {
+		return nil, errors.New("eth: 無效 r/s")
+	}
+	recid := yParity.Int64()
+	if recid < 0 || recid > 3 {
+		return nil, fmt.Errorf("eth: 無效 yParity=%v", yParity)
+	}
+	digest := Keccak256(payload)
+	compact := make([]byte, 65)
+	compact[0] = 27 + byte(recid)
+	r.FillBytes(compact[1:33])
+	s.FillBytes(compact[33:65])
+	pub, _, err := ecdsa.RecoverCompact(compact, digest)
+	if err != nil {
+		return nil, fmt.Errorf("eth: 簽名恢復失敗: %w", err)
+	}
+	return pub, nil
 }
 
 // RecoverEthSigner 從簽名恢復簽名者公鑰；chainId=0 表示 v 為 27/28 格式。

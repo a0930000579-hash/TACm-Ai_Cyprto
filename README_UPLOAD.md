@@ -1,8 +1,61 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M75-2）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M76）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M75-2）——EVM 事件日誌＋交易收據鏈上化＋eth_* 開發者介面補全
+## 本版重點（M76）——主流錢包整合：EIP-1559 Type 2 交易（MetaMask/Trust 直連）
+
+M75-2（事件日誌/收據）之後，本版補上**主流錢包整合的最後一塊硬缺口**——**MetaMask／Trust Wallet 默認發送的 EIP-1559 Type 2 交易（0x02 前綴）**，以及區塊交易的完整可讀性。部署後任何標準 EVM 錢包都能以「自訂 RPC」直連 TACm 主網發送交易：
+
+- **EIP-1559 Type 2 交易完整支援（crypto 層）**：
+  - `DecodeEthRawTx` 自動識別 `0x02` 前綴 → 12 元素 RLP（chainId/nonce/maxPriorityFeePerGas/maxFeePerGas/gas/to/value/data/accessList/yParity/r/s）；legacy Type 0（9 元素）向後相容。
+  - 新增 `RecoverEthSignerType2`（yParity＝recid）與 `SignEthRawTxType2`／`EncodeEthRawTxType2`（MetaMask 簽章格式）；Type 2 簽名哈希＝`keccak(0x02‖RLP(chainId,nonce,priority,maxFee,gas,to,value,data,accessList))`，與以太坊標準一致。
+  - **chainId 防重放**：Type 2 交易的 chainId 必須等於本鏈 1337，否則拒絕。
+- **SubmitEthRawTx 全型別映射（node 層）**：
+  - Type 2：有效 gas 價＝`min(maxFee, baseFee＋priorityFee)`（與 SubmitTransaction 驗證同源：下塊 base fee），`max_fee/priority_fee/gas_limit` 三欄寫入鏈上交易供 EIP-1559 驗證與拆帳（burn/tip）；Type 0 legacy 維持固定費語義（向後相容）。
+- **區塊交易完整回傳（eth_getBlockByNumber / eth_getBlockByHash）**：第二參數 `false`（預設）回交易 **hash 列表**，`true` 回**完整交易物件**（hash/from/to/value/gas/gasPrice/input/nonce…）——MetaMask 與區塊瀏覽器讀取鏈上交易不再看到空陣列。
+- **ethTxObject 補全**：`value`（鏈上 TACm 精確轉 wei）、`input`（vm:call 合約 calldata 還原）。
+- **前端錢包接入面板（/explorer）**：RPC URL／Chain ID 1337（0x539）／Symbol TACM／Decimals 18 四卡＋「加到 MetaMask」（`wallet_addEthereumChain`）＋「驗證連線」（eth_chainId 實測）按鈕；中英雙語（i18n 同步）。
+- **測試**：crypto 新增 `TestEthType2RoundTrip`（編碼→解碼→payload→簽名→恢復→重編碼一致）＋`TestEthType2ChainIDGuard`（錯 chainId 簽名不可互換）；node 新增 `TestEthType2SendRawTransactionAndFullBlock`（Type 2 交易入塊→getTransactionByHash→block hash 列表＋fullTx 完整物件→錯 chainId 拒絕）PASS；eth 全系列 5 測試綠。
+
+### M76 錨點部署步驟（一次一條，勿一次貼多條）
+
+```bash
+sudo systemctl stop tacnode
+```
+```bash
+rm -rf /var/tac/data
+```
+```bash
+curl -L -o /tmp/tacm-go-m76.zip 'https://aka.doubaocdn.com/s/gBdJOKe5AY'
+```
+```bash
+cd /root && sudo unzip -o /tmp/tacm-go-m76.zip
+```
+```bash
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+```
+```bash
+sudo systemctl restart tacnode
+```
+```bash
+curl -s http://2.28.201.174:8080/status
+```
+```bash
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+驗證錢包整合（部署後）：
+```bash
+curl -s -X POST http://2.28.201.174:8080/eth -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'
+```
+```bash
+curl -s -X POST http://2.28.201.174:8080/eth -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["latest",true]}'
+```
+瀏覽器開啟 `/explorer` → 底部「錢包接入」面板 → 點「加到 MetaMask」或「驗證連線」。
+
+> ⚠️ **部署前必讀**：M76 沿用 M75-2 鏈表結構（logs 表＋transactions.gas_used），**無新結構變更**；沿用既有 `rm -rf /var/tac/data` 全新創世即可。MetaMask 連線設定：Network Name `TACm Mainnet`、RPC URL `http://2.28.201.174:8080`、Chain ID `1337`、Currency Symbol `TACM`、Decimals `18`。
+
+## 上版重點（M75-2）——EVM 事件日誌＋交易收據鏈上化＋eth_* 開發者介面補全
 
 M75-1（ERC-721 授權面）之後，本版把**事件日誌與交易收據**變成鏈上事實——這是主流鏈（以太坊/BSC）開發者生態的最後核心缺口（此前 eth_* 只有區塊/餘額/呼叫，事件只在 VM 內生成、未持久化）。本版後 DApp 開發者可完整追蹤鏈上事件與交易結果：
 

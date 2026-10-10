@@ -13,6 +13,8 @@ import (
 
 	"tacm/internal/chaindb"
 	"tacm/internal/crypto"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 // ethRPCRequest/Response 為 JSON-RPC 2.0 外殼（eth_* 相容層）。
@@ -317,18 +319,51 @@ func (s *RPCServer) ethCall(params []any) (string, error) {
 	return "0x" + strings.TrimPrefix(r.ReturnData, "0x"), nil
 }
 
-// ethGetBlockByNumber 回最新區塊基本資訊（MVP：不含完整交易明細）。
+// ethGetBlockByNumber 回區塊資訊；第二參數 true 時回完整交易物件（MetaMask 慣例）。
 func (s *RPCServer) ethGetBlockByNumber(params []any) (any, error) {
-	_ = paramString(params, 0) // "latest" / hex；MVP 一律最新
+	tag := paramString(params, 0)
+	fullTx := paramBool(params, 1)
 	b, err := s.node.db.GetLatestBlock()
 	if err != nil || b == nil {
 		return nil, errors.New("eth: 無區塊")
 	}
-	return s.ethBlockObject(b), nil
+	if tag != "latest" && tag != "" && tag != "pending" {
+		if h := parseEthBlock(tag, b.Height); h >= 0 {
+			if bb, berr := s.node.db.GetBlock(h); berr == nil && bb != nil {
+				b = bb
+			}
+		}
+	}
+	return s.ethBlockObject(b, fullTx)
 }
 
-// ethBlockObject 以太標準區塊 JSON（不含完整交易明細）。
-func (s *RPCServer) ethBlockObject(b *chaindb.Block) map[string]any {
+// paramBool 取 params[i] 布林；缺失回 false。
+func paramBool(params []any, i int) bool {
+	if i >= len(params) {
+		return false
+	}
+	if b, ok := params[i].(bool); ok {
+		return b
+	}
+	return false
+}
+
+// ethBlockObject 以太標準區塊 JSON；transactions 依 fullTx 回完整物件或 hash 列表。
+func (s *RPCServer) ethBlockObject(b *chaindb.Block, fullTx bool) (map[string]any, error) {
+	txs, err := s.node.db.GetTransactionsByBlock(b.Height)
+	if err != nil {
+		return nil, err
+	}
+	txArr := make([]any, 0, len(txs))
+	if fullTx {
+		for i := range txs {
+			txArr = append(txArr, s.ethTxObject(txs[i]))
+		}
+	} else {
+		for i := range txs {
+			txArr = append(txArr, "0x"+txs[i].TxHash)
+		}
+	}
 	return map[string]any{
 		"number":           hexBig(b.Height),
 		"hash":             "0x" + b.Hash,
@@ -337,8 +372,8 @@ func (s *RPCServer) ethBlockObject(b *chaindb.Block) map[string]any {
 		"transactionsRoot": "0x" + b.MerkleRoot,
 		"miner":            "0x",
 		"transactionCount": hexBig(int64(b.TxCount)),
-		"transactions":     []any{},
-	}
+		"transactions":     txArr,
+	}, nil
 }
 
 func getStringFieldAny(m map[string]any, k string) string {
@@ -373,13 +408,21 @@ func (n *Node) SubmitEthRawTx(rawHex string) (string, error) {
 	if et.Gas.Int64() > int64(n.contracts.DefaultGas()) {
 		return "", fmt.Errorf("eth: gas %d 超過節點上限 %d", et.Gas.Int64(), n.contracts.DefaultGas())
 	}
-	// 驗證 EIP-155 簽名並恢復簽名者。
+	// 驗證簽名並恢復簽名者：type 2 用 yParity（recid）；type 0 用 EIP-155 v。
 	payload := et.Payload()
-	chainID := int64(0)
-	if et.V.Int64() >= 35 {
-		chainID = crypto.EthChainID
+	var pub *btcec.PublicKey
+	if et.TxType == 2 {
+		if et.ChainID == nil || et.ChainID.Int64() != crypto.EthChainID {
+			return "", fmt.Errorf("eth: chainId %v 不匹配本鏈 %d", et.ChainID, crypto.EthChainID)
+		}
+		pub, err = crypto.RecoverEthSignerType2(payload, et.R, et.S, et.V)
+	} else {
+		chainID := int64(0)
+		if et.V.Int64() >= 35 {
+			chainID = crypto.EthChainID
+		}
+		pub, err = crypto.RecoverEthSigner(payload, et.R, et.S, et.V, chainID)
 	}
-	pub, err := crypto.RecoverEthSigner(payload, et.R, et.S, et.V, chainID)
 	if err != nil {
 		return "", err
 	}
@@ -398,14 +441,50 @@ func (n *Node) SubmitEthRawTx(rawHex string) (string, error) {
 	}
 	// 鏈上金額為 TACm 十進位（1e18 wei）；eth value/fee 為 wei，需換算。
 	amount := weiToTacmStr(et.Value)
-	fee := weiToTacmStr(new(big.Int).Mul(et.Gas, et.GasPrice))
+
+	// 有效 gas 價（EIP-1559）：min(maxFee, baseFee+priorityFee)；legacy＝gasPrice。
+	// fee = effectiveGasPrice × gas；並帶 max_fee/priority_fee/gas_limit 供鏈上驗證。
+	// 與 SubmitTransaction 驗證一致：用「下塊 base fee」（由父塊 gas 使用率調整）。
+	// 與 SubmitTransaction 驗證完全一致：GasLimit<=0 時 base 不調整（創世/早期塊）。
+	baseFee := chaindb.InitialBaseFee
+	parentGasUsed, parentGasLimit := int64(0), int64(0)
+	if lb, lerr := n.db.GetLatestBlock(); lerr == nil && lb != nil {
+		if bf, berr := strconv.ParseFloat(lb.BaseFee, 64); berr == nil && bf > 0 {
+			baseFee = bf
+		}
+		parentGasUsed, parentGasLimit = lb.GasUsed, lb.GasLimit
+	}
+	nextBase := baseFee
+	if parentGasLimit > 0 {
+		nextBase = chaindb.ComputeNextBaseFee(baseFee, parentGasUsed, parentGasLimit)
+	}
+	baseWei := tacmToWei(nextBase)
+	var feeWei *big.Int
+	maxFeeStr, prioStr := "", ""
+	switch et.TxType {
+	case 2:
+		eff := new(big.Int).Add(baseWei, et.MaxPriorityFee)
+		if et.MaxFee.Sign() > 0 && eff.Cmp(et.MaxFee) > 0 {
+			eff = et.MaxFee
+		}
+		feeWei = new(big.Int).Mul(et.Gas, eff)
+		maxFeeStr = weiToTacmStr(et.MaxFee)
+		prioStr = weiToTacmStr(et.MaxPriorityFee)
+	default:
+		feeWei = new(big.Int).Mul(et.Gas, et.GasPrice)
+		maxFeeStr = weiToTacmStr(et.GasPrice)
+		prioStr = "0"
+	}
+	fee := weiToTacmStr(feeWei)
 
 	// signature 內嵌 v=recid（0/1）＋r||s。
 	sigBytes := make([]byte, 65)
 	et.R.FillBytes(sigBytes[:32])
 	et.S.FillBytes(sigBytes[32:64])
-	recid := byte(0)
-	if et.V.Int64() >= 35 {
+	var recid byte
+	if et.TxType == 2 {
+		recid = byte(et.V.Int64() & 0x01) // yParity
+	} else if et.V.Int64() >= 35 {
 		recid = byte((et.V.Int64() - 35) & 0x01)
 	} else {
 		recid = byte(et.V.Int64() - 27)
@@ -422,6 +501,12 @@ func (n *Node) SubmitEthRawTx(rawHex string) (string, error) {
 		"memo":      memo,
 		"pubkey":    "eth:" + hex.EncodeToString(payload) + ":" + hex.EncodeToString(pub.SerializeCompressed()),
 		"signature": "eth:" + hex.EncodeToString(sigBytes),
+	}
+	// 僅 type2（EIP-1559）帶 gas 參數供鏈上驗證；type0 legacy 維持固定費語義。
+	if et.TxType == 2 {
+		tx["max_fee"] = maxFeeStr
+		tx["priority_fee"] = prioStr
+		tx["gas_limit"] = et.Gas.Int64()
 	}
 	return n.SubmitTransaction(tx)
 }
@@ -461,6 +546,17 @@ func (s *RPCServer) ethGasPrice() (string, error) {
 	return feeToWeiHex(price), nil
 }
 
+// tacmToWei 把 TACm 十進位費率轉為 wei（×1e18）big.Int。
+func tacmToWei(f float64) *big.Int {
+	rat := new(big.Rat).SetFloat64(f)
+	if rat == nil || rat.Num().BitLen() == 0 {
+		return big.NewInt(0)
+	}
+	return new(big.Int).Quo(
+		new(big.Int).Mul(rat.Num(), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)),
+		rat.Denom())
+}
+
 // feeToWeiHex 把 TACm 十進位費率轉為 wei（×1e18）0x hex。
 func feeToWeiHex(f float64) string {
 	rat := new(big.Rat).SetFloat64(f)
@@ -487,6 +583,16 @@ func (s *RPCServer) ethTxObject(t *chaindb.Transaction) map[string]any {
 			gasPrice = feeToWeiHex(mf)
 		}
 	}
+	value := "0x0"
+	if t.Amount != "" {
+		value = tacmStrToWeiHex(t.Amount)
+	}
+	input := "0x"
+	if strings.HasPrefix(t.Memo, "vm:call:") {
+		if parts := strings.Split(t.Memo, ":"); len(parts) >= 4 {
+			input = "0x" + parts[len(parts)-1]
+		}
+	}
 	return map[string]any{
 		"hash":             "0x" + t.TxHash,
 		"blockHash":        "0x" + t.BlockHash,
@@ -494,15 +600,29 @@ func (s *RPCServer) ethTxObject(t *chaindb.Transaction) map[string]any {
 		"transactionIndex": hexBig(int64(t.TxIndex)),
 		"from":             from0x,
 		"to":               to0x,
-		"value":            "0x0",
+		"value":            value,
 		"gas":              hexBig(gas),
 		"gasPrice":         gasPrice,
-		"input":            "0x",
+		"input":            input,
 		"nonce":            hexBig(t.Nonce),
 		"v":                "0x0",
 		"r":                "0x0",
 		"s":                "0x0",
 	}
+}
+
+// tacmStrToWeiHex 把 TACm 十進位字串（可含小數）轉 wei 0x hex。
+func tacmStrToWeiHex(s string) string {
+	if s == "" || s == "0" {
+		return "0x0"
+	}
+	rat, ok := new(big.Rat).SetString(s)
+	if !ok || rat.Sign() < 0 {
+		return "0x0"
+	}
+	base := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	wei := new(big.Int).Quo(new(big.Int).Mul(rat.Num(), base), rat.Denom())
+	return "0x" + wei.Text(16)
 }
 
 func (s *RPCServer) ethGetTransactionByHash(params []any) (any, error) {
@@ -588,7 +708,7 @@ func (s *RPCServer) ethGetBlockByHash(params []any) (any, error) {
 	if b == nil {
 		return nil, errors.New("eth: 無此區塊")
 	}
-	return s.ethBlockObject(b), nil
+	return s.ethBlockObject(b, paramBool(params, 1))
 }
 
 func (s *RPCServer) ethGetStorageAt(params []any) (string, error) {
