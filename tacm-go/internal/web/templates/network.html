@@ -39,22 +39,27 @@
   </div>
 </section>
 
-<!-- M67：鏈上審計——全鏈供應/獎勵一致性的公開證明 -->
+<!-- M67/M71：鏈上審計——全鏈供應/獎勵一致性＋交易與合約層賬本重放的公開證明 -->
 <section class="panel">
-  <div class="panel-head"><h2>🔍 鏈上審計（coinbase 一致性）</h2></div>
-  <p class="muted" id="audTip">正在驗證最近 100 塊…</p>
+  <div class="panel-head"><h2 data-i18n="net.audit">🔍 鏈上審計（區塊 · 交易 · 合約）</h2></div>
+  <p class="muted" id="audTip" data-i18n="net.auditTip">正在驗證最近 100 塊＋全鏈賬本重放…</p>
   <div class="consist" id="audBox">
     <div class="consist-line" id="audLine">—</div>
+    <div class="consist-line" id="audTxLine" style="margin-top:6px">—</div>
   </div>
   <div class="chain-grid">
-    <div class="cg"><small>審計塊數</small><b id="audBlocks">—</b></div>
-    <div class="cg"><small>coinbase==獎勵</small><b id="audCoin">—</b></div>
-    <div class="cg"><small>pool 16%</small><b id="audPool">—</b></div>
-    <div class="cg"><small>node 9% · miner 75%</small><b id="audSplit">—</b></div>
-    <div class="cg"><small>全鏈總產出</small><b id="audMined">—</b></div>
-    <div class="cg"><small>獎勵池餘額</small><b id="audPoolBal">—</b></div>
-    <div class="cg"><small>Pool 挹注（鏈上）</small><b id="audPoolShare">—</b></div>
-    <div class="cg"><small>鏈上在線礦工</small><b id="audMiners">—</b></div>
+    <div class="cg"><small data-i18n="net.auditBlocks">審計塊數</small><b id="audBlocks">—</b></div>
+    <div class="cg"><small data-i18n="net.auditCoin">coinbase==獎勵</small><b id="audCoin">—</b></div>
+    <div class="cg"><small data-i18n="net.auditPool">pool 16%</small><b id="audPool">—</b></div>
+    <div class="cg"><small data-i18n="net.auditSplit">node 9% · miner 75%</small><b id="audSplit">—</b></div>
+    <div class="cg"><small data-i18n="net.auditMined">全鏈總產出</small><b id="audMined">—</b></div>
+    <div class="cg"><small data-i18n="net.auditPoolBal">獎勵池餘額</small><b id="audPoolBal">—</b></div>
+    <div class="cg"><small data-i18n="net.auditPoolShare">Pool 挹注（鏈上）</small><b id="audPoolShare">—</b></div>
+    <div class="cg"><small data-i18n="net.auditMiners">鏈上在線礦工</small><b id="audMiners">—</b></div>
+    <div class="cg"><small data-i18n="net.txChecked">交易筆數（重放）</small><b id="audTx">—</b></div>
+    <div class="cg"><small data-i18n="net.txSig">簽名 / nonce / 餘額</small><b id="audTxDetail">—</b></div>
+    <div class="cg"><small data-i18n="net.txContract">合約交易</small><b id="audTxContract">—</b></div>
+    <div class="cg"><small data-i18n="net.ledger">賬本守恆</small><b id="audLedger">—</b></div>
   </div>
   <div id="audIssues" class="muted" style="margin-top:10px"></div>
 </section>
@@ -129,26 +134,40 @@
     function setT(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
     // M67：鏈上審計——驗證最近 100 塊 coinbase 不變式，任何入口同鏈結果一致。
+    // M71：交易與合約層審計——全鏈賬本重放（簽名/nonce/餘額/合約格式/守恆）。
     var audTip = document.getElementById('audTip');
     var audLine = document.getElementById('audLine');
+    var audTxLine = document.getElementById('audTxLine');
     function renderAudit(a) {
-      if (!a || !a.ok) { if (audTip) audTip.textContent = '審計暫不可用'; if (audLine) audLine.innerHTML = '<span class="dot-bad">⚠ 無法驗證</span>'; return; }
+      if (!a || !a.ok) { if (audTip) audTip.textContent = TAC_T ? TAC_T('net.auditNA') : '審計暫不可用'; if (audLine) audLine.innerHTML = '<span class="dot-bad">⚠ ' + (TAC_T ? TAC_T('net.auditNA2') : '無法驗證') + '</span>'; return; }
       setT('audBlocks', a.checked_blocks);
-      setT('audCoin', a.coinbase_pass + ' / ' + a.coinbase_fail + ' 異常');
-      setT('audPool', a.pool_pass + ' / ' + a.pool_fail + ' 異常');
-      setT('audSplit', a.split_pass + ' / ' + a.split_fail + ' 異常');
+      setT('audCoin', a.coinbase_pass + ' / ' + a.coinbase_fail + (TAC_T ? TAC_T('net.bad') : ' 異常'));
+      setT('audPool', a.pool_pass + ' / ' + a.pool_fail + (TAC_T ? TAC_T('net.bad') : ' 異常'));
+      setT('audSplit', a.split_pass + ' / ' + a.split_fail + (TAC_T ? TAC_T('net.bad') : ' 異常'));
       setT('audMined', a.total_mined_tacm);
       setT('audPoolBal', a.reward_pool_tacm);
       setT('audPoolShare', a.on_chain_pool_share_tacm);
       setT('audMiners', a.online_miners);
+      // M71 交易層。
+      setT('audTx', a.tx_checked || 0);
+      setT('audTxDetail', '✓ ' + a.tx_sig_pass + ' / ✓ ' + a.tx_nonce_pass + ' / ✓ ' + a.tx_balance_pass + (a.tx_sig_fail ? ' ✗' + a.tx_sig_fail : '') + (a.tx_nonce_fail ? ' ✗' + a.tx_nonce_fail : '') + (a.tx_balance_fail ? ' ✗' + a.tx_balance_fail : ''));
+      setT('audTxContract', '✓ ' + (a.contract_pass || 0) + (a.contract_fail ? ' ✗' + a.contract_fail : ''));
+      setT('audLedger', a.ledger_ok ? '✓' : '✗');
+      if (audTxLine) {
+        if (a.ledger_ok && a.tx_sig_fail === 0 && a.tx_nonce_fail === 0 && a.tx_balance_fail === 0 && a.contract_fail === 0) {
+          audTxLine.innerHTML = '<span class="dot-ok">✓ ' + (TAC_T ? TAC_T('net.ledgerOK') : '全鏈賬本一致') + '</span> — ' + (TAC_T ? TAC_T('net.ledgerOKDesc') : '每筆交易簽名/nonce/餘額全過，合約格式合法，總餘額 == coinbase 增發');
+        } else {
+          audTxLine.innerHTML = '<span class="dot-bad">✗ ' + (TAC_T ? TAC_T('net.ledgerBAD') : '賬本異常') + '</span> — ' + (TAC_T ? TAC_T('net.ledgerBADDesc') : '交易/合約層發現異常，需立即檢查');
+        }
+      }
       if (a.consistent) {
-        audLine.innerHTML = '<span class="dot-ok">✓ 鏈上一致</span> — 每塊 coinbase 總額嚴格等於出塊獎勵（節點 9% / pool 16% / miner 75%），無超發/少發，供應與獎勵代表鏈上真實';
+        audLine.innerHTML = '<span class="dot-ok">✓ ' + (TAC_T ? TAC_T('net.onchainOK') : '鏈上一致') + '</span> — ' + (TAC_T ? TAC_T('net.onchainOKDesc') : '每塊 coinbase 總額嚴格等於出塊獎勵（節點 9% / pool 16% / miner 75%），無超發/少發，供應與獎勵代表鏈上真實');
       } else {
-        audLine.innerHTML = '<span class="dot-bad">✗ 發現異常</span> — 鏈上獎勵不一致，需立即檢查';
+        audLine.innerHTML = '<span class="dot-bad">✗ ' + (TAC_T ? TAC_T('net.onchainBAD') : '發現異常') + '</span> — ' + (TAC_T ? TAC_T('net.onchainBADDesc') : '鏈上獎勵不一致，需立即檢查');
       }
       var iss = document.getElementById('audIssues');
       if (iss && a.issues && a.issues.length) {
-        iss.textContent = '異常清單：' + a.issues.join('；');
+        iss.textContent = (TAC_T ? TAC_T('net.issueList') : '異常清單：') + a.issues.join('；');
         iss.style.color = '#f6465d';
       } else if (iss) {
         iss.textContent = '';

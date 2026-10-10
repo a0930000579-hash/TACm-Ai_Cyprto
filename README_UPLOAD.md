@@ -1,8 +1,43 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M70）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M71）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M70）——節點獎勵上鏈＋全鏈數據歸零重來
+## 本版重點（M71）——交易與合約層鏈上審計（全鏈賬本重放）
+
+M66/M67/M68/M70 已驗證「每塊 coinbase 總額 == 出塊獎勵」；M71 進一步堵住**普通轉帳與合約交易的作弊面**：從創世起逐塊**重放整條鏈**，獨立驗證（不信任鏈上 accounts 快照）：
+
+1. **簽名**：每筆非 coinbase 交易公鑰派生地址 == from，且 ECDSA 簽名匹配（防偽造交易）；
+2. **nonce 順序**：同地址嚴格遞增（防重放/亂序）；
+3. **餘額充足**：from ≥ amount+fee（防透支/雙花）；
+4. **合約格式**：`vm:deploy:/vm:call:` memo 的 gas 可解析、payload 為合法 hex、gas > 0（防畸形合約交易）；
+5. **賬本守恆**：全部地址餘額總和 == 全鏈 coinbase 增發總額（防憑空增發/憑空消失）。
+
+任何節點只要同步同一條鏈，重放結果完全一致——鏈上事實，與「收益/獎勵池代表鏈上真實」同源口徑。
+
+- **`/api/audit` 新增字段**：`tx_checked`（重放交易數）、`tx_sig_pass/fail`、`tx_nonce_pass/fail`、`tx_balance_pass/fail`、`contract_pass/fail`、`ledger_ok`（守恆）、`coinbase_total_tacm`、`balances_total_tacm`；`consistent` 現同時涵蓋 coinbase＋結構＋交易層＋守恆。
+- **/network 審計面板**：新增「交易筆數（重放）/ 簽名·nonce·餘額 / 合約交易 / 賬本守恆」四格與「全鏈賬本一致」狀態行；英文為主、中文可切換。
+
+### M71 錨點部署步驟（與 M70 相同：先停服務→清資料→解壓→build→重啟，一次一條）
+
+```bash
+sudo systemctl stop tacnode
+rm -rf /var/tac/data
+curl -L -o /tmp/tacm-go-m71.zip 'https://aka.doubaocdn.com/s/PMV5VFTbyW'
+cd /root && sudo unzip -o /tmp/tacm-go-m71.zip
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+sudo systemctl restart tacnode
+curl -s http://2.28.201.174:8080/status
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+驗收：`/api/audit` 回 `"consistent":true`、`"ledger_ok":true`、`"tx_sig_fail":0`、
+`"tx_nonce_fail":0`、`"tx_balance_fail":0`、`"contract_fail":0`、`"coinbase_total_tacm"` ==
+`"balances_total_tacm"`。
+
+Render 端：重新部署（unzip 後 `go build -o tacweb ./cmd/web`，Start Command 不變），
+/network 帶 query 開啟即為新版本。
+
+## 上版重點（M70）——節點獎勵上鏈＋全鏈數據歸零重來
 
 - **出塊獎勵三分發（鏈上 coinbase 恆等式 9%＋16%＋75%＝100%）**：
   - 節點 **9%**：每塊自動歸「出塊節點」地址（memo `coinbase:node`）——節點獎勵歸節點；

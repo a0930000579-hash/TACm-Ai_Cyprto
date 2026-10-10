@@ -34,6 +34,13 @@ func (f *fakeDS) OnChainCoinbase() (node.CoinbaseAggregate, error) {
 	return node.CoinbaseAggregate{Total: 100, Pool: 12, Miners: map[string]float64{"tx0proposeraddr": 88}, Count: 10, TipHeight: 10}, nil
 }
 
+// VerifyLedgerOnChain M71：交易與合約層審計（測試替身恆回傳全過）。
+func (f *fakeDS) VerifyLedgerOnChain() (node.LedgerAuditResult, error) {
+	return node.LedgerAuditResult{OK: true, LedgerOK: true, TipHeight: 10,
+		TxChecked: 2, TxSigPass: 2, TxNoncePass: 2, TxBalancePass: 2,
+		ContractPass: 1, CoinbaseTotal: 100, BalancesTotal: 100, Issues: []string{}}, nil
+}
+
 func newFake() *fakeDS {
 	now := time.Now().Unix()
 	return &fakeDS{

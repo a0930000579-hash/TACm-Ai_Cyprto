@@ -53,6 +53,19 @@ type AuditView struct {
 	NodeShare    string `json:"on_chain_node_share_tacm"`  // coinbase:node 累計（節點獎勵，鏈上事實，M70）
 	RewardPool   string `json:"reward_pool_tacm"`   // 獎勵池帳戶鏈上餘額（與 /explorer 同源）
 	OnlineMiners int    `json:"online_miners"`      // 鏈上在線礦工（最近 60 塊瓜分視角）
+	// M71 交易與合約層審計（全鏈賬本重放，鏈上事實）。
+	TxChecked     int      `json:"tx_checked"`
+	TxSigPass     int      `json:"tx_sig_pass"`
+	TxSigFail     int      `json:"tx_sig_fail"`
+	TxNoncePass   int      `json:"tx_nonce_pass"`
+	TxNonceFail   int      `json:"tx_nonce_fail"`
+	TxBalancePass int      `json:"tx_balance_pass"`
+	TxBalanceFail int      `json:"tx_balance_fail"`
+	ContractPass  int      `json:"contract_pass"`
+	ContractFail  int      `json:"contract_fail"`
+	LedgerOK      bool     `json:"ledger_ok"`          // 守恆：總餘額 == coinbase 增發
+	CoinbaseTotal string   `json:"coinbase_total_tacm"` // 全鏈 coinbase 增發總額
+	BalancesTotal string   `json:"balances_total_tacm"` // 重放後全部地址餘額總和
 	Issues       []string `json:"issues"`
 }
 
@@ -183,7 +196,30 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 	cs := ds.ChainStats()
 	out.RewardPool = cs.RewardPool
 	out.OnlineMiners = cs.OnlineMiners
-	out.Consistent = out.CoinbaseFail == 0 && out.PoolFail == 0 && out.SplitFail == 0 && out.StructureOK
+	// M71：交易與合約層鏈上審計（全鏈賬本重放）——簽名/nonce/餘額/合約格式/守恆。
+	if la, err := ds.VerifyLedgerOnChain(); err == nil {
+		out.TxChecked = la.TxChecked
+		out.TxSigPass = la.TxSigPass
+		out.TxSigFail = la.TxSigFail
+		out.TxNoncePass = la.TxNoncePass
+		out.TxNonceFail = la.TxNonceFail
+		out.TxBalancePass = la.TxBalancePass
+		out.TxBalanceFail = la.TxBalanceFail
+		out.ContractPass = la.ContractPass
+		out.ContractFail = la.ContractFail
+		out.LedgerOK = la.LedgerOK
+		out.CoinbaseTotal = chaindb.FormatFloat(la.CoinbaseTotal)
+		out.BalancesTotal = chaindb.FormatFloat(la.BalancesTotal)
+		for _, iss := range la.Issues {
+			out.Issues = append(out.Issues, iss)
+		}
+	} else {
+		out.LedgerOK = false
+		out.Issues = append(out.Issues, "交易層審計不可用: "+err.Error())
+	}
+	out.Consistent = out.CoinbaseFail == 0 && out.PoolFail == 0 && out.SplitFail == 0 &&
+		out.StructureOK && out.TxSigFail == 0 && out.TxNonceFail == 0 &&
+		out.TxBalanceFail == 0 && out.ContractFail == 0 && out.LedgerOK
 	out.OK = out.Consistent
 	return out
 }

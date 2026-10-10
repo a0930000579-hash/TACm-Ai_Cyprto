@@ -29,6 +29,8 @@ type DataSource interface {
 	BlockDetail(height int64) (*node.BlockDetail, error)
 	// M68：鏈上真實聚合——掃鏈上 coinbase 交易，取代本地 chain_stats/Ledger 快照口徑。
 	OnChainCoinbase() (node.CoinbaseAggregate, error)
+	// M71：交易與合約層鏈上審計——全鏈賬本重放（簽名/nonce/餘額/合約格式/守恆）。
+	VerifyLedgerOnChain() (node.LedgerAuditResult, error)
 }
 
 type nodeDS struct{ n *node.Node }
@@ -49,6 +51,11 @@ func (d *nodeDS) BlockDetail(height int64) (*node.BlockDetail, error) {
 // OnChainCoinbase 掃鏈上 coinbase 交易聚合（M68：鏈上真實總產出／礦工收益）。
 func (d *nodeDS) OnChainCoinbase() (node.CoinbaseAggregate, error) {
 	return d.n.OnChainCoinbaseAggregate()
+}
+
+// VerifyLedgerOnChain 全鏈賬本重放審計（M71：交易與合約層）。
+func (d *nodeDS) VerifyLedgerOnChain() (node.LedgerAuditResult, error) {
+	return d.n.VerifyLedgerOnChain()
 }
 
 // walletView 把錢包服務快照轉為 Web 視圖。

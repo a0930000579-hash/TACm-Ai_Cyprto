@@ -162,7 +162,7 @@ func TestExplorerRealNode(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// M67：公開鏈上審計——真實節點驗證最近塊 coinbase 不變式，結果必須一致。
+	// M67/M71：公開鏈上審計——真實節點驗證最近塊 coinbase 不變式＋全鏈賬本重放，結果必須一致。
 	resp, err = http.Get(ts.URL + "/api/audit?blocks=10")
 	if err != nil {
 		t.Fatalf("audit API: %v", err)
@@ -171,7 +171,7 @@ func TestExplorerRealNode(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("audit API 狀態=%d", resp.StatusCode)
 	}
-	for _, want := range []string{`"chain_id":"tacm-mainnet-1"`, `"consistent":true`, `"coinbase_fail":0`, `"structure_ok":true`, `"total_mined_tacm"`} {
+	for _, want := range []string{`"chain_id":"tacm-mainnet-1"`, `"consistent":true`, `"coinbase_fail":0`, `"structure_ok":true`, `"total_mined_tacm"`, `"ledger_ok":true`, `"tx_checked"`, `"tx_sig_pass"`, `"tx_nonce_pass"`, `"tx_balance_pass"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("/api/audit 缺少 %q（body=%s）", want, body)
 		}

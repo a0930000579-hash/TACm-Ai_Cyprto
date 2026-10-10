@@ -42,7 +42,20 @@
       'gov.tp_param': '參數調整', 'gov.tp_treasury': '國庫支出', 'gov.tp_meta': '治理決議',
       'gov.pk_bt': '出塊時間 (block_time)', 'gov.pk_d': '基礎難度 (difficulty)',
       'gov.pk_f': '手續費基準 (tx_fee_bps)', 'gov.pk_t': 'TiUSD 下限 (tiusd_floor_bps)',
-      'common.copy': '複製', 'common.refresh': '刷新', 'common.close': '關閉', 'common.confirm': '確認', 'common.loading': '載入中…'
+      'common.copy': '複製', 'common.refresh': '刷新', 'common.close': '關閉', 'common.confirm': '確認', 'common.loading': '載入中…',
+      'net.audit': '🔍 鏈上審計（區塊 · 交易 · 合約）',
+      'net.auditTip': '正在驗證最近 100 塊＋全鏈賬本重放…',
+      'net.auditNA': '審計暫不可用', 'net.auditNA2': '無法驗證',
+      'net.auditBlocks': '審計塊數', 'net.auditCoin': 'coinbase==獎勵', 'net.auditPool': 'pool 16%',
+      'net.auditSplit': 'node 9% · miner 75%', 'net.auditMined': '全鏈總產出', 'net.auditPoolBal': '獎勵池餘額',
+      'net.auditPoolShare': 'Pool 挹注（鏈上）', 'net.auditMiners': '鏈上在線礦工',
+      'net.txChecked': '交易筆數（重放）', 'net.txSig': '簽名 / nonce / 餘額', 'net.txContract': '合約交易', 'net.ledger': '賬本守恆',
+      'net.bad': ' 異常',
+      'net.ledgerOK': '全鏈賬本一致', 'net.ledgerOKDesc': '每筆交易簽名/nonce/餘額全過，合約格式合法，總餘額 == coinbase 增發',
+      'net.ledgerBAD': '賬本異常', 'net.ledgerBADDesc': '交易/合約層發現異常，需立即檢查',
+      'net.onchainOK': '鏈上一致', 'net.onchainOKDesc': '每塊 coinbase 總額嚴格等於出塊獎勵（節點 9% / pool 16% / miner 75%），無超發/少發，供應與獎勵代表鏈上真實',
+      'net.onchainBAD': '發現異常', 'net.onchainBADDesc': '鏈上獎勵不一致，需立即檢查',
+      'net.issueList': '異常清單：'
     },
     en: {
       'nav.home': 'Home', 'nav.wallet': 'Wallet', 'nav.exchange': 'Exchange', 'nav.dash': 'Dashboard',
@@ -83,7 +96,20 @@
       'gov.tp_param': 'Parameter Change', 'gov.tp_treasury': 'Treasury Spend', 'gov.tp_meta': 'Meta Decision',
       'gov.pk_bt': 'Block Time (block_time)', 'gov.pk_d': 'Base Difficulty (difficulty)',
       'gov.pk_f': 'Fee Basis (tx_fee_bps)', 'gov.pk_t': 'TiUSD Floor (tiusd_floor_bps)',
-      'common.copy': 'Copy', 'common.refresh': 'Refresh', 'common.close': 'Close', 'common.confirm': 'Confirm', 'common.loading': 'Loading…'
+      'common.copy': 'Copy', 'common.refresh': 'Refresh', 'common.close': 'Close', 'common.confirm': 'Confirm', 'common.loading': 'Loading…',
+      'net.audit': '🔍 Chain Audit (Blocks · Txs · Contracts)',
+      'net.auditTip': 'Verifying last 100 blocks + full-ledger replay…',
+      'net.auditNA': 'Audit unavailable', 'net.auditNA2': 'Cannot verify',
+      'net.auditBlocks': 'Audited Blocks', 'net.auditCoin': 'Coinbase == Reward', 'net.auditPool': 'Pool 16%',
+      'net.auditSplit': 'Node 9% · Miner 75%', 'net.auditMined': 'Total Mined', 'net.auditPoolBal': 'Reward Pool',
+      'net.auditPoolShare': 'Pool On-Chain', 'net.auditMiners': 'Online Miners',
+      'net.txChecked': 'Txs Replayed', 'net.txSig': 'Sig / Nonce / Balance', 'net.txContract': 'Contracts', 'net.ledger': 'Ledger',
+      'net.bad': ' bad',
+      'net.ledgerOK': 'Ledger consistent', 'net.ledgerOKDesc': 'Every tx passed signature/nonce/balance, contracts valid, total balance == coinbase minted',
+      'net.ledgerBAD': 'Ledger anomaly', 'net.ledgerBADDesc': 'Tx/contract layer anomaly found, check immediately',
+      'net.onchainOK': 'On-chain consistent', 'net.onchainOKDesc': 'Every block coinbase equals block reward (node 9% / pool 16% / miner 75%), no over/under mint, supply and rewards represent on-chain truth',
+      'net.onchainBAD': 'Anomaly found', 'net.onchainBADDesc': 'On-chain rewards inconsistent, check immediately',
+      'net.issueList': 'Issues: '
     }
   };
   // 全域雙向字典（長短語優先替換，覆蓋所有頁面靜態文字）。
