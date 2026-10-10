@@ -1,5 +1,5 @@
-/* TAC 自主智能鏈 Service Worker：核心頁面與靜態資源離線快取。 */
-const CACHE = 'tacm-v3';
+/* TAC Ai 智能鏈 Service Worker：核心頁面與靜態資源離線快取。 */
+const CACHE = 'tacm-v4';
 const CORE = ['/dashboard', '/wallet', '/exchange', '/', '/static/css/style.css', '/static/tacm.svg'];
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));

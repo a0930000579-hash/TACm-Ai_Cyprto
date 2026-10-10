@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}TAC Explorer · 區塊瀏覽器{% endblock %}
 {% block content %}
+<section class="pg-banner">
+  <div class="pg-txt"><h1 data-i18n="bn.explorer">區塊瀏覽</h1><p data-i18n="bn.explorerSub">鏈上搜尋</p></div>
+  <svg viewBox="0 0 40 40" class="pg-art"><circle cx="17" cy="17" r="10" fill="none" stroke="#627eea" stroke-width="2.4"/><path d="M25 25 L34 34" stroke="#627eea" stroke-width="2.8" stroke-linecap="round"/><path d="M17 12 v10 M12 17 h10" stroke="#627eea" stroke-width="1.6"/></svg>
+</section>
 <section class="stat-cards">
   <div class="card">
     <div class="card-label">鏈頂高度</div>
@@ -94,8 +98,8 @@
 <style>
   .search-bar{display:flex;gap:8px;flex-wrap:wrap}
   .search-input{flex:1;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:12px 14px;outline:none}
-  .search-input:focus{border-color:#f0b90b}
-  .search-btn{background:#f0b90b;color:#0b0e11;font-weight:700;border:0;border-radius:10px;padding:0 20px;font-size:15px;cursor:pointer}
+  .search-input:focus{border-color:#627eea}
+  .search-btn{background:#627eea;color:#f7f8fb;font-weight:700;border:0;border-radius:10px;padding:0 20px;font-size:15px;cursor:pointer}
   .search-tip{font-size:13px;margin-top:8px;min-height:18px}
   .wallet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
   .wg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}

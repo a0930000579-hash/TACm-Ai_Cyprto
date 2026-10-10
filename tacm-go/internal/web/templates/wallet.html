@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+<section class="pg-banner">
+  <div class="pg-txt"><h1 data-i18n="bn.wallet">進入錢包</h1><p data-i18n="bn.walletSub">資產與轉帳</p></div>
+  <svg viewBox="0 0 40 40" class="pg-art"><rect x="4" y="10" width="32" height="22" rx="5" fill="none" stroke="#627eea" stroke-width="2.4"/><path d="M4 16 h28 v-3 a5 5 0 0 0 -5 -5 H12 a5 5 0 0 0 -5 5 v3 Z" fill="rgba(98,126,234,.25)"/><circle cx="28" cy="24" r="3" fill="#627eea"/></svg>
+</section>
 <style>
-  :root { --bn-bg:#0b0e11; --bn-card:#161a1e; --bn-card2:#1e2329; --bn-line:#2b3139;
-          --bn-txt:#eaecef; --bn-sub:#848e9c; --bn-yellow:#fcd535; --bn-green:#0ecb81;
+  :root { --bn-bg:#f7f8fb; --bn-card:#ffffff; --bn-card2:#f2f4f9; --bn-line:#e2e6ee;
+          --bn-txt:#14161a; --bn-sub:#5d6778; --bn-yellow:#fcd535; --bn-green:#0ecb81;
           --bn-red:#f6465d; }
   * { box-sizing:border-box; }
   body { background:var(--bn-bg); color:var(--bn-txt); margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; }
@@ -13,8 +17,8 @@
   .bn-search input { width:100%; background:var(--bn-card); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
   .bn-addr { font-size:12px; color:var(--bn-sub); display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; max-width:100%; }
   .bn-addr-tag { font-size:10px; color:var(--bn-sub); border:1px solid var(--border); border-radius:999px; padding:1px 8px; white-space:nowrap; }
-  .bn-copy { font-size:11px; color:#f0b90b; background:rgba(240,185,11,.08); border:1px solid rgba(240,185,11,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
-  .bn-copy:hover { background:rgba(240,185,11,.15); }
+  .bn-copy { font-size:11px; color:#627eea; background:rgba(98,126,234,.08); border:1px solid rgba(98,126,234,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
+  .bn-copy:hover { background:rgba(98,126,234,.15); }
   main { max-width:900px; margin:0 auto; padding:16px; }
   .bn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .asset-card { background:var(--bn-card); border:1px solid var(--bn-line); border-radius:12px; padding:16px; }
@@ -28,7 +32,7 @@
   .bn-form { display:grid; gap:10px; }
   .bn-form label { font-size:12px; color:var(--bn-sub); }
   .bn-form input, .bn-form select { background:var(--bn-card2); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
-  .bn-btn { background:var(--bn-yellow); color:#181a20; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+  .bn-btn { background:var(--bn-yellow); color:#f7f8fb; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
   .bn-btn:disabled { opacity:.5; cursor:not-allowed; }
   .bn-msg { margin-top:8px; font-size:12px; min-height:16px; }
   .ok { color:var(--bn-green); } .err { color:var(--bn-red); }
@@ -52,6 +56,7 @@
   <div class="bn-addr mono">
       <span class="bn-addr-tag">我的地址</span>
       <span id="myAddrText">{{ wallet.NodeAddress }}</span>
+      <a class="bn-chip" style="text-decoration:none" href="/address/{{ address }}" data-i18n="wallet.onchain">🔗 我的鏈上紀錄</a>
       <button type="button" class="bn-copy" onclick="copyAddr()">複製</button>
     </div>
 </div>
@@ -189,9 +194,9 @@
               if (!j) return;
               if (j.ok === false) return;
               var els = document.querySelectorAll('.bn-grid .val');
-              if (els[0]) els[0].textContent = j.tacm;
-              if (els[1]) els[1].textContent = j.tiusd;
-              if (els[2]) els[2].textContent = j.usdt;
+              if (els[0]) els[0].textContent = (window.TAC_fmtFee ? window.TAC_fmtFee(j.tacm) : j.tacm);
+              if (els[1]) els[1].textContent = (window.TAC_fmtFee ? window.TAC_fmtFee(j.tiusd) : j.tiusd);
+              if (els[2]) els[2].textContent = (window.TAC_fmtFee ? window.TAC_fmtFee(j.usdt) : j.usdt);
             }).catch(function () {});
           fetch(u + '/status', { credentials: 'same-origin' })
             .then(function (r) { return r.json().catch(function () { return null; }); })
@@ -223,7 +228,7 @@
 
     <div class="bn-panel">
       <h3>Assets Info</h3>
-      <div class="bn-note" style="background:rgba(240,185,11,.07); border:1px solid rgba(240,185,11,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
+      <div class="bn-note" style="background:rgba(98,126,234,.07); border:1px solid rgba(98,126,234,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
         ・Wallet shows only <b style="color:var(--bn-yellow)">personal assets</b>; <b>Total TACm Mined &amp; TiUSD Circulation</b> are on the Mining page's Chain Overview.<br>
         ・TiUSD is produced by <b style="color:var(--bn-yellow)">on-chain mechanism (supply-layer minting)</b> — DeFi pools / Exchange settlement auto-mint &amp; credit, <b>private issuance or burning prohibited</b>.
       </div>

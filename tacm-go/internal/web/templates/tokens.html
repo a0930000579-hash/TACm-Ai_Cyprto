@@ -3,42 +3,42 @@
 {% block content %}
 <style>
   .tk-wrap{max-width:1100px;margin:0 auto}
-  .tk-head{background:linear-gradient(135deg,#0b0e11,#1e2329);border:1px solid #2b3139;border-radius:16px;padding:18px 20px;color:#eaecef;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .tk-head .logo{width:48px;height:48px;border-radius:12px;background:#f0b90b;color:#0b0e11;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
-  .tk-head h2{margin:0;font-size:20px;font-weight:800;color:#f0b90b}
+  .tk-head{background:linear-gradient(135deg,#f7f8fb,#f2f4f9);border:1px solid #e2e6ee;border-radius:16px;padding:18px 20px;color:#14161a;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .tk-head .logo{width:48px;height:48px;border-radius:12px;background:#627eea;color:#f7f8fb;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
+  .tk-head h2{margin:0;font-size:20px;font-weight:800;color:#627eea}
   .tk-head .sub{font-size:12px;opacity:.8;margin-top:2px}
   .tk-stats{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
-  .tk-stats span{background:rgba(240,185,11,.12);border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#f0b90b}
+  .tk-stats span{background:rgba(98,126,234,.12);border:1px solid rgba(98,126,234,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#627eea}
   .tk-grid{display:grid;grid-template-columns:340px 1fr 1fr;gap:14px;align-items:start}
   @media (max-width:980px){.tk-grid{grid-template-columns:1fr}}
-  .tk-card{background:#0b0e11;border:1px solid #2b3139;border-radius:14px;padding:16px;margin-bottom:14px}
-  .tk-card h3{margin:0 0 12px;font-size:14px;color:#f0b90b;font-weight:800;display:flex;align-items:center;gap:8px}
-  .tk-card h3 .hint{font-size:11px;color:#848e9c;font-weight:500;margin-left:auto}
+  .tk-card{background:#f7f8fb;border:1px solid #e2e6ee;border-radius:14px;padding:16px;margin-bottom:14px}
+  .tk-card h3{margin:0 0 12px;font-size:14px;color:#627eea;font-weight:800;display:flex;align-items:center;gap:8px}
+  .tk-card h3 .hint{font-size:11px;color:#5d6778;font-weight:500;margin-left:auto}
   .tk-field{margin-bottom:10px}
-  .tk-field label{display:block;font-size:12px;color:#848e9c;margin-bottom:4px}
-  .tk-field input{width:100%;box-sizing:border-box;background:#1e2329;border:1px solid #2b3139;border-radius:10px;color:#eaecef;padding:10px 12px;font-size:13px;font-family:ui-monospace,monospace}
-  .tk-btn{width:100%;background:#f0b90b;color:#0b0e11;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
-  .tk-btn.ghost{background:transparent;border:1px solid #2b3139;color:#eaecef;font-weight:700}
+  .tk-field label{display:block;font-size:12px;color:#5d6778;margin-bottom:4px}
+  .tk-field input{width:100%;box-sizing:border-box;background:#f2f4f9;border:1px solid #e2e6ee;border-radius:10px;color:#14161a;padding:10px 12px;font-size:13px;font-family:ui-monospace,monospace}
+  .tk-btn{width:100%;background:#627eea;color:#f7f8fb;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
+  .tk-btn.ghost{background:transparent;border:1px solid #e2e6ee;color:#14161a;font-weight:700}
   .tk-btn.sm{width:auto;padding:6px 14px;font-size:12px;border-radius:8px}
   .tk-btn.green{background:rgba(14,203,129,.15);color:#0ecb81;border:1px solid rgba(14,203,129,.4)}
-  .tk-msg{margin-top:10px;font-size:12px;color:#848e9c;min-height:16px;word-break:break-all}
+  .tk-msg{margin-top:10px;font-size:12px;color:#5d6778;min-height:16px;word-break:break-all}
   .tk-msg.ok{color:#0ecb81}
   .tk-msg.err{color:#f6465d}
-  .tk-item{border-bottom:1px solid #2b3139;padding:12px 0;cursor:pointer}
+  .tk-item{border-bottom:1px solid #e2e6ee;padding:12px 0;cursor:pointer}
   .tk-item:last-child{border-bottom:none}
-  .tk-item.sel .tk-item-top{border-left:3px solid #f0b90b;padding-left:8px}
+  .tk-item.sel .tk-item-top{border-left:3px solid #627eea;padding-left:8px}
   .tk-item-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .tk-sym{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;border-radius:10px;background:rgba(240,185,11,.15);color:#f0b90b;font-weight:800;font-size:13px;padding:0 8px;flex:none}
-  .tk-item .nm{font-size:13px;font-weight:700;color:#eaecef}
-  .tk-item .addr{font-size:11px;color:#848e9c;word-break:break-all;margin-top:2px}
-  .tk-item .sup{font-size:12px;color:#f0b90b;font-weight:700;margin-left:auto;text-align:right}
+  .tk-sym{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;border-radius:10px;background:rgba(98,126,234,.15);color:#627eea;font-weight:800;font-size:13px;padding:0 8px;flex:none}
+  .tk-item .nm{font-size:13px;font-weight:700;color:#14161a}
+  .tk-item .addr{font-size:11px;color:#5d6778;word-break:break-all;margin-top:2px}
+  .tk-item .sup{font-size:12px;color:#627eea;font-weight:700;margin-left:auto;text-align:right}
   .tk-empty{text-align:center;color:#5e6673;padding:30px 0;font-size:13px}
-  .tk-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #2b3139;font-size:13px}
+  .tk-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e2e6ee;font-size:13px}
   .tk-row:last-child{border-bottom:none}
-  .tk-row .k{color:#848e9c}
-  .tk-row .v{color:#eaecef;font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;text-align:right}
-  .tk-row .v.gold{color:#f0b90b}
-  .tk-copy{cursor:pointer;color:#f0b90b;font-size:11px;border:1px solid rgba(240,185,11,.35);border-radius:6px;padding:2px 8px;margin-left:6px;background:transparent}
+  .tk-row .k{color:#5d6778}
+  .tk-row .v{color:#14161a;font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;text-align:right}
+  .tk-row .v.gold{color:#627eea}
+  .tk-copy{cursor:pointer;color:#627eea;font-size:11px;border:1px solid rgba(98,126,234,.35);border-radius:6px;padding:2px 8px;margin-left:6px;background:transparent}
 </style>
 
 <div class="tk-wrap">

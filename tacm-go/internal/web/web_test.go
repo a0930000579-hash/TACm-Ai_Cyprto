@@ -78,7 +78,7 @@ func TestServerPages(t *testing.T) {
 		{"/", http.StatusOK, "最新區塊"},
 		{"/explorer", http.StatusOK, "鏈上搜尋"},
 		{"/explorer", http.StatusOK, "最新交易"},
-		{"/join", http.StatusOK, "加入 TAC 自主智能鏈主網"},
+		{"/join", http.StatusOK, "加入 TAC Ai 智能鏈主網"},
 		{"/join", http.StatusOK, "2.28.201.174:8080"},
 		{"/network", http.StatusOK, "節點監控"},
 		{"/block/5", http.StatusOK, "blockhash5"},

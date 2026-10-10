@@ -22,13 +22,13 @@
   <div class="table-wrap">
   <table class="data-table">
     <thead><tr><th>交易哈希</th><th>方向</th><th>對手方</th><th>金額</th><th>時間</th></tr></thead>
-    <tbody>
+    <tbody id="addrTxRows">
     {% for t in a.Transactions %}
       <tr>
         <td class="mono"><a href="/tx/{{ t.Hash }}">{{ t.Hash|shortaddr }}</a></td>
         <td>{% if t.From == a.Address %}<span class="tag out">發出</span>{% else %}<span class="tag in">收入</span>{% endif %}</td>
         <td class="mono">{% if t.From == a.Address %}<a href="/address/{{ t.To }}">{{ t.To|shortaddr }}</a>{% else %}{% if t.From %}<a href="/address/{{ t.From }}">{{ t.From|shortaddr }}</a>{% else %}-{% endif %}{% endif %}</td>
-        <td class="amount strong">{{ t.Amount }}</td>
+        <td class="amount strong">{{ t.Amount|fmtamt }}</td>
         <td class="nowrap muted">{{ t.Ts|timefmt }}</td>
       </tr>
     {% empty %}
@@ -37,5 +37,28 @@
     </tbody>
   </table>
   </div>
+  <div class="pager" style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px">
+    <button class="btn ghost" id="pgPrev" style="padding:6px 14px;font-size:13px">← 上一頁</button>
+    <span id="pgInfo" style="font-size:13px;color:var(--muted)">1/1</span>
+    <button class="btn ghost" id="pgNext" style="padding:6px 14px;font-size:13px">下一頁 →</button>
+  </div>
 </section>
+<script>
+  // M79：地址交易前端分頁（每頁 10 筆，無後端改動）
+  (function(){
+    var rows = document.querySelectorAll('#addrTxRows tr');
+    var per = 10, cur = 0, pages = Math.max(1, Math.ceil(rows.length / per));
+    function show(){
+      for (var i = 0; i < rows.length; i++) rows[i].style.display = (i >= cur*per && i < cur*per + per) ? '' : 'none';
+      var info = document.getElementById('pgInfo'); if (info) info.textContent = (cur+1) + '/' + pages;
+      var pv = document.getElementById('pgPrev'), nx = document.getElementById('pgNext');
+      if (pv) pv.disabled = (cur === 0);
+      if (nx) nx.disabled = (cur >= pages-1);
+    }
+    var pv = document.getElementById('pgPrev'), nx = document.getElementById('pgNext');
+    if (pv) pv.addEventListener('click', function(){ if (cur > 0) { cur--; show(); } });
+    if (nx) nx.addEventListener('click', function(){ if (cur < pages-1) { cur++; show(); } });
+    if (rows.length > per) show();
+  })();
+</script>
 {% endblock %}

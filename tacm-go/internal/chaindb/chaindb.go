@@ -126,7 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_logs_topic0 ON logs(topic0);
 CREATE INDEX IF NOT EXISTS idx_logs_block ON logs(block_height);
 `
 
-// ChainDB 為 TAC 自主智能鏈的節點數據庫。
+// ChainDB 為 TAC Ai 智能鏈的節點數據庫。
 type ChainDB struct {
 	db    *sql.DB
 	path  string

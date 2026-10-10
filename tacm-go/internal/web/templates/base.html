@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0b0e11">
-<title>{% block title %}TAC Autonomous Chain{% endblock %}</title>
+<meta name="theme-color" content="#f7f8fb">
+<title>{% block title %}TAC Ai Smart Chain{% endblock %}</title>
 <link rel="stylesheet" href="/static/css/style.css">
 <link rel="manifest" href="/static/manifest.webmanifest">
 <link rel="icon" href="/static/tacm.svg" type="image/svg+xml">
@@ -77,6 +77,15 @@
 </header>
 
 <main class="container">
+<style>
+  /* M79：頁面圖文橫幅（明亮、SVG 圖案） */
+  .pg-banner{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#eef2ff 0%,#ffffff 70%);border:1px solid rgba(98,126,234,.22);border-radius:16px;padding:22px 26px;margin-bottom:18px}
+  .pg-txt{flex:1;min-width:0}
+  .pg-txt h1{margin:0 0 4px;font-size:clamp(20px,3.4vw,28px);font-weight:800;color:var(--text);letter-spacing:-.01em}
+  .pg-txt p{margin:0;font-size:13px;color:var(--muted)}
+  .pg-art{flex:none;width:72px;height:72px}
+  @media (max-width:520px){ .pg-banner{padding:16px} .pg-art{width:52px;height:52px} }
+</style>
 {% block content %}{% endblock %}
 </main>
 
@@ -90,7 +99,7 @@
 </nav>
 
 <footer class="footer">
-  <span>TAC Autonomous Chain</span>
+  <span>TAC Ai Smart Chain</span>
   <span>鏈頂 #{{ status.Height }}</span>
   <span>最終化 #{{ status.FinalizedHeight }}</span>
 </footer>

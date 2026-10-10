@@ -1,4 +1,4 @@
-// Package pos 實現 TAC 自主智能鏈的 PoS 質押層：質押 TACM 獲取收益、驗證人選舉、
+// Package pos 實現 TAC Ai 智能鏈的 PoS 質押層：質押 TACM 獲取收益、驗證人選舉、
 // 解鎖期、收益按比例分配，並為三元混合共識（PoW+PoS+時間權證）提供 PoS 權重。
 package pos
 

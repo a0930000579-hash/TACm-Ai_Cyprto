@@ -1,4 +1,4 @@
-// Command node 啟動一個 TAC 自主智能鏈節點：初始化創世、啟動 HTTP RPC 與出塊循環。
+// Command node 啟動一個 TAC Ai 智能鏈節點：初始化創世、啟動 HTTP RPC 與出塊循環。
 package main
 
 import (

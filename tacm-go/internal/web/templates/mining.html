@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block title %}TAC Mining · Miner{% endblock %}
 {% block content %}
+<section class="pg-banner">
+  <div class="pg-txt"><h1 data-i18n="bn.mining">開始挖礦</h1><p data-i18n="bn.miningSub">算力與獎勵</p></div>
+  <svg viewBox="0 0 40 40" class="pg-art"><path d="M14 12 L8 6 M14 12 L22 20 M14 12 L16 4 M14 12 L4 14 M22 20 L18 30 L8 34 L4 26 L8 16 L14 12 Z" fill="none" stroke="#627eea" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 30 L8 34 L4 26 L8 16 L14 12 L22 20 Z" fill="rgba(98,126,234,.22)"/><path d="M28 10 h8 M28 10 l4 -4 M28 10 l4 4 M32 14 v6 M28 20 h8" stroke="#627eea" stroke-width="2.2" stroke-linecap="round"/></svg>
+</section>
 <style>
   .miner-wrap{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:0 auto}
-  .mm-hero{background:linear-gradient(160deg,rgba(240,185,11,.14),rgba(240,185,11,.03) 60%);border:1px solid rgba(240,185,11,.4);border-radius:16px;padding:16px;position:relative}
+  .mm-hero{background:linear-gradient(160deg,rgba(98,126,234,.14),rgba(98,126,234,.03) 60%);border:1px solid rgba(98,126,234,.4);border-radius:16px;padding:16px;position:relative}
   .mm-hero .mm-badge{position:absolute;top:14px;right:14px;background:rgba(14,203,129,.14);color:var(--green);border:1px solid rgba(14,203,129,.4);font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px}
   .mm-hero .mm-badge.off{background:rgba(246,70,93,.14);color:var(--red);border-color:rgba(246,70,93,.4)}
   .mm-hero h2{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px}
@@ -15,21 +19,21 @@
   .mm-hash small{color:var(--muted);font-size:11px}
   .mm-cta{display:flex;gap:10px;margin-top:12px}
   .mm-cta button{flex:1;padding:12px 0;border-radius:10px;font-weight:800;font-size:14px;border:none;cursor:pointer}
-  #btnStart{background:var(--accent);color:#0b0e11}
+  #btnStart{background:var(--accent);color:#f7f8fb}
   #btnStop{background:rgba(246,70,93,.15);color:var(--red);border:1px solid rgba(246,70,93,.5)!important}
   .mm-form{margin-top:12px;display:none;gap:8px;align-items:center}
   .mm-form.open{display:flex}
   .mm-form label{font-size:12px;color:var(--muted);flex:none}
   .mm-form input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-size:14px}
-  .mm-form button{background:var(--accent);color:#0b0e11;border:none;border-radius:8px;font-weight:800;padding:9px 14px;font-size:13px;cursor:pointer;flex:none}
+  .mm-form button{background:var(--accent);color:#f7f8fb;border:none;border-radius:8px;font-weight:800;padding:9px 14px;font-size:13px;cursor:pointer;flex:none}
   .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .mm-cell{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
   .mm-cell small{color:var(--muted);font-size:11px;display:block;margin-bottom:4px}
   .mm-cell b{font-size:15px;font-variant-numeric:tabular-nums}
   .mm-sec{font-size:13px;font-weight:800;color:var(--text);margin:6px 2px 0;display:flex;align-items:center;gap:8px}
   .rank-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-top:8px}
-  .rank-row .rk{width:26px;height:26px;border-radius:50%;background:rgba(240,185,11,.14);color:var(--accent);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
-  .rank-row .rk.solo{background:rgba(240,185,11,.3)}
+  .rank-row .rk{width:26px;height:26px;border-radius:50%;background:rgba(98,126,234,.14);color:var(--accent);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+  .rank-row .rk.solo{background:rgba(98,126,234,.3)}
   .rank-row .rkbody{flex:1;min-width:0}
   .rank-row .rkbody .ra{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank-row .rkbody .rkbar{height:5px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:5px;overflow:hidden}
@@ -51,7 +55,7 @@
   .eff-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
   .eff-row>span{flex:none;width:30px}
   .eff-row>i{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;display:block}
-  .eff-row>i b{display:block;height:100%;background:linear-gradient(90deg,#f0b90b,#fcd34d);border-radius:99px;width:0%;transition:width .6s}
+  .eff-row>i b{display:block;height:100%;background:linear-gradient(90deg,#627eea,#fcd34d);border-radius:99px;width:0%;transition:width .6s}
   .eff-row>em{flex:none;font-style:normal;font-weight:700;color:var(--text);font-size:11px;font-variant-numeric:tabular-nums}
   .mm-live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:700}
   .mm-live .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
@@ -93,7 +97,7 @@
     </div>
     <div class="mm-form" id="cfgForm">
       <div style="font-size:13px;color:var(--bn-sub);line-height:1.7">
-        <b style="color:#f0b90b">算力設定（固定不可改）</b><br>
+        <b style="color:#627eea">算力設定（固定不可改）</b><br>
         ・基礎 <b>1 vCPU ＋ 2 vGPU</b>（vCPU×1M ＋ vGPU×2M）<br>
         ・提升方式：<b>推薦註冊</b>——每邀請 1 名會員註冊，<b>+0.01 CPU／+0.02 GPU</b><br>
         ・邀請碼＝你的錢包地址，分享給朋友於註冊時填寫即可。
@@ -106,7 +110,7 @@
     <div class="mm-cell"><small>動態難度</small><b id="diff">—</b></div>
   </div>
 
-  <div id="onchainLine" style="margin:10px 0;padding:10px 12px;border:1px solid rgba(240,185,11,.25);border-radius:12px;font-size:13px;display:none"></div>
+  <div id="onchainLine" style="margin:10px 0;padding:10px 12px;border:1px solid rgba(98,126,234,.25);border-radius:12px;font-size:13px;display:none"></div>
 
   <div class="mm-sec">🌐 全鏈總覽</div>
   <div class="mm-grid">
@@ -116,6 +120,7 @@
     <div class="mm-cell"><small data-i18n="chain.earned">我的累計收益</small><b id="earned">0 TACm</b></div>
   </div>
 
+  <div class="mm-sec" style="font-size:12px;padding:10px 14px;background:rgba(98,126,234,.06);border:1px solid rgba(98,126,234,.22);border-radius:12px;margin-bottom:12px">💎 每塊獎勵分潤：節點 9%（出塊節點）／獎勵池 16%／礦工 75%（按在線算力瓜分）</div>
   <div class="mm-sec">🌐 在線礦工排行（<span id="onlineN">0</span> 台 · 總算力 <span id="totalHr">0</span>）</div>
   <div id="rankList"></div>
 
@@ -234,7 +239,7 @@ function refresh(){
       var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
       document.getElementById('pool').textContent = pool;
     } catch (e) {}
-    try { document.getElementById('earned').textContent = (rs[3].tacm||TAC_TE('0')) + ' TACm'; } catch (e) {}
+    try { document.getElementById('earned').textContent = (window.TAC_fmtFee ? window.TAC_fmtFee(rs[3].tacm||0) : (rs[3].tacm||'0')) + ' TACm'; } catch (e) {}
     try {
       var c = rs[4] || {};
       document.getElementById('chainMined').textContent = c.total_mined_tacm ? fmtTacmRaw(c.total_mined_tacm) : '—';

@@ -1,4 +1,4 @@
-// tacctl 是 TAC 自主智能鏈的輕量運維命令列：錢包生成、普通轉賬、
+// tacctl 是 TAC Ai 智能鏈的輕量運維命令列：錢包生成、普通轉賬、
 // 智能合約部署/調用與查詢。全部交易走節點 RPC（/tx/submit），真實 ECDSA 簽名。
 package main
 
@@ -50,7 +50,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Print(`tacctl - TAC 自主智能鏈運維工具
+	fmt.Print(`tacctl - TAC Ai 智能鏈運維工具
 用法:
   tacctl wallet
   tacctl transfer -node URL -wif WIF -to ADDR -amount N [-fee N]

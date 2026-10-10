@@ -1,5 +1,5 @@
-# TAC Autonomous Chain — Security Posture Report
-# TAC 自主智能鏈 — 安全自檢報告（v1.0 / M41）
+# TAC Ai Smart Chain — Security Posture Report
+# TAC Ai 智能鏈 — 安全自檢報告（v1.0 / M41）
 
 > 本報告盤點 TAC 鏈已內建的安全機制、已知風險邊界與建議的外部審計項目。
 > 目的：為「上市級」商業化提供可追溯的安全證據清單。

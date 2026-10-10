@@ -1,46 +1,50 @@
 {% extends "base.html" %}
 {% block title %}TAC DEX{% endblock %}
 {% block content %}
+<section class="pg-banner">
+  <div class="pg-txt"><h1 data-i18n="bn.dex">DEX</h1><p data-i18n="bn.dexSub">流動性與兌換</p></div>
+  <svg viewBox="0 0 40 40" class="pg-art"><circle cx="14" cy="20" r="8" fill="none" stroke="#627eea" stroke-width="2.2"/><circle cx="26" cy="20" r="8" fill="none" stroke="#627eea" stroke-width="2.2"/><path d="M14 14 l8 6 M26 26 l-8 -6 M14 26 l8 -6 M26 14 l-8 6" stroke="#627eea" stroke-width="1.8"/></svg>
+</section>
 <style>
   .dx-wrap{max-width:1100px;margin:0 auto}
-  .dx-head{background:linear-gradient(135deg,#0b0e11,#1e2329);border:1px solid #2b3139;border-radius:16px;padding:18px 20px;color:#eaecef;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .dx-head .logo{width:48px;height:48px;border-radius:12px;background:#f0b90b;color:#0b0e11;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
-  .dx-head h2{margin:0;font-size:20px;font-weight:800;color:#f0b90b}
+  .dx-head{background:linear-gradient(135deg,#f7f8fb,#f2f4f9);border:1px solid #e2e6ee;border-radius:16px;padding:18px 20px;color:#14161a;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .dx-head .logo{width:48px;height:48px;border-radius:12px;background:#627eea;color:#f7f8fb;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
+  .dx-head h2{margin:0;font-size:20px;font-weight:800;color:#627eea}
   .dx-head .sub{font-size:12px;opacity:.8;margin-top:2px}
   .dx-stats{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
-  .dx-stats span{background:rgba(240,185,11,.12);border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#f0b90b}
+  .dx-stats span{background:rgba(98,126,234,.12);border:1px solid rgba(98,126,234,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#627eea}
   .dx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
   @media (max-width:980px){.dx-grid{grid-template-columns:1fr}}
-  .dx-card{background:#0b0e11;border:1px solid #2b3139;border-radius:14px;padding:16px;margin-bottom:14px}
-  .dx-card h3{margin:0 0 12px;font-size:14px;color:#f0b90b;font-weight:800;display:flex;align-items:center;gap:8px}
-  .dx-card h3 .hint{font-size:11px;color:#848e9c;font-weight:500;margin-left:auto}
+  .dx-card{background:#f7f8fb;border:1px solid #e2e6ee;border-radius:14px;padding:16px;margin-bottom:14px}
+  .dx-card h3{margin:0 0 12px;font-size:14px;color:#627eea;font-weight:800;display:flex;align-items:center;gap:8px}
+  .dx-card h3 .hint{font-size:11px;color:#5d6778;font-weight:500;margin-left:auto}
   .dx-field{margin-bottom:10px}
-  .dx-field label{display:block;font-size:12px;color:#848e9c;margin-bottom:4px}
-  .dx-field input,.dx-field select{width:100%;box-sizing:border-box;background:#1e2329;border:1px solid #2b3139;border-radius:10px;color:#eaecef;padding:10px 12px;font-size:13px;font-family:ui-monospace,monospace}
-  .dx-btn{width:100%;background:#f0b90b;color:#0b0e11;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
-  .dx-btn.ghost{background:transparent;border:1px solid #2b3139;color:#eaecef;font-weight:700}
+  .dx-field label{display:block;font-size:12px;color:#5d6778;margin-bottom:4px}
+  .dx-field input,.dx-field select{width:100%;box-sizing:border-box;background:#f2f4f9;border:1px solid #e2e6ee;border-radius:10px;color:#14161a;padding:10px 12px;font-size:13px;font-family:ui-monospace,monospace}
+  .dx-btn{width:100%;background:#627eea;color:#f7f8fb;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
+  .dx-btn.ghost{background:transparent;border:1px solid #e2e6ee;color:#14161a;font-weight:700}
   .dx-btn.sm{width:auto;padding:6px 14px;font-size:12px;border-radius:8px}
   .dx-btn.green{background:rgba(14,203,129,.15);color:#0ecb81;border:1px solid rgba(14,203,129,.4)}
   .dx-btn.red{background:rgba(246,70,93,.15);color:#f6465d;border:1px solid rgba(246,70,93,.4)}
-  .dx-msg{margin-top:10px;font-size:12px;color:#848e9c;min-height:16px;word-break:break-all}
+  .dx-msg{margin-top:10px;font-size:12px;color:#5d6778;min-height:16px;word-break:break-all}
   .dx-msg.ok{color:#0ecb81}
   .dx-msg.err{color:#f6465d}
-  .dx-pool{background:#0b0e11;border:1px solid #2b3139;border-radius:14px;padding:14px 16px;margin-bottom:10px}
+  .dx-pool{background:#f7f8fb;border:1px solid #e2e6ee;border-radius:14px;padding:14px 16px;margin-bottom:10px}
   .dx-pool-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .dx-pair{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:#eaecef;font-size:14px}
-  .dx-pair .dot{width:8px;height:8px;border-radius:50%;background:#f0b90b;display:inline-block}
-  .dx-pool .addr{font-size:11px;color:#848e9c;word-break:break-all;margin-top:4px}
+  .dx-pair{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:#14161a;font-size:14px}
+  .dx-pair .dot{width:8px;height:8px;border-radius:50%;background:#627eea;display:inline-block}
+  .dx-pool .addr{font-size:11px;color:#5d6778;word-break:break-all;margin-top:4px}
   .dx-pool .prices{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .dx-pool .prices span{background:rgba(240,185,11,.1);border:1px solid rgba(240,185,11,.3);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#f0b90b}
+  .dx-pool .prices span{background:rgba(98,126,234,.1);border:1px solid rgba(98,126,234,.3);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#627eea}
   .dx-pool .res{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .dx-pool .res span{background:#1e2329;border:1px solid #2b3139;border-radius:8px;padding:4px 10px;font-size:12px;color:#eaecef;font-family:ui-monospace,monospace}
+  .dx-pool .res span{background:#f2f4f9;border:1px solid #e2e6ee;border-radius:8px;padding:4px 10px;font-size:12px;color:#14161a;font-family:ui-monospace,monospace}
   .dx-empty{text-align:center;color:#5e6673;padding:30px 0;font-size:13px}
   .dx-quote{background:rgba(14,203,129,.08);border:1px solid rgba(14,203,129,.3);border-radius:10px;padding:10px 12px;font-size:12px;color:#0ecb81;margin-top:10px;word-break:break-all}
-  .dx-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #2b3139;font-size:13px}
+  .dx-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e2e6ee;font-size:13px}
   .dx-row:last-child{border-bottom:none}
-  .dx-row .k{color:#848e9c}
-  .dx-row .v{color:#eaecef;font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;text-align:right}
-  .dx-row .v.gold{color:#f0b90b}
+  .dx-row .k{color:#5d6778}
+  .dx-row .v{color:#14161a;font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;text-align:right}
+  .dx-row .v.gold{color:#627eea}
 </style>
 
 <div class="dx-wrap">
@@ -111,11 +115,11 @@
       <div id="dxFarms"><div class="dx-empty" data-i18n="dex.farm_empty">尚無農場：先建立流動性池並注資獎勵</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
         <input id="dxFarmShares" type="number" min="1" placeholder="LP Shares"
-          style="width:150px;box-sizing:border-box;background:#1e2329;border:1px solid #2b3139;border-radius:10px;color:#eaecef;padding:10px 12px;font-size:13px">
+          style="width:150px;box-sizing:border-box;background:#f2f4f9;border:1px solid #e2e6ee;border-radius:10px;color:#14161a;padding:10px 12px;font-size:13px">
         <button class="dx-btn sm green" id="dxFarmStake" data-i18n="dex.farm_stake">質押</button>
         <button class="dx-btn sm red" id="dxFarmUnstake" data-i18n="dex.farm_unstake">解除質押</button>
         <button class="dx-btn sm" id="dxFarmClaim" data-i18n="dex.farm_claim">領取獎勵</button>
-        <span style="font-size:12px;color:#848e9c" id="dxFarmCur">未選中農場</span>
+        <span style="font-size:12px;color:#5d6778" id="dxFarmCur">未選中農場</span>
         <div class="dx-msg" id="dxFarmMsg" style="width:100%"></div>
       </div>
     </div>

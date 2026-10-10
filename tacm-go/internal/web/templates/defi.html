@@ -2,8 +2,8 @@
 {% block title %}TAC DeFi · Liquidity & Lending{% endblock %}
 {% block content %}
 <style>
-  :root { --bn-bg:#0b0e11; --bn-card:#161a1e; --bn-card2:#1e2329; --bn-line:#2b3139;
-          --bn-txt:#eaecef; --bn-sub:#848e9c; --bn-yellow:#fcd535; --bn-green:#0ecb81;
+  :root { --bn-bg:#f7f8fb; --bn-card:#ffffff; --bn-card2:#f2f4f9; --bn-line:#e2e6ee;
+          --bn-txt:#14161a; --bn-sub:#5d6778; --bn-yellow:#fcd535; --bn-green:#0ecb81;
           --bn-red:#f6465d; --bn-blue:#3d8cff; }
   * { box-sizing:border-box; }
   body { background:var(--bn-bg); color:var(--bn-txt); margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; }
@@ -16,7 +16,7 @@
   main { max-width:1080px; margin:0 auto; padding:14px; }
   .tabs { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
   .tab { padding:8px 14px; border-radius:8px; background:var(--bn-card); color:var(--bn-sub); font-size:13px; cursor:pointer; border:1px solid var(--bn-line); }
-  .tab.on { background:var(--bn-yellow); color:#181a20; font-weight:700; border-color:var(--bn-yellow); }
+  .tab.on { background:var(--bn-yellow); color:#f7f8fb; font-weight:700; border-color:var(--bn-yellow); }
   .panel { display:none; } .panel.on { display:block; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:860px){ .grid { grid-template-columns:1fr; } }
@@ -31,7 +31,7 @@
   .bn-form { display:grid; gap:9px; }
   .bn-form label { font-size:12px; color:var(--bn-sub); }
   .bn-form input, .bn-form select { background:var(--bn-card2); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:9px 11px; font-size:14px; outline:none; width:100%; }
-  .bn-btn { background:var(--bn-yellow); color:#181a20; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+  .bn-btn { background:var(--bn-yellow); color:#f7f8fb; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
   .bn-btn.blue { background:var(--bn-blue); color:#fff; }
   .bn-btn:disabled { opacity:.5; cursor:not-allowed; }
   .bn-msg { margin-top:8px; font-size:12px; min-height:16px; word-break:break-all; }
