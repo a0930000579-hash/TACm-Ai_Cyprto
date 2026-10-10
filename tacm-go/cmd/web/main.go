@@ -118,14 +118,29 @@ func main() {
 		if err != nil {
 			log.Fatalf("計算空 Merkle 根失敗: %v", err)
 		}
+		// M73-B：社群基金創世分配 100,000 TACm（地址＝節點派生金鑰，
+		// 用於每 60 塊一期的鏈上社群互動獎勵結算）。
+		poolAddr, perr := n.CommunityPoolAddress()
+		if perr != nil {
+			log.Fatalf("計算社群基金地址失敗: %v", perr)
+		}
 		genesis := &chaindb.Block{
 			Height: 0, Hash: strings.Repeat("0", 64),
 			MerkleRoot: emptyRoot, Proposer: "genesis", Ts: time.Now().Unix(),
 		}
-		if err := n.DB().InsertBlock(genesis, nil); err != nil {
+		genesisTxs := []chaindb.Transaction{{
+			TxHash:   "genesis-community-pool",
+			ToAddr:   poolAddr,
+			Amount:   "100000",
+			Fee:      "0",
+			Ts:       time.Now().Unix(),
+			Memo:     "genesis:community_pool",
+			Status:   "confirmed",
+		}}
+		if err := n.DB().InsertBlock(genesis, genesisTxs); err != nil {
 			log.Fatalf("寫入創世塊失敗: %v", err)
 		}
-		log.Println("[genesis] 創世區塊已生成")
+		log.Printf("[genesis] 創世區塊已生成（社群基金 %s = 100000 TACm）", poolAddr)
 	}
 
 	// 節點 RPC。

@@ -565,7 +565,18 @@
     ' 塊 coinbase/pool/split 全過 · 總產出 ': ' blocks coinbase/pool/split all pass · Total mined ',
     ' TACm · 獎勵池挹注 ': ' TACm · Reward Pool fed ',
     ' · 在線礦工 ': ' · Online Miners ',
-    ' 台（與 /network 同源）': ' rig(s) (same source as /network)'
+    ' 台（與 /network 同源）': ' rig(s) (same source as /network)',
+    // M73-B 社群鏈上激勵與關注。
+    '互動積分與鏈上獎勵': 'Engagement Points & On-Chain Rewards',
+    '查詢': 'Check', '切換': 'Switch', '追蹤': 'Follow', '已追蹤': 'Following', '取消追蹤': 'Unfollow',
+    '全部動態': 'All Posts', '追蹤中': 'Following', '我的積分：': 'My points: ', ' 分': ' pts',
+    '結算週期：每 ': 'Settlement: every ', ' 塊／每期 ': ' blocks / ', ' TACM · ': ' TACM · ',
+    '已結算 ': 'settled ', ' 期': ' period(s)',
+    '積分排行榜': 'Points Leaderboard', '暫無積分': 'No points yet',
+    '立即結算': 'Settle Now', '結算完成，': 'Settled — ', ' 位成員獲得鏈上獎勵': ' member(s) received on-chain rewards',
+    '請先輸入錢包地址': 'Enter a wallet address first', '操作失敗：': 'Action failed: ',
+    '查詢失敗：': 'Query failed: ', '結算失敗：': 'Settlement failed: ',
+    '（與 /network 同源）': ' (same source as /network)'
   };
   function reverseMap(m) {
     var r = {};

@@ -2,7 +2,38 @@
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M73-A）——AI 服務層＋鏈上智能助手
+## 本版重點（M73-B）——社群獎勵上鏈＋動態牆/關注（「1+3 結合」）
+
+M73-A（AI 助手）之後，本版把「社群」升級為**鏈上激勵社群**：互動行為累積積分，每 60 塊由「社群基金」自動結算一期、簽名發放鏈上 TACm 獎勵（memo=`community:reward:P<n>`，進 mempool 出塊上鏈，全鏈可審計、簽名有效、餘額守恆）：
+
+1. **互動積分**：發文 +5、按讚 +1、留言 +3、市集成交（買方）+10、廣告付費（投放者）+5；追蹤不給分；
+2. **社群基金**：創世分配 100,000 TACm 至「社群基金」鏈上地址（節點金鑰確定性派生 `DeriveKey(nodeSeed, "community_pool")`，所有節點同步出同一地址）；每期由基金按積分比例發放 50 TACm（末位吃尾差，期總額精確 50），`/api/audit` 的 coinbase_total 與 balances_total 同步含創世分配、LedgerOK 守恆不變；
+3. **追蹤與動態牆**：每篇貼文旁「追蹤/已追蹤」按鈕；動態牆「全部動態 / 追蹤中」分頁（`GET /api/community/feed?scope=following&address=`）；`POST/DELETE /api/community/follow`、`GET /api/community/following`；
+4. **積分查詢與結算**：`GET /api/community/rewards?address=`（我的積分／排行／結算週期／基金地址）、`POST /api/community/settle`（手動結算）；社群頁左欄「互動積分與鏈上獎勵」卡片，含立即結算與排行榜；結算達期（每 60 塊）自動觸發（`TryCommunityRewardSettle` 掛在 feed/rewards/post 等入口）；
+5. **測試**：`internal/community/community_test.go`（追蹤 CRUD／追蹤動態牆／積分快照清零／期號持久化）＋`internal/node/community_rewards_test.go`（追蹤與積分 RPC e2e、結算上鏈 mempool 簽名交易、出塊後獲獎者鏈上餘額增加、ledger 守恆）全過；`go test ./internal/node/ ./internal/community/ ./internal/web/ ./internal/chaindb/ ./internal/wallet/ ./cmd/tacctl/` 全綠。
+
+**注意（部署前必讀）**：本版新增創世社群基金分配——**錨點必須清空舊資料歸零重來**（見下方部署步驟），否則舊鏈不會有社群基金。Render 重啟即重新創世。
+
+### M73-B 錨點部署步驟（一次一條，勿一次貼多條）
+
+sudo systemctl stop tacnode
+rm -rf /var/tac/data
+curl -L -o /tmp/tacm-go-m73b.zip 'https://aka.doubaocdn.com/s/hzicM40dUd'
+cd /root && sudo unzip -o /tmp/tacm-go-m73b.zip
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+sudo systemctl restart tacnode
+curl -s http://2.28.201.174:8080/status
+curl -s http://2.28.201.174:8080/api/audit
+
+驗證社群獎勵（部署後）：
+
+curl -s 'http://2.28.201.174:8080/api/community/rewards?address=REPLACE_POOL'
+curl -s 'http://2.28.201.174:8080/api/community/feed'
+curl -s -X POST 'http://2.28.201.174:8080/api/community/settle'
+
+瀏覽器開啟 `http://2.28.201.174:8080/community`（或 Render 網址 `/community`）即可看到追蹤按鈕、追蹤中動態牆與積分卡片。
+
+## 上版重點（M73-A）——AI 服務層＋鏈上智能助手
 
 M72 之後，本版新增「AI 助手」服務：一個**零外部依賴、可離線部署**的鏈上智能助手（規則引擎直接讀鏈上真實數據回答，不上送任何第三方 LLM）：
 
@@ -15,7 +46,7 @@ M72 之後，本版新增「AI 助手」服務：一個**零外部依賴、可�
 
 sudo systemctl stop tacnode
 rm -rf /var/tac/data
-curl -L -o /tmp/tacm-go-m73.zip 'https://aka.doubaocdn.com/s/XN5ZjpvNzK'
+curl -L -o /tmp/tacm-go-m73.zip 'https://aka.doubaocdn.com/s/Sb9E49BMgW'
 cd /root && sudo unzip -o /tmp/tacm-go-m73.zip
 cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
 sudo systemctl restart tacnode

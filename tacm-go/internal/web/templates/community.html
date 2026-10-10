@@ -67,6 +67,14 @@
   .cm-msg{font-size:12px;color:#f02849;margin-top:8px;text-align:center;min-height:14px}
   .mono-s{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all}
   .cm-topbtn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .cm-feedtab{background:#f0f2f5;border:1px solid #dddfe2;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;color:#65676b;cursor:pointer}
+  .cm-feedtab.on{background:#e7f3ff;color:#1877f2;border-color:#1877f2}
+  .cm-follow{background:#1877f2;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;flex:none;margin-left:auto}
+  .cm-follow.on{background:#f0f2f5;color:#65676b}
+  .cm-reward-line{font-size:13px;color:#1c1e21;margin:6px 0;word-break:break-all}
+  .cm-reward-top{border-top:1px solid #e4e6eb;margin-top:10px;padding-top:8px}
+  .cm-rt-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#65676b;padding:5px 0;border-bottom:1px solid #f0f2f5}
+  .cm-rt-item b{color:#1877f2}
 </style>
 
 <div class="cm-wrap">
@@ -103,6 +111,18 @@
         </div>
         <p id="depMsg" style="font-size:12px;color:#65676b;margin:8px 0 0;word-break:break-all">—</p>
       </div>
+      <!-- M73-B：互動積分與鏈上獎勵 -->
+      <div class="cm-card" style="margin-top:12px">
+        <h3>⭐ 互動積分與鏈上獎勵</h3>
+        <div class="cm-id">
+          <input id="rewardAddr" placeholder="wallet address" value="">
+          <button onclick="loadRewards()">查詢</button>
+        </div>
+        <p class="cm-reward-line" id="myPts">—</p>
+        <p class="cm-reward-line" id="rwMeta">—</p>
+        <button class="cm-post-btn" style="width:100%" onclick="settleNow()">立即結算</button>
+        <div class="cm-reward-top" id="rwTop"></div>
+      </div>
     </aside>
 
     <!-- 中：動態牆 -->
@@ -119,6 +139,10 @@
             <input id="postPrice" type="number" min="0" step="0.01" placeholder="price TACM (market)">
             <button class="cm-post-btn" onclick="publish()">發布</button>
           </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="cm-feedtab on" id="tabAll" onclick="setScope('')">全部動態</button>
+          <button class="cm-feedtab" id="tabFollow" onclick="setScope('following')">追蹤中</button>
         </div>
         <div id="postMsg" class="cm-msg"></div>
       </div>
@@ -174,9 +198,11 @@ function renderFeed(items){
     var likeOn = '';
     var price = p.price_tacm ? '<div class="cm-price">'+Number(p.price_tacm).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM</div>' : '';
     var buyBtn = market ? '<button class="cm-act" onclick="buyIntent('+p.id+')">🛍 購買</button>' : '';
+    // M73-B：追蹤按鈕（非本人貼文）。
+    var followBtn = (me && p.address && p.address!==me) ? '<button class="cm-follow" data-a="'+p.address+'" onclick="toggleFollow(this,\''+p.address+'\')">追蹤</button>' : '';
     return '<div class="cm-card cm-post">'+
       '<div class="cm-author"><div class="cm-ava">'+(p.author||p.address||TAC_TE('T')).slice(0,1).toUpperCase()+'</div>'+
-      '<div><div class="nm">'+shortAddr(p.address)+'</div><div class="tm">'+timeAgo(p.created_at)+' · <span class="cm-tag'+(market?' market':'')+'">'+(market?'市集':'動態')+'</span></div></div></div>'+
+      '<div><div class="nm">'+shortAddr(p.address)+'</div><div class="tm">'+timeAgo(p.created_at)+' · <span class="cm-tag'+(market?' market':'')+'">'+(market?'市集':'動態')+'</span></div></div>'+followBtn+'</div>'+
       '<div class="cm-body">'+escapeHtml(p.content||TAC_TE(''))+'</div>'+
       (market?price:'')+
       '<div class="cm-actions">'+
@@ -188,6 +214,63 @@ function renderFeed(items){
       '<div class="cm-comadd"><input id="cmtin-'+p.id+'" placeholder="Write a comment..."><button onclick="addComment('+p.id+')">送出</button></div></div>'+
       '</div>';
   }).join('');
+  // 依追蹤狀態刷新按鈕文案。
+  refreshFollowBtns();
+}
+function refreshFollowBtns(){
+  if(!me) return;
+  get('/api/community/following?address='+encodeURIComponent(me)).then(function(d){
+    var set = {};
+    (d.items||[]).forEach(function(a){ set[a]=1; });
+    document.querySelectorAll('.cm-follow').forEach(function(btn){
+      var a = btn.getAttribute('data-a');
+      if(!a) return;
+      if(set[a]){ btn.classList.add('on'); btn.textContent = TAC_TE('已追蹤'); }
+      else { btn.classList.remove('on'); btn.textContent = TAC_TE('追蹤'); }
+    });
+  }).catch(function(){});
+}
+function toggleFollow(btn, addr){
+  if(!ensureMe()) return;
+  var on = btn.classList.contains('on');
+  var m = on ? 'DELETE' : 'POST';
+  fetch(base + '/api/community/follow', {method:m, headers:{'Content-Type':'application/json'}, body: JSON.stringify({follower:me, followee:addr})})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(){ refreshFollowBtns(); if(scope==='following') refresh(); })
+    .catch(function(e){ alert(TAC_TE('操作失敗：')+e); });
+}
+var scope = '';
+function setScope(v){
+  scope = v;
+  document.getElementById('tabAll').classList.toggle('on', v==='');
+  document.getElementById('tabFollow').classList.toggle('on', v==='following');
+  refresh();
+}
+function loadFeed(){
+  var q = scope==='following' ? '?scope=following&address='+encodeURIComponent(me||'') : '';
+  return get('/api/community/feed'+q);
+}
+// M73-B：我的積分／排行／結算。
+function loadRewards(){
+  var addr = document.getElementById('rewardAddr').value.trim() || me || (localStorage.getItem('cm_id')||'');
+  if(!addr){ alert(TAC_TE('請先輸入錢包地址')); return; }
+  get('/api/community/rewards?address='+encodeURIComponent(addr)).then(function(d){
+    document.getElementById('myPts').textContent = TAC_TE('我的積分：') + d.my_points + ' 分';
+    document.getElementById('rwMeta').textContent = TAC_TE('結算週期：每 ') + d.interval + TAC_TE(' 塊／每期 ') + d.per_period + ' TACM · ' + TAC_TE('已結算 ') + d.period + TAC_TE(' 期');
+    var top = d.top || [];
+    var html = '<div style="font-weight:700;font-size:12px;color:#1c1e21;margin-bottom:4px">'+TAC_TE('積分排行榜')+'</div>';
+    if(!top.length){ html += '<div class="cm-empty">'+TAC_TE('暫無積分')+'</div>'; }
+    top.slice(0,10).forEach(function(r, i){
+      html += '<div class="cm-rt-item"><span>'+(i+1)+'.</span><span class="mono-s" style="flex:1">'+shortAddr(r.address)+'</span><b>'+r.points+' 分</b></div>';
+    });
+    document.getElementById('rwTop').innerHTML = html;
+  }).catch(function(e){ alert(TAC_TE('查詢失敗：')+e); });
+}
+function settleNow(){
+  post('/api/community/settle').then(function(d){
+    alert(TAC_TE('結算完成，') + d.settled + TAC_TE(' 位成員獲得鏈上獎勵'));
+    loadRewards();
+  }).catch(function(e){ alert(TAC_TE('結算失敗：')+e); });
 }
 function escapeHtml(s){ return (s||TAC_TE('')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -304,7 +387,7 @@ function depositEx(){
 }
 
 function refresh(){
-  Promise.all([get('/api/community/feed'), get('/api/community/market'), get('/api/community/ads'), get('/api/community/stats')])
+  Promise.all([loadFeed(), get('/api/community/market'), get('/api/community/ads'), get('/api/community/stats')])
     .then(function(rs){
       renderFeed(rs[0].items||[]);
       renderMarket(rs[1].items||[]);
@@ -314,6 +397,7 @@ function refresh(){
       document.getElementById('stMembers').textContent='成員 '+s.members;
       document.getElementById('stLikes').textContent='讚 '+s.likes;
       document.getElementById('stAds').textContent='廣告 '+s.ads;
+      if(me) loadRewards();
     }).catch(function(e){ document.getElementById('postMsg').textContent='社群資料載入失敗（'+base+'）：'+e; });
 }
 

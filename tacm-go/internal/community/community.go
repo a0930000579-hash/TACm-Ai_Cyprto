@@ -56,6 +56,23 @@ CREATE TABLE IF NOT EXISTS ads (
   status TEXT NOT NULL DEFAULT 'pending',
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS follows (
+  follower TEXT NOT NULL,
+  followee TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (follower, followee)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_followee ON follows(followee);
+CREATE TABLE IF NOT EXISTS rewards (
+  address TEXT PRIMARY KEY,
+  points INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reward_meta (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  period INTEGER NOT NULL DEFAULT 0,
+  last_tip INTEGER NOT NULL DEFAULT 0
+);
 `
 
 // Open 打開（或創建）社群資料庫。
@@ -406,4 +423,184 @@ func (s *Store) Stats() (*Stats, error) {
 		return nil, err
 	}
 	return &st, nil
+}
+
+// ---------- M73-B：關注（動態牆） ----------
+
+// Follow 追蹤一位成員（冪等）。
+func (s *Store) Follow(follower, followee string) error {
+	if follower == "" || followee == "" {
+		return fmt.Errorf("community: 追蹤參數缺失")
+	}
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO follows(follower,followee,created_at) VALUES(?,?,?)`,
+		follower, followee, time.Now().Unix()); err != nil {
+		return fmt.Errorf("community: 追蹤失敗: %w", err)
+	}
+	return nil
+}
+
+// Unfollow 取消追蹤。
+func (s *Store) Unfollow(follower, followee string) error {
+	if _, err := s.db.Exec(`DELETE FROM follows WHERE follower=? AND followee=?`, follower, followee); err != nil {
+		return fmt.Errorf("community: 取消追蹤失敗: %w", err)
+	}
+	return nil
+}
+
+// Following 列出已追蹤的成員（依追蹤時間新→舊）。
+func (s *Store) Following(follower string) ([]string, error) {
+	rows, err := s.db.Query(`SELECT followee FROM follows WHERE follower=? ORDER BY created_at DESC`, follower)
+	if err != nil {
+		return nil, fmt.Errorf("community: 查詢追蹤列表: %w", err)
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// IsFollowing 是否已追蹤。
+func (s *Store) IsFollowing(follower, followee string) (bool, error) {
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(1) FROM follows WHERE follower=? AND followee=?`, follower, followee).Scan(&n); err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// FollowingFeed 動態牆：只顯示已追蹤成員的貼文（含自己的）。
+func (s *Store) FollowingFeed(follower string, limit, offset int) ([]Post, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	rows, err := s.db.Query(`SELECT `+postCols+` FROM posts p
+		WHERE p.address=? OR p.address IN (SELECT followee FROM follows WHERE follower=?)
+		ORDER BY p.created_at DESC LIMIT ? OFFSET ?`, follower, follower, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("community: 追蹤動態牆: %w", err)
+	}
+	defer rows.Close()
+	out := []Post{}
+	for rows.Next() {
+		var p Post
+		if err := rows.Scan(&p.ID, &p.Address, &p.Kind, &p.Content, &p.ImageURL, &p.CreatedAt, &p.MineID, &p.PriceTACM, &p.Sold, &p.Buyer, &p.Likes, &p.Comments); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// ---------- M73-B：互動積分與鏈上獎勵結算 ----------
+
+// AddPoints 累積互動積分（發文/按讚/留言/成交等）。
+func (s *Store) AddPoints(address string, pts int64) error {
+	if address == "" || pts <= 0 {
+		return nil
+	}
+	if _, err := s.db.Exec(`INSERT INTO rewards(address,points,updated_at) VALUES(?,?,?)
+		ON CONFLICT(address) DO UPDATE SET points=points+?, updated_at=?`,
+		address, pts, time.Now().Unix(), pts, time.Now().Unix()); err != nil {
+		return fmt.Errorf("community: 累積積分: %w", err)
+	}
+	return nil
+}
+
+// Points 查詢成員積分。
+func (s *Store) Points(address string) (int64, error) {
+	var p int64
+	if err := s.db.QueryRow(`SELECT COALESCE(SUM(points),0) FROM rewards WHERE address=?`, address).Scan(&p); err != nil {
+		return 0, fmt.Errorf("community: 查詢積分: %w", err)
+	}
+	return p, nil
+}
+
+// RewardRow 積分明細（結算與排行共用）。
+type RewardRow struct {
+	Address string `json:"address"`
+	Points  int64  `json:"points"`
+}
+
+// TopRewards 積分排行（前 N）。
+func (s *Store) TopRewards(limit int) ([]RewardRow, error) {
+	rows, err := s.db.Query(`SELECT address, points FROM rewards WHERE points>0 ORDER BY points DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("community: 積分排行: %w", err)
+	}
+	defer rows.Close()
+	out := []RewardRow{}
+	for rows.Next() {
+		var r RewardRow
+		if err := rows.Scan(&r.Address, &r.Points); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// SnapshotAndClearRewards 結算快照：讀取全部積分並清零（返回有積分者）。
+// 快照與清零在同一事務，保證「每期只結算一次」。
+func (s *Store) SnapshotAndClearRewards() ([]RewardRow, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.Query(`SELECT address, points FROM rewards WHERE points>0`)
+	if err != nil {
+		return nil, err
+	}
+	out := []RewardRow{}
+	for rows.Next() {
+		var r RewardRow
+		if err := rows.Scan(&r.Address, &r.Points); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	_ = rows.Close()
+	if len(out) > 0 {
+		if _, err := tx.Exec(`UPDATE rewards SET points=0, updated_at=?`, time.Now().Unix()); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RewardMeta 上一期結算資訊。
+type RewardMeta struct {
+	Period  int64 `json:"period"`
+	LastTip int64 `json:"last_tip"`
+}
+
+// GetRewardMeta 讀取結算期號與上次結算鏈高。
+func (s *Store) GetRewardMeta() (RewardMeta, error) {
+	var m RewardMeta
+	if err := s.db.QueryRow(`SELECT period, last_tip FROM reward_meta WHERE id=1`).Scan(&m.Period, &m.LastTip); err != nil {
+		if err == sql.ErrNoRows {
+			return RewardMeta{}, nil
+		}
+		return m, err
+	}
+	return m, nil
+}
+
+// SetRewardMeta 更新結算期號與鏈高。
+func (s *Store) SetRewardMeta(period, lastTip int64) error {
+	if _, err := s.db.Exec(`INSERT INTO reward_meta(id,period,last_tip) VALUES(1,?,?)
+		ON CONFLICT(id) DO UPDATE SET period=?, last_tip=?`, period, lastTip, period, lastTip); err != nil {
+		return fmt.Errorf("community: 更新結算期號: %w", err)
+	}
+	return nil
 }

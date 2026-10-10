@@ -43,6 +43,22 @@ func (s *RPCServer) handleCommunityFeed(w http.ResponseWriter, r *http.Request) 
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	// M73-B：追蹤中動態牆（scope=following 且帶 address）；順帶惰性結算獎勵。
+	s.node.TryCommunityRewardSettle()
+	if r.URL.Query().Get("scope") == "following" {
+		addr := strings.TrimSpace(r.URL.Query().Get("address"))
+		if addr == "" {
+			writeErr(w, http.StatusBadRequest, "追蹤動態牆需要 address")
+			return
+		}
+		items, err := cm.FollowingFeed(addr, limit, offset)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items, "scope": "following"})
+		return
+	}
 	items, err := cm.Feed(limit, offset)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -77,6 +93,9 @@ func (s *RPCServer) handleCommunityPost(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// M73-B：發文累積互動積分（鏈上獎勵結算用）。
+	s.node.addRewardPoints(req.Address, "post")
+	s.node.TryCommunityRewardSettle()
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "post_id": id})
 }
 
@@ -101,6 +120,7 @@ func (s *RPCServer) handleCommunityLike(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.node.addRewardPoints(addr, "like")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -148,6 +168,7 @@ func (s *RPCServer) handleCommunityComment(w http.ResponseWriter, r *http.Reques
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	s.node.addRewardPoints(req.Address, "comment")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -310,10 +331,116 @@ func (s *RPCServer) handleCommunityBuy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// M73-B：成交買方累積互動積分（鏈上獎勵結算用）。
+	s.node.addRewardPoints(buyer, "sold")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "status": "paid", "to": p.Address,
 		"amount_tacm": price, "fee_tacm": fee, "memo": memo,
 	})
+}
+
+// handleCommunityFollow POST/DELETE /api/community/follow；GET /api/community/following?address=
+// M73-B：會員追蹤（動態牆資料來源）。
+func (s *RPCServer) handleCommunityFollow(w http.ResponseWriter, r *http.Request) {
+	cm, ok := s.community()
+	if !ok {
+		writeErr(w, http.StatusServiceUnavailable, "社群未啟用")
+		return
+	}
+	var req struct {
+		Follower string `json:"follower"`
+		Followee string `json:"followee"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "參數解析失敗")
+		return
+	}
+	follower := strings.TrimSpace(req.Follower)
+	followee := strings.TrimSpace(req.Followee)
+	if follower == "" || followee == "" {
+		writeErr(w, http.StatusBadRequest, "follower/followee 必填")
+		return
+	}
+	if strings.EqualFold(follower, followee) {
+		writeErr(w, http.StatusBadRequest, "不能追蹤自己")
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		if err := cm.Follow(follower, followee); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "following": true})
+	case http.MethodDelete:
+		if err := cm.Unfollow(follower, followee); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "following": false})
+	default:
+		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+// handleCommunityFollowing GET /api/community/following?address=
+func (s *RPCServer) handleCommunityFollowing(w http.ResponseWriter, r *http.Request) {
+	cm, ok := s.community()
+	if !ok {
+		writeErr(w, http.StatusServiceUnavailable, "社群未啟用")
+		return
+	}
+	addr := strings.TrimSpace(r.URL.Query().Get("address"))
+	if addr == "" {
+		writeErr(w, http.StatusBadRequest, "address 必填")
+		return
+	}
+	items, err := cm.Following(addr)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+}
+
+// handleCommunityRewards GET /api/community/rewards?address=
+// M73-B：我的互動積分＋排行＋結算期號。
+func (s *RPCServer) handleCommunityRewards(w http.ResponseWriter, r *http.Request) {
+	cm, ok := s.community()
+	if !ok {
+		writeErr(w, http.StatusServiceUnavailable, "社群未啟用")
+		return
+	}
+	s.node.TryCommunityRewardSettle()
+	addr := strings.TrimSpace(r.URL.Query().Get("address"))
+	myPoints := int64(0)
+	if addr != "" {
+		myPoints, _ = cm.Points(addr)
+	}
+	top, _ := cm.TopRewards(20)
+	meta, _ := cm.GetRewardMeta()
+	poolAddr, _ := s.node.CommunityPoolAddress()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "my_points": myPoints, "top": top,
+		"period": meta.Period, "last_tip": meta.LastTip,
+		"interval": CommunityRewardInterval, "per_period": CommunityRewardPerPeriod,
+		"pool_address": poolAddr,
+	})
+}
+
+// handleCommunitySettle POST /api/community/settle
+// M73-B：手動觸發結算（達週期且有積分才會真正上鏈）。
+func (s *RPCServer) handleCommunitySettle(w http.ResponseWriter, r *http.Request) {
+	if s.node == nil {
+		writeErr(w, http.StatusServiceUnavailable, "節點未就緒")
+		return
+	}
+	n, err := s.node.SettleCommunityRewards(s.node.db.GetTipHeight())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "settled": n})
 }
 
 // handleCommunityAdPay POST /api/community/ads/{id}/pay {address}
@@ -367,6 +494,7 @@ func (s *RPCServer) handleCommunityAdPay(w http.ResponseWriter, r *http.Request)
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.node.addRewardPoints(ad.Address, "ad")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "status": "active", "ad_id": id,
 		"amount_tacm": ad.BudgetTACM, "pool": wallet.RewardPoolAddr, "memo": memo,

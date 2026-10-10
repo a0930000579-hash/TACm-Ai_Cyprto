@@ -90,6 +90,13 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /api/community/stats", s.handleCommunityStats)
 	s.addRoute("GET /api/community/config", s.handleCommunityConfig)
 
+	// M73-B 社群鏈上激勵與關注：
+	s.addRoute("POST /api/community/follow", s.handleCommunityFollow)
+	s.addRoute("DELETE /api/community/follow", s.handleCommunityFollow)
+	s.addRoute("GET /api/community/following", s.handleCommunityFollowing)
+	s.addRoute("GET /api/community/rewards", s.handleCommunityRewards)
+	s.addRoute("POST /api/community/settle", s.handleCommunitySettle)
+
 	// M73-A AI 服務層：鏈上智能助手（規則引擎，無外部依賴）。
 	s.addRoute("GET /api/ai/ask", s.handleAIAssistant)
 
