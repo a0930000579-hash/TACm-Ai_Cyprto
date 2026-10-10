@@ -3,11 +3,14 @@ package web
 import (
 	"embed"
 	"io/fs"
+	"math/big"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
+
+	"tacm/internal/wallet"
 )
 
 //go:embed templates
@@ -86,6 +89,14 @@ func registerFilters() {
 			}
 			return pongo2.AsValue(time.Unix(int64(ts), 0).Format("2006-01-02 15:04:05")), nil
 		},
+		// M62：鏈上金額（raw 最小單位）→ 十進制（如 1000000000000000000 → 1）。
+		"fmtamt": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+			v, ok := new(big.Int).SetString(in.String(), 10)
+			if !ok {
+				return in, nil
+			}
+			return pongo2.AsValue(wallet.FormatAmountBig(v)), nil
+		},
 	}
 	for name, fn := range fns {
 		if pongo2.FilterExists(name) {
@@ -98,6 +109,9 @@ func registerFilters() {
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
+	// M62：公開區塊瀏覽器（公鏈門面）——鏈統計＋搜尋＋最新區塊/交易。
+	s.mux.HandleFunc("GET /explorer", s.handleExplorer)
+	s.mux.HandleFunc("GET /api/search", s.handleSearchAPI)
 	s.mux.HandleFunc("GET /block/{height}", s.handleBlock)
 	s.mux.HandleFunc("GET /address/{address}", s.handleAddress)
 	s.mux.HandleFunc("GET /tx/{hash}", s.handleTx)

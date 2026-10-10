@@ -17,6 +17,7 @@ type fakeDS struct {
 	txResult     *TxView
 	addrResult   *AddressView
 	walletResult *WalletView
+	txList       []TxView
 }
 
 func (f *fakeDS) Status() StatusView                                { return f.st }
@@ -26,6 +27,7 @@ func (f *fakeDS) Transaction(string) (*TxView, error)               { return f.t
 func (f *fakeDS) Address(string) (*AddressView, error)              { return f.addrResult, nil }
 func (f *fakeDS) Wallet(string) (*WalletView, error)                { return f.walletResult, nil }
 func (f *fakeDS) ChainStats() ChainStatsView                        { return ChainStatsView{} }
+func (f *fakeDS) RecentTransactions(int) ([]TxView, error)          { return f.txList, nil }
 func (f *fakeDS) CurrentUser(*http.Request) (*node.AuthUser, error) { return nil, nil }
 
 func newFake() *fakeDS {
@@ -37,6 +39,9 @@ func newFake() *fakeDS {
 			Transactions: []TxView{{Hash: "txhash1", To: "tx0recipient", Amount: "10"}}},
 		txResult:   &TxView{Hash: "txhash1", BlockHeight: 5, To: "tx0recipient", Amount: "10", Status: "confirmed"},
 		addrResult: &AddressView{Address: "tx0proposeraddr", Balance: "100", Transactions: []TxView{{Hash: "txhash1"}}},
+		txList: []TxView{
+			{Hash: "txhash1", BlockHeight: 5, From: "tx0proposeraddr", To: "tx0recipient", Amount: "10", Memo: "hello", Ts: now},
+		},
 		walletResult: &WalletView{
 			Address: "tx0proposeraddr", TACm: "1250000000000000000", TiUSD: "5000000",
 			USDT: "3000000", SyncedBlock: 8, FeeTiUSDBps: 50, FeeUSDTBps: 125, FeeTACmBps: 200,
@@ -60,6 +65,8 @@ func TestServerPages(t *testing.T) {
 		contains   string
 	}{
 		{"/", http.StatusOK, "最新區塊"},
+		{"/explorer", http.StatusOK, "鏈上搜尋"},
+		{"/explorer", http.StatusOK, "最新交易"},
 		{"/block/5", http.StatusOK, "blockhash5"},
 		{"/address/tx0proposeraddr", http.StatusOK, "100"},
 		{"/tx/txhash1", http.StatusOK, "txhash1"},
@@ -118,6 +125,46 @@ func TestServerErrors(t *testing.T) {
 		t.Errorf("未知路徑 狀態=%d 想要 404", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+// TestSearchAPI 驗證瀏覽器搜尋：數字→區塊、tx0 地址→地址、交易哈希→交易、其餘→none。
+func TestSearchAPI(t *testing.T) {
+	srv, _ := New(newFake())
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// 找不到交易的情境（交易哈希未命中 → none）。
+	f2 := newFake()
+	f2.txResult = nil
+	srv2, _ := New(f2)
+	ts2 := httptest.NewServer(srv2.Handler())
+	defer ts2.Close()
+
+	cases := []struct {
+		q    string
+		want string
+		url  string
+	}{
+		{"123", `"type":"block"`, ts.URL},
+		{"tx0proposeraddr", `"type":"address"`, ts.URL},
+		{"txhash1", `"type":"tx"`, ts.URL},
+		{"zzz_missing", `"type":"none"`, ts2.URL},
+		{"", `"type":"none"`, ts.URL},
+	}
+	for _, c := range cases {
+		resp, err := http.Get(c.url + "/api/search?q=" + c.q)
+		if err != nil {
+			t.Fatalf("GET /api/search?q=%s: %v", c.q, err)
+		}
+		body := readAllString(resp)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("q=%q 狀態=%d 想要 200", c.q, resp.StatusCode)
+		}
+		if !strings.Contains(body, c.want) {
+			t.Errorf("q=%q 未包含 %q（body=%s）", c.q, c.want, body)
+		}
+		resp.Body.Close()
+	}
 }
 
 func readAllString(resp *http.Response) string {

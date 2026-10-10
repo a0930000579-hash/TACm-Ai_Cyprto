@@ -98,4 +98,37 @@ func TestExplorerRealNode(t *testing.T) {
 		t.Errorf("交易頁未顯示真實交易哈希")
 	}
 	resp.Body.Close()
+
+	// M62：公開瀏覽器頁——統計＋搜尋＋最新區塊/交易表。
+	resp, _ = http.Get(ts.URL + "/explorer")
+	body = readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("瀏覽器頁 狀態=%d", resp.StatusCode)
+	}
+	for _, want := range []string{"鏈上搜尋", "最新區塊", "最新交易"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("瀏覽器頁缺少 %q", want)
+		}
+	}
+	resp.Body.Close()
+
+	// M62：搜尋 API 真實鏈——區塊高度→block、節點地址→address、真實交易哈希→tx。
+	check := func(q, want string) {
+		resp, err := http.Get(ts.URL + "/api/search?q=" + q)
+		if err != nil {
+			t.Fatalf("搜尋 %q: %v", q, err)
+		}
+		b := readAllString(resp)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("搜尋 %q 狀態=%d", q, resp.StatusCode)
+		}
+		if !strings.Contains(b, want) {
+			t.Errorf("搜尋 %q 未含 %q（body=%s）", q, want, b)
+		}
+		resp.Body.Close()
+	}
+	check("1", `"type":"block"`)
+	check(n.Address(), `"type":"address"`)
+	check(txHash, `"type":"tx"`)
+	check("zzz_no_such", `"type":"none"`)
 }

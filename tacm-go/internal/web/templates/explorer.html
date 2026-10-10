@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}TAC Explorer · 區塊瀏覽器{% endblock %}
+{% block content %}
+<section class="stat-cards">
+  <div class="card">
+    <div class="card-label">鏈頂高度</div>
+    <div class="card-value" id="eHeight">{{ status.Height }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">最終化高度</div>
+    <div class="card-value final" id="eFinal">{{ status.FinalizedHeight }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">當前難度</div>
+    <div class="card-value" id="eDiff">{{ status.Difficulty }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">待打包交易</div>
+    <div class="card-value" id="eMempool">{{ status.MempoolSize }}</div>
+  </div>
+</section>
+
+<!-- M62：搜尋框 —— 支援區塊高度 / 交易哈希 / 地址 -->
+<section class="panel">
+  <div class="panel-head"><h2>🔍 鏈上搜尋</h2></div>
+  <form class="search-bar" id="searchForm" action="javascript:void(0)">
+    <input class="search-input" id="searchQ" type="text" inputmode="search"
+           placeholder="輸入區塊高度、交易哈希或 tx0 地址…" autocomplete="off">
+    <button class="search-btn" type="submit">搜尋</button>
+  </form>
+  <div class="search-tip muted" id="searchTip"></div>
+</section>
+
+<!-- M62：全鏈統計 -->
+<section class="panel">
+  <div class="panel-head"><h2>🌐 全鏈統計</h2></div>
+  <div class="chain-grid">
+    <div class="cg"><small>共識</small><b>{{ status.Consensus }}</b></div>
+    <div class="cg"><small>節點位址</small><b class="mono">{{ status.Address|shortaddr }}</b></div>
+    <div class="cg"><small>在線礦工</small><b>{{ chain.OnlineMiners }}</b></div>
+    <div class="cg"><small>全網算力</small><b>{{ chain.TotalHashrate }}</b></div>
+    <div class="cg"><small>全鏈總產出 TACm</small><b>{{ chain.TotalMinedTacm }}</b></div>
+    <div class="cg"><small>獎勵池</small><b>{{ chain.RewardPool }}</b></div>
+    <div class="cg"><small>TiUSD 總流通</small><b>{{ chain.TiUSDSupply }}</b></div>
+    <div class="cg"><small>運行時間</small><b>{{ status.UptimeSec }}s</b></div>
+  </div>
+</section>
+
+<style>
+  .search-bar{display:flex;gap:8px;flex-wrap:wrap}
+  .search-input{flex:1;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:12px 14px;outline:none}
+  .search-input:focus{border-color:#f0b90b}
+  .search-btn{background:#f0b90b;color:#0b0e11;font-weight:700;border:0;border-radius:10px;padding:0 20px;font-size:15px;cursor:pointer}
+  .search-tip{font-size:13px;margin-top:8px;min-height:18px}
+  .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .cg small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+  .cg b{font-size:14px;color:var(--text);font-variant-numeric:tabular-nums;word-break:break-all}
+</style>
+
+<section class="panel">
+  <div class="panel-head"><h2>最新區塊</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>高度</th><th>區塊哈希</th><th>提議者</th><th>交易數</th><th>時間</th></tr>
+    </thead>
+    <tbody>
+    {% for b in blocks %}
+      <tr>
+        <td><a class="mono strong" href="/block/{{ b.Height }}">{{ b.Height }}</a></td>
+        <td class="mono"><a href="/block/{{ b.Height }}">{{ b.Hash|shortaddr }}</a></td>
+        <td class="mono"><a href="/address/{{ b.ProposerAddress }}">{{ b.ProposerAddress|shortaddr }}</a></td>
+        <td>{{ b.TxCount }}</td>
+        <td class="nowrap muted">{{ b.Ts|timefmt }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted center">尚無區塊</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>最新交易</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>哈希</th><th>區塊</th><th>來源</th><th>目標</th><th>金額 TACm</th><th>備註</th></tr>
+    </thead>
+    <tbody>
+    {% for t in txs %}
+      <tr>
+        <td class="mono"><a href="/tx/{{ t.Hash }}">{{ t.Hash|shortaddr }}</a></td>
+        <td><a class="mono strong" href="/block/{{ t.BlockHeight }}">{{ t.BlockHeight }}</a></td>
+        <td class="mono"><a href="/address/{{ t.From }}">{{ t.From|shortaddr }}</a></td>
+        <td class="mono"><a href="/address/{{ t.To }}">{{ t.To|shortaddr }}</a></td>
+        <td class="nowrap">{{ t.Amount|fmtamt }}</td>
+        <td class="muted">{{ t.Memo|trunc40 }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted center">尚無交易</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<script>
+  // M62：搜尋跳轉 —— /api/search 判定類型後導向對應詳情頁；未命中顯示提示。
+  (function () {
+    var form = document.getElementById('searchForm');
+    var input = document.getElementById('searchQ');
+    var tip = document.getElementById('searchTip');
+    if (!form || !input) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var q = (input.value || '').trim();
+      if (!q) return;
+      if (tip) tip.textContent = '';
+      fetch('/api/search?q=' + encodeURIComponent(q), { cache: 'no-store' })
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(function (j) {
+          if (!j) { if (tip) tip.textContent = '搜尋服務暫時不可用'; return; }
+          if (j.type === 'block') { location.href = '/block/' + j.height; return; }
+          if (j.type === 'address') { location.href = '/address/' + j.address; return; }
+          if (j.type === 'tx') { location.href = '/tx/' + j.hash; return; }
+          if (tip) tip.textContent = '未找到：' + q + '（不是有效高度、交易哈希或地址）';
+        })
+        .catch(function () { if (tip) tip.textContent = '搜尋失敗，請稍後再試'; });
+    });
+  })();
+</script>
+{% endblock %}

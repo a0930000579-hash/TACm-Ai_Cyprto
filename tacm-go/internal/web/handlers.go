@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/flosch/pongo2/v6"
 
@@ -26,6 +27,48 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "index.html", pongo2.Context{"blocks": blocks, "chain": s.ds.ChainStats()})
+}
+
+// handleExplorer GET /explorer — 公開區塊瀏覽器（M62）：全鏈統計＋搜尋＋最新區塊/交易。
+// 資料全部來自鏈上（Blocks/RecentTransactions/Status/ChainStats），任何節點同鏈結果一致。
+func (s *Server) handleExplorer(w http.ResponseWriter, r *http.Request) {
+	blocks, err := s.ds.Blocks(15)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	txs, err := s.ds.RecentTransactions(15)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.render(w, "explorer.html", pongo2.Context{
+		"blocks": blocks, "txs": txs, "chain": s.ds.ChainStats(),
+	})
+}
+
+// handleSearchAPI GET /api/search?q= — 瀏覽器搜尋（M62）：數字→區塊、tx0 地址→地址頁、
+// 其餘先查交易 hash→交易頁；均未命中→type=none。前端依 type 跳轉對應詳情頁。
+func (s *Server) handleSearchAPI(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	w.Header().Set("Content-Type", "application/json")
+	if q == "" {
+		writeJSON(w, map[string]any{"ok": false, "type": "none", "q": q})
+		return
+	}
+	if h, err := strconv.ParseInt(q, 10, 64); err == nil && h >= 0 {
+		writeJSON(w, map[string]any{"ok": true, "type": "block", "height": h})
+		return
+	}
+	if strings.HasPrefix(q, "tx0") {
+		writeJSON(w, map[string]any{"ok": true, "type": "address", "address": q})
+		return
+	}
+	if t, err := s.ds.Transaction(q); err == nil && t != nil {
+		writeJSON(w, map[string]any{"ok": true, "type": "tx", "hash": q, "block_height": t.BlockHeight})
+		return
+	}
+	writeJSON(w, map[string]any{"ok": false, "type": "none", "q": q})
 }
 
 func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {

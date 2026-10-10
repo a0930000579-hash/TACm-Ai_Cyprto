@@ -21,6 +21,8 @@ type DataSource interface {
 	Address(addr string) (*AddressView, error)
 	Wallet(addr string) (*WalletView, error)
 	ChainStats() ChainStatsView
+	// M62：公開區塊瀏覽器——最新交易（掃鏈頂往下，任何節點同鏈結果一致）。
+	RecentTransactions(limit int) ([]TxView, error)
 	// M37：讀取登入會員（session），供錢包/首頁等頁面依會員綁定地址渲染。
 	CurrentUser(r *http.Request) (*node.AuthUser, error)
 }
@@ -254,6 +256,25 @@ func (d *nodeDS) Transaction(hash string) (*TxView, error) {
 	}
 	tv := txView(t)
 	return &tv, nil
+}
+
+// RecentTransactions 回傳鏈上最新交易（M62）：自鏈頂向下掃區塊並由區塊內尾部往前收集，
+// 只依賴已同步區塊——任何節點（錨點/follower）看到的列表與鏈上事實一致。
+func (d *nodeDS) RecentTransactions(limit int) ([]TxView, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	out := make([]TxView, 0, limit)
+	for h := d.n.DB().GetTipHeight(); h > 0 && len(out) < limit; h-- {
+		txs, err := d.n.DB().GetTransactionsByBlock(h)
+		if err != nil {
+			return nil, err
+		}
+		for i := len(txs) - 1; i >= 0 && len(out) < limit; i-- {
+			out = append(out, txView(txs[i]))
+		}
+	}
+	return out, nil
 }
 
 func (d *nodeDS) Address(addr string) (*AddressView, error) {
