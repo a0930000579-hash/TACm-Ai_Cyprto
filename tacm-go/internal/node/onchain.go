@@ -6,7 +6,16 @@ package node
 // 任何節點只要同步同一條鏈，掃描結果完全一致（鏈上事實），徹底鎖死
 // 「收益與獎勵池數字必須代表鏈上真實、A+B 不得大於實際總產量」。
 
-import "strconv"
+import (
+	"math"
+	"strconv"
+)
+
+// roundCoinbase 把累加值收斂到 1e-4（coinbase 金額精度），避免浮點累加
+// 出現 73869.99999999377 而非 73870 的顯示，確保「總產出／收益數字精確代表鏈上真實」。
+func roundCoinbase(v float64) float64 {
+	return math.Round(v*1e4) / 1e4
+}
 
 // CoinbaseAggregate 鏈上 coinbase 聚合結果（記憶存檔點：M68 核心結構）。
 type CoinbaseAggregate struct {
@@ -45,6 +54,12 @@ func (n *Node) OnChainCoinbaseAggregate() (CoinbaseAggregate, error) {
 		}
 	}
 	out.TipHeight = n.db.GetTipHeight()
+	// 收斂浮點累加誤差，確保顯示精確（M68.1）。
+	out.Total = roundCoinbase(out.Total)
+	out.Pool = roundCoinbase(out.Pool)
+	for a := range out.Miners {
+		out.Miners[a] = roundCoinbase(out.Miners[a])
+	}
 	return out, nil
 }
 
