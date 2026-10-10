@@ -34,6 +34,15 @@ type TxView struct {
 	Signature   string        `json:"signature"`
 	Pubkey      string        `json:"pubkey"`
 	Contract    *ContractView `json:"contract,omitempty"`
+	GasUsed     int64         `json:"gas_used,omitempty"`
+	Logs        []LogView     `json:"logs,omitempty"`
+}
+
+// LogView 為交易收據中的事件日誌（M75-2 鏈上 logs 表）。
+type LogView struct {
+	Address string   `json:"address"`
+	Topics  []string `json:"topics"`
+	Data    string   `json:"data"`
 }
 
 // ContractView 為合約交易的瀏覽器視圖（memo 為 vm:deploy/vm:call 時非 nil）。

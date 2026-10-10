@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"tacm/internal/chaindb"
 	"tacm/internal/crypto"
 )
 
@@ -70,7 +71,12 @@ func (s *RPCServer) handleEthRPC(w http.ResponseWriter, r *http.Request) {
 			result = hexBig(b.Height)
 		}
 	case "eth_gasPrice":
-		result = "0x1"
+		out, err := s.ethGasPrice()
+		if err != nil {
+			rpcErr = ethError(-32603, err.Error())
+		} else {
+			result = out
+		}
 	case "eth_getBalance":
 		out, err := s.ethGetBalance(req.Params)
 		if err != nil {
@@ -110,6 +116,48 @@ func (s *RPCServer) handleEthRPC(w http.ResponseWriter, r *http.Request) {
 		out, err := s.node.SubmitEthRawTx(paramString(req.Params, 0))
 		if err != nil {
 			rpcErr = ethError(-32603, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_getTransactionByHash":
+		out, err := s.ethGetTransactionByHash(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32603, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_getTransactionReceipt":
+		out, err := s.ethGetTransactionReceipt(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32603, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_getBlockByHash":
+		out, err := s.ethGetBlockByHash(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32603, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_getStorageAt":
+		out, err := s.ethGetStorageAt(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32602, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_estimateGas":
+		out, err := s.ethEstimateGas(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32602, err.Error())
+		} else {
+			result = out
+		}
+	case "eth_getLogs":
+		out, err := s.ethGetLogs(req.Params)
+		if err != nil {
+			rpcErr = ethError(-32602, err.Error())
 		} else {
 			result = out
 		}
@@ -276,16 +324,21 @@ func (s *RPCServer) ethGetBlockByNumber(params []any) (any, error) {
 	if err != nil || b == nil {
 		return nil, errors.New("eth: 無區塊")
 	}
+	return s.ethBlockObject(b), nil
+}
+
+// ethBlockObject 以太標準區塊 JSON（不含完整交易明細）。
+func (s *RPCServer) ethBlockObject(b *chaindb.Block) map[string]any {
 	return map[string]any{
 		"number":           hexBig(b.Height),
 		"hash":             "0x" + b.Hash,
 		"parentHash":       "0x" + strOrEmpty(b.PrevHash),
 		"timestamp":        hexBig(b.Ts),
 		"transactionsRoot": "0x" + b.MerkleRoot,
-		"miner":            "0x" + strOrEmpty(nil),
+		"miner":            "0x",
 		"transactionCount": hexBig(int64(b.TxCount)),
 		"transactions":     []any{},
-	}, nil
+	}
 }
 
 func getStringFieldAny(m map[string]any, k string) string {
@@ -393,4 +446,297 @@ func weiToTacmStr(v *big.Int) string {
 	frac := fmt.Sprintf("%018d", r)
 	frac = strings.TrimRight(frac, "0")
 	return q.String() + "." + frac
+}
+
+// ---- M75-2：交易收據／事件日誌／開發者介面補全 ----
+
+// ethGasPrice 回傳目前建議 gas 價（base fee＋建議 tip，wei 單位）。
+func (s *RPCServer) ethGasPrice() (string, error) {
+	st := s.node.GetStatus()
+	baseFee := st.BaseFee
+	if baseFee <= 0 {
+		baseFee = chaindb.InitialBaseFee
+	}
+	price := baseFee + 0.000000001 // 建議小費 1e-9 TACm/gas（M74-3 同源）
+	return feeToWeiHex(price), nil
+}
+
+// feeToWeiHex 把 TACm 十進位費率轉為 wei（×1e18）0x hex。
+func feeToWeiHex(f float64) string {
+	rat := new(big.Rat).SetFloat64(f)
+	if rat == nil || rat.Num().BitLen() == 0 {
+		return "0x0"
+	}
+	wei := new(big.Int).Quo(
+		new(big.Int).Mul(rat.Num(), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)),
+		rat.Denom())
+	return "0x" + wei.Text(16)
+}
+
+// ethTxObject 以太標準交易 JSON。
+func (s *RPCServer) ethTxObject(t *chaindb.Transaction) map[string]any {
+	from0x, _ := tx0To0x(t.FromAddr)
+	to0x, _ := tx0To0x(t.ToAddr)
+	gas := t.GasLimit
+	if gas <= 0 {
+		gas = chaindb.TxGasBase
+	}
+	gasPrice := "0x0"
+	if t.MaxFee != "" {
+		if mf, err := strconv.ParseFloat(t.MaxFee, 64); err == nil {
+			gasPrice = feeToWeiHex(mf)
+		}
+	}
+	return map[string]any{
+		"hash":             "0x" + t.TxHash,
+		"blockHash":        "0x" + t.BlockHash,
+		"blockNumber":      hexBig(t.BlockHeight),
+		"transactionIndex": hexBig(int64(t.TxIndex)),
+		"from":             from0x,
+		"to":               to0x,
+		"value":            "0x0",
+		"gas":              hexBig(gas),
+		"gasPrice":         gasPrice,
+		"input":            "0x",
+		"nonce":            hexBig(t.Nonce),
+		"v":                "0x0",
+		"r":                "0x0",
+		"s":                "0x0",
+	}
+}
+
+func (s *RPCServer) ethGetTransactionByHash(params []any) (any, error) {
+	hash := paramString(params, 0)
+	tx, err := s.node.db.GetTransaction(hash)
+	if err != nil {
+		return nil, err
+	}
+	if tx == nil {
+		return nil, nil // 未找到回 null（以太慣例）
+	}
+	return s.ethTxObject(tx), nil
+}
+
+func (s *RPCServer) ethGetTransactionReceipt(params []any) (any, error) {
+	hash := paramString(params, 0)
+	tx, err := s.node.db.GetTransaction(hash)
+	if err != nil {
+		return nil, err
+	}
+	if tx == nil {
+		return nil, nil
+	}
+	from0x, _ := tx0To0x(tx.FromAddr)
+	to0x, _ := tx0To0x(tx.ToAddr)
+	logs, err := s.node.db.GetLogs(chaindb.LogFilter{TxHash: hash})
+	if err != nil {
+		return nil, err
+	}
+	ethLogs := make([]any, 0, len(logs))
+	for i := range logs {
+		ethLogs = append(ethLogs, ethLogObject(&logs[i]))
+	}
+	status := "0x1"
+	if tx.Status != "" && tx.Status != "confirmed" {
+		status = "0x0"
+	}
+	gasUsed := tx.GasUsed
+	if gasUsed <= 0 {
+		gasUsed = tx.GasLimit
+	}
+	gasPrice := "0x0"
+	if tx.MaxFee != "" {
+		if mf, err := strconv.ParseFloat(tx.MaxFee, 64); err == nil {
+			gasPrice = feeToWeiHex(mf)
+		}
+	}
+	return map[string]any{
+		"transactionHash":  "0x" + tx.TxHash,
+		"transactionIndex": hexBig(int64(tx.TxIndex)),
+		"blockHash":        "0x" + tx.BlockHash,
+		"blockNumber":      hexBig(tx.BlockHeight),
+		"from":             from0x,
+		"to":               to0x,
+		"status":           status,
+		"gasUsed":          hexBig(gasUsed),
+		"effectiveGasPrice": gasPrice,
+		"logs":             ethLogs,
+	}, nil
+}
+
+// ethLogObject 以太標準 log JSON。
+func ethLogObject(l *chaindb.LogRow) map[string]any {
+	data := strings.TrimPrefix(l.Data, "0x")
+	return map[string]any{
+		"address":          l.Address,
+		"topics":           l.Topics,
+		"data":             "0x" + data,
+		"blockNumber":      hexBig(l.BlockHeight),
+		"transactionHash":  "0x" + l.TxHash,
+		"transactionIndex": hexBig(int64(l.TxIndex)),
+		"logIndex":         hexBig(int64(l.LogIndex)),
+		"removed":          false,
+	}
+}
+
+func (s *RPCServer) ethGetBlockByHash(params []any) (any, error) {
+	hash := strings.TrimPrefix(paramString(params, 0), "0x")
+	b, err := s.node.db.GetBlockByHash(hash)
+	if err != nil {
+		return nil, err
+	}
+	if b == nil {
+		return nil, errors.New("eth: 無此區塊")
+	}
+	return s.ethBlockObject(b), nil
+}
+
+func (s *RPCServer) ethGetStorageAt(params []any) (string, error) {
+	addr, err := s.node.normalizeEthAddr(paramString(params, 0))
+	if err != nil {
+		return "", err
+	}
+	addr0x, err := tx0To0x(addr)
+	if err != nil {
+		return "", err
+	}
+	pos := new(big.Int)
+	if p := paramString(params, 1); p != "" {
+		pos, _ = new(big.Int).SetString(strings.TrimPrefix(p, "0x"), 16)
+		if pos == nil {
+			pos = new(big.Int)
+		}
+	}
+	v := s.node.contracts.StorageAt(addr0x, pos)
+	return "0x" + pad32Hex(v), nil
+}
+
+// pad32Hex 把 big.Int 格式化為 32 字節 hex（以太 storage 慣例）。
+func pad32Hex(v *big.Int) string {
+	b := v.Bytes()
+	if len(b) >= 32 {
+		return hex.EncodeToString(b[len(b)-32:])
+	}
+	out := make([]byte, 32)
+	copy(out[32-len(b):], b)
+	return hex.EncodeToString(out)
+}
+
+func (s *RPCServer) ethEstimateGas(params []any) (string, error) {
+	callObj, ok := params[0].(map[string]any)
+	if !ok {
+		return "", errors.New("eth: params[0] 需為 call object")
+	}
+	to := getStringFieldAny(callObj, "to")
+	from := getStringFieldAny(callObj, "from")
+	data := getStringFieldAny(callObj, "data")
+	toTx0, err := s.node.normalizeEthAddr(to)
+	if err != nil {
+		return "", err
+	}
+	to0x, err := tx0To0x(toTx0)
+	if err != nil {
+		return "", err
+	}
+	caller0x := "0x0000000000000000000000000000000000000000"
+	if from != "" {
+		fTx0, ferr := s.node.normalizeEthAddr(from)
+		if ferr != nil {
+			return "", ferr
+		}
+		caller0x, err = tx0To0x(fTx0)
+		if err != nil {
+			return "", err
+		}
+	}
+	calldata, err := hexInput(data)
+	if err != nil {
+		return "", fmt.Errorf("eth: data hex 錯誤: %w", err)
+	}
+	r, err := s.node.contracts.SimulateCallGas(to0x, caller0x, calldata, new(big.Int), s.node.contracts.DefaultGas())
+	if err != nil {
+		return "", err
+	}
+	if !r.OK || r.Reverted {
+		return "", errors.New("eth: estimateGas reverted: " + r.RevertReason)
+	}
+	used := r.GasUsed
+	if used == 0 {
+		used = chaindb.TxGasBase
+	}
+	return hexBig(int64(used)), nil
+}
+
+// parseEthBlock 解析 fromBlock/toBlock（"latest"/"earliest"/hex）→ 高度。
+func parseEthBlock(v string, latest int64) int64 {
+	switch v {
+	case "", "latest", "pending":
+		return latest
+	case "earliest":
+		return 0
+	}
+	if n, err := strconv.ParseInt(strings.TrimPrefix(v, "0x"), 16, 64); err == nil {
+		return n
+	}
+	return 0
+}
+
+// normalizeEth0x 統一地址/topic 為小寫 0x 前綴。
+func normalizeEth0x(v string) string {
+	v = strings.TrimSpace(v)
+	if !strings.HasPrefix(v, "0x") {
+		v = "0x" + v
+	}
+	return strings.ToLower(v)
+}
+
+func (s *RPCServer) ethGetLogs(params []any) (any, error) {
+	filterObj, ok := params[0].(map[string]any)
+	if !ok {
+		return nil, errors.New("eth: params[0] 需為 filter object")
+	}
+	f := chaindb.LogFilter{Limit: 10000}
+	if latest, err := s.node.db.GetLatestBlock(); err == nil && latest != nil {
+		if fb := getStringFieldAny(filterObj, "fromBlock"); fb != "" {
+			f.FromBlock = parseEthBlock(fb, latest.Height)
+		}
+		if tb := getStringFieldAny(filterObj, "toBlock"); tb != "" {
+			f.ToBlock = parseEthBlock(tb, latest.Height)
+		}
+	}
+	if a := filterObj["address"]; a != nil {
+		switch av := a.(type) {
+		case string:
+			f.Address = normalizeEth0x(av)
+		case []any:
+			if len(av) > 0 {
+				if s0, ok := av[0].(string); ok {
+					f.Address = normalizeEth0x(s0)
+				}
+			}
+		}
+	}
+	if ts := filterObj["topics"]; ts != nil {
+		if arr, ok := ts.([]any); ok && len(arr) > 0 {
+			switch t0 := arr[0].(type) {
+			case string:
+				f.Topic0 = normalizeEth0x(t0)
+			case []any:
+				if len(t0) > 0 {
+					if s0, ok := t0[0].(string); ok {
+						f.Topic0 = normalizeEth0x(s0)
+					}
+				}
+			}
+		}
+	}
+	logs, err := s.node.db.GetLogs(f)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, 0, len(logs))
+	for i := range logs {
+		out = append(out, ethLogObject(&logs[i]))
+	}
+	return out, nil
 }

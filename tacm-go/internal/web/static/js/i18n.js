@@ -6,6 +6,7 @@
     zh: {
       'nav.home': '首頁', 'nav.wallet': '錢包', 'nav.exchange': '交易所', 'nav.dash': '儀表板',
       'nav.mining': '挖礦', 'nav.community': '社群', 'nav.ai': 'AI 助手', 'nav.tokens': '代幣', 'nav.nfts': 'NFT', 'nav.governance': '治理',
+      'tx.logs': '事件日誌', 'tx.logAddr': '合約地址', 'tx.gasUsed': 'Gas 使用量',
       'pill.ai': 'AI 助手',
       'ai_assistant': 'AI 助手', 'ai_sub': '鏈上智能助手 —— 問鏈上數據，即時回答',
       'ai_suggest_status': '節點狀態', 'ai_suggest_block': '最新區塊', 'ai_suggest_audit': '鏈上審計',
@@ -79,6 +80,7 @@
     en: {
       'nav.home': 'Home', 'nav.wallet': 'Wallet', 'nav.exchange': 'Exchange', 'nav.dash': 'Dashboard',
       'nav.mining': 'Mining', 'nav.community': 'Community', 'nav.ai': 'AI Assistant', 'nav.tokens': 'Tokens', 'nav.nfts': 'NFT', 'nav.governance': 'Governance',
+      'tx.logs': 'Event Logs', 'tx.logAddr': 'Contract Address', 'tx.gasUsed': 'Gas Used',
       'pill.ai': 'AI Assistant',
       'ai_assistant': 'AI Assistant', 'ai_sub': 'On-chain assistant — ask about the chain, get instant answers',
       'ai_suggest_status': 'Node status', 'ai_suggest_block': 'Latest block', 'ai_suggest_audit': 'On-chain audit',
@@ -316,6 +318,9 @@
     '所在區塊': 'Block',
     '簽名': 'Signature',
     '簽名驗證資訊': 'Signature Verification',
+    'Gas 使用量': 'Gas Used',
+    '事件日誌': 'Event Logs',
+    '合約地址': 'Contract Address',
     '← 返回區塊 #': '← Back to Block #',
     '（coinbase/創世）': ' (coinbase/genesis)',
     '邀請人地址（選填）': 'Inviter Address (optional)',

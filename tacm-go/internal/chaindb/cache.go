@@ -61,6 +61,12 @@ func (c *ReadCache) getTx(hash string) (*Transaction, bool) {
 	return &cp, true
 }
 
+func (c *ReadCache) invalidateTx(hash string) {
+	c.mu.Lock()
+	delete(c.tx, hash)
+	c.mu.Unlock()
+}
+
 func (c *ReadCache) putTx(hash string, t *Transaction) {
 	if t == nil {
 		return

@@ -30,10 +30,26 @@
     {% if t.Contract %}
     <dt>合約類型</dt><dd><span class="tag in">{{ t.Contract.Kind }}</span></dd>
     <dt>Gas</dt><dd class="mono">{{ t.Contract.Gas }}</dd>
+    {% if t.GasUsed %}<dt data-i18n="tx.gasUsed">Gas 使用量</dt><dd class="mono">{{ t.GasUsed }}</dd>{% endif %}
     <dt>Calldata</dt><dd class="mono break-all">{{ t.Contract.Data }}</dd>
     {% endif %}
   </dl>
 </section>
+
+{% if t.Logs %}
+<section class="panel">
+  <div class="panel-head"><h2 data-i18n="tx.logs">事件日誌</h2></div>
+  {% for log in t.Logs %}
+  <div class="log-block">
+    <dl class="detail-list">
+      <dt data-i18n="tx.logAddr">合約地址</dt><dd class="mono break-all">{{ log.Address }}</dd>
+      <dt>Topics</dt><dd class="mono break-all">{{ log.Topics|join:", " }}</dd>
+      <dt>Data</dt><dd class="mono break-all">{{ log.Data }}</dd>
+    </dl>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
 
 {% if t.Pubkey %}
 <section class="panel">

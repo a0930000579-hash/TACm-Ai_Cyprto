@@ -36,6 +36,7 @@ type Transaction struct {
 	Fee         string `json:"fee"`
 	// M74-3 EIP-1559：gas_limit/max_fee/priority_fee（可選；未提供即 legacy 固定費）。
 	GasLimit    int64  `json:"gas_limit,omitempty"`
+	GasUsed     int64  `json:"gas_used,omitempty"`
 	MaxFee      string `json:"max_fee,omitempty"`
 	PriorityFee string `json:"priority_fee,omitempty"`
 	Burned      string `json:"burned,omitempty"`

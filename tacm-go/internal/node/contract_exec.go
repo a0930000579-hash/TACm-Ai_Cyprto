@@ -27,7 +27,7 @@ func (n *Node) syncChainAccount(tx0addr string) error {
 // executeBlockContracts 在區塊插入後執行其中的合約交易（部署/調用）。
 func (n *Node) executeBlockContracts(txs []chaindb.Transaction) error {
 	for i := range txs {
-		if err := n.applyContractTx(&txs[i]); err != nil {
+		if err := n.applyContractTx(&txs[i], true); err != nil {
 			return err
 		}
 	}
@@ -59,7 +59,7 @@ func splitContractMemo(memo string) (gas uint64, payload string, err error) {
 	return 0, rest, nil
 }
 
-func (n *Node) applyContractTx(t *chaindb.Transaction) error {
+func (n *Node) applyContractTx(t *chaindb.Transaction, persistLogs bool) error {
 	if !isContractMemo(t.Memo) {
 		return nil
 	}
@@ -102,6 +102,11 @@ func (n *Node) applyContractTx(t *chaindb.Transaction) error {
 		if !dr.OK {
 			return fmt.Errorf("node: 合約部署失敗(tx %s): %s", t.TxHash, dr.Error)
 		}
+		if persistLogs && dr.GasUsed > 0 {
+			if err := n.db.UpdateTxGasUsed(t.TxHash, int64(dr.GasUsed)); err != nil {
+				return err
+			}
+		}
 	case strings.HasPrefix(t.Memo, vmCallPrefix):
 		gas, payload, err := splitContractMemo(t.Memo)
 		if err != nil {
@@ -124,6 +129,37 @@ func (n *Node) applyContractTx(t *chaindb.Transaction) error {
 			return fmt.Errorf("node: 合約調用失敗(tx %s): %s",
 				t.TxHash, cr.RevertReason)
 		}
+		if persistLogs {
+			if err := n.persistContractLogs(t, cr.Logs); err != nil {
+				return err
+			}
+			if cr.GasUsed > 0 {
+				if err := n.db.UpdateTxGasUsed(t.TxHash, int64(cr.GasUsed)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// persistContractLogs 把 VM 執行產出的事件日誌寫入鏈上 logs 表（收據查詢用）。
+// topics/data 統一為 0x 前綴小寫（與 eth_getLogs 過濾語義一致）。
+func (n *Node) persistContractLogs(t *chaindb.Transaction, logs []vm.LogEntry) error {
+	rows := make([]chaindb.LogRow, 0, len(logs))
+	for _, l := range logs {
+		topics := make([]string, len(l.Topics))
+		for i, tp := range l.Topics {
+			topics[i] = "0x" + strings.TrimPrefix(tp, "0x")
+		}
+		rows = append(rows, chaindb.LogRow{
+			Address: l.Address,
+			Topics:  topics,
+			Data:    l.Data,
+		})
+	}
+	if err := n.db.InsertLogs(t.TxHash, t.BlockHeight, t.TxIndex, rows); err != nil {
+		return fmt.Errorf("node: 寫入事件日誌失敗(tx %s): %w", t.TxHash, err)
 	}
 	return nil
 }
@@ -213,7 +249,7 @@ func (n *Node) RebuildContracts() error {
 		if err := n.syncChainAccount(txs[i].ToAddr); err != nil {
 			return err
 		}
-		if err := n.applyContractTx(&txs[i]); err != nil {
+		if err := n.applyContractTx(&txs[i], false); err != nil {
 			return err
 		}
 	}

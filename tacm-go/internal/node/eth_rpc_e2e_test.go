@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"tacm/internal/crypto"
+	"tacm/internal/vm"
 	"tacm/internal/wallet"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -314,4 +315,132 @@ func mustBytes20(t *testing.T, s string) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// TestEthLogsAndReceipt 驗證 M75-2：交易收據／事件日誌／開發者介面補全。
+//  1. eth_getTransactionReceipt（status 0x1、logs 含 Transfer 事件）
+//  2. eth_getLogs（address＋topic0 過濾）
+//  3. eth_getTransactionByHash
+//  4. eth_estimateGas
+//  5. eth_getStorageAt（ERC-20 balance slot）
+//  6. eth_gasPrice（真實 base fee 建議價）
+func TestEthLogsAndReceipt(t *testing.T) {
+	n, srv, _ := contractStudioSetup(t)
+
+	// 1. 部署 ERC-20。
+	out := studioPostJSON(t, srv, "/contract/deploy", map[string]any{
+		"name": "LogsToken", "symbol": "LGT", "supply": "1000000",
+	})
+	if out["ok"] != true {
+		t.Fatalf("部署失敗: %v", out)
+	}
+	contractAddr := out["contract_address"].(string)
+	deployTxHash := out["tx_hash"].(string)
+	contract0x, _ := tx0To0x(contractAddr)
+	waitFor(t, func() bool {
+		info := n.contracts.Get(contract0x)
+		return info != nil && info.CodeSize > 0
+	}, 8*time.Second, "合約未入塊部署")
+
+	// 2. 代簽 transfer（admin → alice 250）產生 Transfer 事件。
+	aliceKP, _ := crypto.GenerateKeyPair()
+	alice, _ := aliceKP.Address()
+	alice0x, _ := tx0To0x(alice)
+	callOut := studioPostJSON(t, srv, "/contract/call", map[string]any{
+		"to": contractAddr, "calldata": vmHex(vm.Erc20TransferCalldata(alice0x, big.NewInt(250))),
+	})
+	if callOut["ok"] != true {
+		t.Fatalf("transfer 交易被拒: %v", callOut)
+	}
+	txHash := callOut["tx_hash"].(string)
+	waitFor(t, func() bool {
+		bal := n.contracts.StorageAt(contract0x, vmAddrInt(alice0x))
+		return bal.Cmp(big.NewInt(250)) == 0
+	}, 8*time.Second, "transfer 未入塊")
+
+	// 3. eth_getTransactionReceipt：status 0x1 + logs 含 Transfer。
+	rec := ethResult(t, srv, "eth_getTransactionReceipt", txHash).(map[string]any)
+	if rec["status"] != "0x1" {
+		t.Fatalf("receipt status 應為 0x1，得到 %v", rec["status"])
+	}
+	if rec["blockNumber"] == "0x0" {
+		t.Fatal("receipt blockNumber 異常")
+	}
+	logsArr, _ := rec["logs"].([]any)
+	if len(logsArr) == 0 {
+		t.Fatal("receipt 應含 Transfer 事件日誌")
+	}
+	l0 := logsArr[0].(map[string]any)
+	topics, _ := l0["topics"].([]any)
+	if len(topics) == 0 {
+		t.Fatal("log 應含 topics")
+	}
+	wantTopic := "0x" + hex.EncodeToString(vm.TopicTransfer)
+	if topics[0] != wantTopic {
+		t.Fatalf("log topic0 應為 %s，得到 %v", wantTopic, topics[0])
+	}
+	if l0["address"] != contract0x {
+		t.Fatalf("log address 應為 %s，得到 %v", contract0x, l0["address"])
+	}
+	// 收據回傳的交易哈希與入池交易一致。
+	if rec["transactionHash"] != "0x"+txHash {
+		t.Fatalf("receipt transactionHash 異常: %v", rec["transactionHash"])
+	}
+
+	// 4. eth_getLogs（address＋topic0 過濾）應命中 transfer 事件。
+	lg := ethResult(t, srv, "eth_getLogs", map[string]any{
+		"fromBlock": "0x0", "toBlock": "latest",
+		"address": contract0x, "topics": []any{wantTopic},
+	}).([]any)
+	found := false
+	for _, x := range lg {
+		m := x.(map[string]any)
+		if m["transactionHash"] == "0x"+txHash {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("eth_getLogs 未命中 transfer 事件: %v", lg)
+	}
+	// 空過濾（無 topic）也應回同日誌。
+	lgAll := ethResult(t, srv, "eth_getLogs", map[string]any{}).([]any)
+	if len(lgAll) == 0 {
+		t.Fatal("eth_getLogs 無過濾應回所有日誌")
+	}
+
+	// 5. eth_getTransactionByHash。
+	txObj := ethResult(t, srv, "eth_getTransactionByHash", txHash).(map[string]any)
+	if txObj["blockNumber"] != rec["blockNumber"] {
+		t.Fatalf("eth_getTransactionByHash blockNumber 異常: %v", txObj["blockNumber"])
+	}
+	if txObj["from"] == "" || txObj["to"] == "" {
+		t.Fatalf("交易 from/to 缺失: %v", txObj)
+	}
+
+	// 6. eth_estimateGas（模擬 transfer → 應大於 0）。
+	est := ethResult(t, srv, "eth_estimateGas", map[string]any{
+		"to": contractAddr, "data": "0x" + vmHex(vm.Erc20TransferCalldata(alice0x, big.NewInt(1))),
+	}).(string)
+	if est == "0x0" {
+		t.Fatal("eth_estimateGas 應大於 0")
+	}
+
+	// 7. eth_getStorageAt（alice balance slot = 250 → 0xfa 補 32 字節）。
+	key := "0x" + hex.EncodeToString(vmAddrInt(alice0x).Bytes())
+	st := ethResult(t, srv, "eth_getStorageAt", contractAddr, key).(string)
+	if !strings.HasSuffix(st, "fa") || len(st) != 66 {
+		t.Fatalf("eth_getStorageAt 應為 32 字節 0x…fa，得到 %s", st)
+	}
+
+	// 8. eth_gasPrice（真實建議價，>0）。
+	gp := ethResult(t, srv, "eth_gasPrice").(string)
+	if gp == "0x0" || gp == "0x1" {
+		t.Fatalf("eth_gasPrice 應為真實建議價，得到 %s", gp)
+	}
+
+	// 9. 部署交易 receipt（無 logs 但 status 0x1）。
+	recD := ethResult(t, srv, "eth_getTransactionReceipt", deployTxHash).(map[string]any)
+	if recD["status"] != "0x1" {
+		t.Fatalf("deploy receipt status 應為 0x1，得到 %v", recD["status"])
+	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 const txCols = `tx_hash, block_height, block_hash, tx_index, from_addr, to_addr,
-	amount, fee, gas_limit, max_fee, priority_fee, burned, nonce, ts, signature, pubkey, memo, status`
+	amount, fee, gas_limit, gas_used, max_fee, priority_fee, burned, nonce, ts, signature, pubkey, memo, status`
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -18,13 +18,14 @@ func scanTransaction(s rowScanner) (*Transaction, error) {
 		t                        Transaction
 		from, to, memo, sig, pub sql.NullString
 	)
-	var gasLimit sql.NullInt64
+	var gasLimit, gasUsed sql.NullInt64
 	if err := s.Scan(&t.TxHash, &t.BlockHeight, &t.BlockHash, &t.TxIndex,
-		&from, &to, &t.Amount, &t.Fee, &gasLimit, &t.MaxFee, &t.PriorityFee,
+		&from, &to, &t.Amount, &t.Fee, &gasLimit, &gasUsed, &t.MaxFee, &t.PriorityFee,
 		&t.Burned, &t.Nonce, &t.Ts, &sig, &pub, &memo, &t.Status); err != nil {
 		return nil, err
 	}
 	t.GasLimit = gasLimit.Int64
+	t.GasUsed = gasUsed.Int64
 	t.FromAddr = from.String
 	t.ToAddr = to.String
 	t.Memo = memo.String

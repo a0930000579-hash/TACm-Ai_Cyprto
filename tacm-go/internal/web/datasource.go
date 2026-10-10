@@ -130,6 +130,7 @@ func txView(t *chaindb.Transaction) TxView {
 		Memo: t.Memo, Status: t.Status,
 		Signature: t.Signature, Pubkey: t.Pubkey,
 		Contract: parseContractMemo(t.Memo),
+		GasUsed:  t.GasUsed,
 	}
 }
 
@@ -279,6 +280,19 @@ func (d *nodeDS) Transaction(hash string) (*TxView, error) {
 		return nil, nil
 	}
 	tv := txView(t)
+	// M75-2：交易收據事件日誌（鏈上 logs 表）。
+	logs, err := d.n.DB().GetLogs(chaindb.LogFilter{TxHash: hash})
+	if err != nil {
+		return nil, err
+	}
+	tv.Logs = make([]LogView, 0, len(logs))
+	for i := range logs {
+		tv.Logs = append(tv.Logs, LogView{
+			Address: logs[i].Address,
+			Topics:  logs[i].Topics,
+			Data:    logs[i].Data,
+		})
+	}
 	return &tv, nil
 }
 

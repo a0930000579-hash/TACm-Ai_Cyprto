@@ -44,10 +44,10 @@ func (c *ChainDB) InsertBlock(block *Block, txs []Transaction) error {
 		if _, err := tx.Exec(`
 			INSERT OR REPLACE INTO transactions
 			(tx_hash, block_height, block_hash, tx_index, from_addr, to_addr,
-			 amount, fee, gas_limit, max_fee, priority_fee, burned, nonce, ts, signature, pubkey, memo, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
+			 amount, fee, gas_limit, gas_used, max_fee, priority_fee, burned, nonce, ts, signature, pubkey, memo, status)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
 			t.TxHash, block.Height, block.Hash, i, t.FromAddr, t.ToAddr,
-			strOr(t.Amount), strOr(t.Fee), t.GasLimit, strOr(t.MaxFee), strOr(t.PriorityFee),
+			strOr(t.Amount), strOr(t.Fee), t.GasLimit, t.GasUsed, strOr(t.MaxFee), strOr(t.PriorityFee),
 			strOr(t.Burned), t.Nonce, t.Ts, t.Signature, t.Pubkey, t.Memo); err != nil {
 			return fmt.Errorf("chaindb: 寫入交易 %s 失敗: %w", t.TxHash, err)
 		}

@@ -107,6 +107,23 @@ CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_addr);
 CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_addr);
 CREATE INDEX IF NOT EXISTS idx_tx_block ON transactions(block_height);
 CREATE INDEX IF NOT EXISTS idx_blocks_hash ON blocks(hash);
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tx_hash TEXT NOT NULL,
+    block_height INTEGER NOT NULL,
+    tx_index INTEGER DEFAULT 0,
+    log_index INTEGER NOT NULL,
+    address TEXT NOT NULL,
+    topic0 TEXT,
+    topic1 TEXT,
+    topic2 TEXT,
+    topic3 TEXT,
+    data TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_logs_tx ON logs(tx_hash);
+CREATE INDEX IF NOT EXISTS idx_logs_addr ON logs(address);
+CREATE INDEX IF NOT EXISTS idx_logs_topic0 ON logs(topic0);
+CREATE INDEX IF NOT EXISTS idx_logs_block ON logs(block_height);
 `
 
 // ChainDB 為 TAC 自主智能鏈的節點數據庫。
@@ -147,6 +164,10 @@ func Open(dbPath string) (*ChainDB, error) {
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("chaindb: 初始化表結構失敗: %w", err)
+	}
+	// M75-2：舊庫相容 migration——transactions 補 gas_used 欄位（新庫 CREATE 已含）。
+	if _, err := db.Exec("ALTER TABLE transactions ADD COLUMN gas_used INTEGER DEFAULT 0"); err != nil {
+		// SQLite 不支援 ADD COLUMN IF NOT EXISTS；欄位已存在時報 duplicate column，忽略即可。
 	}
 	return &ChainDB{db: db, path: dbPath, cache: newReadCache()}, nil
 }
