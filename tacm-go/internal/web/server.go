@@ -25,12 +25,19 @@ type Server struct {
 	tplSet    *pongo2.TemplateSet
 	mux       *http.ServeMux
 	community map[string]string
-	// M64：全網監控探測的 seed 列表（New 時拷貝自 mainnetSeeds；測試可注入替身）。
+	// M64：全網監控探測的 seed 列表（New 時拷貝自 serverSeeds；測試可注入替身）。
 	seedURLs []SeedInfo
+	// M65：網路段（mainnet | testnet）——決定 seed 列表與加入指令的展示。
+	network string
 }
 
-// New 構造 Web 服務：加載嵌入模板、註冊 filter 與路由。
+// New 構造 Web 服務（mainnet 網段）：加載嵌入模板、註冊 filter 與路由。
 func New(ds DataSource) (*Server, error) {
+	return NewWithNetwork(ds, "mainnet")
+}
+
+// NewWithNetwork 構造 Web 服務（M65）：依網段（mainnet/testnet）選擇 seed 列表與展示。
+func NewWithNetwork(ds DataSource, network string) (*Server, error) {
 	tplRoot, err := fs.Sub(templatesFS, "templates")
 	if err != nil {
 		return nil, err
@@ -38,8 +45,11 @@ func New(ds DataSource) (*Server, error) {
 	tplSet := pongo2.NewSet("web", pongo2.NewFSLoader(tplRoot))
 	registerFilters()
 
-	s := &Server{ds: ds, tplSet: tplSet, mux: http.NewServeMux()}
-	s.seedURLs = append([]SeedInfo(nil), mainnetSeeds...)
+	if network == "" {
+		network = "mainnet"
+	}
+	s := &Server{ds: ds, tplSet: tplSet, mux: http.NewServeMux(), network: network}
+	s.seedURLs = append([]SeedInfo(nil), s.serverSeeds()...)
 	// 社群連結（env 配置：TAC_COMMUNITY_TELEGRAM / TAC_COMMUNITY_X / TAC_COMMUNITY_DISCORD / TAC_COMMUNITY_SITE）。
 	s.community = map[string]string{
 		"telegram": os.Getenv("TAC_COMMUNITY_TELEGRAM"),

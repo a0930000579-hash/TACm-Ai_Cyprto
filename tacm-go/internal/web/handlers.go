@@ -73,21 +73,28 @@ func (s *Server) handleSearchAPI(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": false, "type": "none", "q": q})
 }
 
-// handlePeersAPI GET /api/peers — 公開 seed 列表（M63）：新節點加入網絡的權威入口。
-// 列表來自單一權威來源 mainnetSeeds（編譯進所有節點），任何入口看到的一致。
+// handlePeersAPI GET /api/peers — 公開 seed 列表（M63/M65）：新節點加入網絡的權威入口。
+// 列表來自單一權威來源（mainnet 固定編譯、testnet 由 TACM_TESTNET_SEEDS 配置），
+// 同一網段內任何入口看到的一致。
 func (s *Server) handlePeersAPI(w http.ResponseWriter, r *http.Request) {
+	chainID := "tacm-mainnet-1"
+	if s.network == "testnet" {
+		chainID = "tacm-testnet-1"
+	}
 	writeJSON(w, map[string]any{
-		"ok":      true,
-		"network": "tacm-mainnet-1",
-		"seeds":   mainnetSeeds,
+		"ok":       true,
+		"network":  s.network,
+		"chain_id": chainID,
+		"seeds":    s.serverSeeds(),
 	})
 }
 
-// handleJoin GET /join — 節點加入指引頁（M63）：展示 seed 列表、一鍵加入指令與節點要求。
+// handleJoin GET /join — 節點加入指引頁（M63/M65）：依網段展示 seed 列表、一鍵指令與節點要求。
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "join.html", pongo2.Context{
-		"seeds": mainnetSeeds,
-		"repo":  "https://github.com/a0930000579-hash/TACm-Ai_Cyprto",
+		"seeds":   s.serverSeeds(),
+		"repo":    "https://github.com/a0930000579-hash/TACm-Ai_Cyprto",
+		"network": s.network,
 	})
 }
 
@@ -128,9 +135,9 @@ func probeSeed(sd SeedInfo) map[string]any {
 	return base
 }
 
-// handleNetworkAPI GET /api/network — 全網狀態統一視界（M64）：
+// handleNetworkAPI GET /api/network — 全網狀態統一視界（M64/M65）：
 // 並行探測所有公開 seed 節點的 /status，加上本節點狀態，一次回傳全網節點健康度。
-// seed 列表來自單一權威來源（mainnetSeeds），任何節點/入口看到的節點集合一致。
+// seed 列表來自單一權威來源（依網段），任何節點/入口看到的節點集合一致。
 func (s *Server) handleNetworkAPI(w http.ResponseWriter, r *http.Request) {
 	seeds := s.seedURLs
 	results := make([]map[string]any, len(seeds))
@@ -143,11 +150,16 @@ func (s *Server) handleNetworkAPI(w http.ResponseWriter, r *http.Request) {
 		}(i, sd)
 	}
 	wg.Wait()
+	chainID := "tacm-mainnet-1"
+	if s.network == "testnet" {
+		chainID = "tacm-testnet-1"
+	}
 	writeJSON(w, map[string]any{
-		"ok":      true,
-		"network": "tacm-mainnet-1",
-		"self":    s.ds.Status(),
-		"seeds":   results,
+		"ok":       true,
+		"network":  s.network,
+		"chain_id": chainID,
+		"self":     s.ds.Status(),
+		"seeds":    results,
 	})
 }
 

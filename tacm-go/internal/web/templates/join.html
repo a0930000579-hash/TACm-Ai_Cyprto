@@ -10,8 +10,8 @@
 <section class="panel">
   <div class="panel-head"><h2>🌐 網絡概況</h2></div>
   <div class="chain-grid">
-    <div class="cg"><small>網絡</small><b>mainnet</b></div>
-    <div class="cg"><small>鏈 ID</small><b class="mono">tacm-mainnet-1</b></div>
+    <div class="cg"><small>網絡</small><b>{{ network }}</b></div>
+    <div class="cg"><small>鏈 ID</small><b class="mono">{% if network == "testnet" %}tacm-testnet-1{% else %}tacm-mainnet-1{% endif %}</b></div>
     <div class="cg"><small>共識</small><b>PoW 動態難度 + BFT 投票</b></div>
     <div class="cg"><small>出塊獎勵</small><b>coinbase 分潤（池 + 礦工）</b></div>
     <div class="cg"><small>種子節點</small><b>{{ seeds|length }}</b></div>
@@ -19,7 +19,7 @@
   </div>
 </section>
 
-<!-- M63：公開 seed 列表 -->
+<!-- M63/M65：公開 seed 列表 -->
 <section class="panel">
   <div class="panel-head"><h2>🔗 公開 Seed 列表</h2></div>
   <div class="table-wrap">
@@ -34,16 +34,28 @@
         <td class="mono"><a href="{{ sd.URL }}" target="_blank" rel="noopener">{{ sd.URL }}</a></td>
         <td>{{ sd.Role }}</td>
       </tr>
+    {% empty %}
+      <tr><td colspan="3" class="muted center">{% if network == "testnet" %}testnet 為實驗網段，無固定公開 seed——由起錨節點以 -p2p-seed 自行播報{% else %}尚無公開 seed{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
 </section>
 
-<!-- M63：一鍵加入指令 -->
+<!-- M63/M65：一鍵加入指令 -->
 <section class="panel">
   <div class="panel-head"><h2>💻 一鍵加入指令</h2></div>
   <div class="join-cmd">
+    {% if network == "testnet" %}
+    <pre id="joinCmd">git clone {{ repo }}.git
+cd TACm-Ai_Cyprto/tacm-go
+go build -o tacweb ./cmd/web
+go build -o tacnode ./cmd/node
+./tacweb -network testnet -web-port 8080 -rpc-port 8080 -data-dir ./data-testnet -block-time 2 -difficulty 1 -p2p -p2p-url http://&lt;你的公網IP&gt;:8080 -p2p-seed &lt;testnet錨點URL&gt; -p2p-follower</pre>
+    <button class="search-btn" id="copyBtn" type="button">複製指令</button>
+  </div>
+  <p class="muted">把 <b>&lt;你的公網IP&gt;</b> 與 <b>&lt;testnet錨點URL&gt;</b> 換成實際值後逐行執行。testnet 使用獨立鏈 ID <b>tacm-testnet-1</b> 與獨立資料目錄，與主網完全分離，可放心試跑。</p>
+    {% else %}
     <pre id="joinCmd">git clone {{ repo }}.git
 cd TACm-Ai_Cyprto/tacm-go
 go build -o tacweb ./cmd/web
@@ -52,6 +64,7 @@ go build -o tacnode ./cmd/node
     <button class="search-btn" id="copyBtn" type="button">複製指令</button>
   </div>
   <p class="muted">把 <b>&lt;你的公網IP&gt;</b> 換成你自己的 IP 後逐行執行。啟動後以 <b>-p2p-seed</b> 連上錨點完成握手，即開始同步主網。</p>
+    {% endif %}
 </section>
 
 <!-- M63：節點要求 -->

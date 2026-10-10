@@ -154,7 +154,7 @@ func main() {
 	}
 
 	// Web 區塊瀏覽。
-	wserver, err := web.New(web.NewNodeDataSource(n))
+	wserver, err := web.NewWithNetwork(web.NewNodeDataSource(n), cfg.Network)
 	if err != nil {
 		log.Fatalf("創建 Web 服務失敗: %v", err)
 	}

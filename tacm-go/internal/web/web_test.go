@@ -184,12 +184,66 @@ func TestPeersAPI(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("狀態=%d 想要 200", resp.StatusCode)
 	}
-	for _, want := range []string{`"ok":true`, `"network":"tacm-mainnet-1"`, `2.28.201.174:8080`, `tacm-ai-cyprto.onrender.com`} {
+	for _, want := range []string{`"ok":true`, `"network":"mainnet"`, `"chain_id":"tacm-mainnet-1"`, `2.28.201.174:8080`, `tacm-ai-cyprto.onrender.com`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("未包含 %q（body=%s）", want, body)
 		}
 	}
 	resp.Body.Close()
+}
+
+// TestTestnetIsolation 驗證 testnet 網段（M65）：鏈 ID 獨立、seed 由 TACM_TESTNET_SEEDS 配置、
+// /join 頁面顯示 testnet 指令（與主網完全分離、不混用）。
+func TestTestnetIsolation(t *testing.T) {
+	srv, _ := NewWithNetwork(newFake(), "testnet")
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// 1) /api/peers：testnet 無配置 seed → 空列表、chain_id=tacm-testnet-1。
+	resp, err := http.Get(ts.URL + "/api/peers")
+	if err != nil {
+		t.Fatalf("GET /api/peers: %v", err)
+	}
+	body := readAllString(resp)
+	for _, want := range []string{`"ok":true`, `"network":"testnet"`, `"chain_id":"tacm-testnet-1"`, `"seeds":null`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("未包含 %q（body=%s）", want, body)
+		}
+	}
+	resp.Body.Close()
+
+	// 2) 配置 TACM_TESTNET_SEEDS 後，/api/peers 回傳 testnet seed（不與 mainnet 混淆）。
+	t.Setenv("TACM_TESTNET_SEEDS", "http://10.0.0.1:8080, http://10.0.0.2:8080")
+	srv2, _ := NewWithNetwork(newFake(), "testnet")
+	ts2 := httptest.NewServer(srv2.Handler())
+	defer ts2.Close()
+	resp2, err := http.Get(ts2.URL + "/api/peers")
+	if err != nil {
+		t.Fatalf("GET /api/peers#2: %v", err)
+	}
+	body2 := readAllString(resp2)
+	for _, want := range []string{`"node_id":"testnet-1"`, `10.0.0.1:8080`, `"node_id":"testnet-2"`, `10.0.0.2:8080`} {
+		if !strings.Contains(body2, want) {
+			t.Errorf("未包含 %q（body=%s）", want, body2)
+		}
+	}
+	if strings.Contains(body2, `2.28.201.174:8080`) {
+		t.Errorf("testnet seed 混入了 mainnet 錨點（body=%s）", body2)
+	}
+	resp2.Body.Close()
+
+	// 3) /join 頁面：testnet 版指令（-network testnet）且不含 mainnet 錨點 seed。
+	resp3, err := http.Get(ts2.URL + "/join")
+	if err != nil {
+		t.Fatalf("GET /join: %v", err)
+	}
+	body3 := readAllString(resp3)
+	for _, want := range []string{`tacm-testnet-1`, `-network testnet`, `testnet-1`} {
+		if !strings.Contains(body3, want) {
+			t.Errorf("/join 未包含 %q", want)
+		}
+	}
+	resp3.Body.Close()
 }
 
 // TestNetworkAPI 驗證全網監控：seed 探測（Goroutine 並行）＋本節點狀態＋離線容錯。
@@ -226,7 +280,7 @@ func TestNetworkAPI(t *testing.T) {
 		t.Fatalf("狀態=%d 想要 200", resp.StatusCode)
 	}
 	for _, want := range []string{
-		`"ok":true`, `"network":"tacm-mainnet-1"`,
+		`"ok":true`, `"network":"mainnet"`, `"chain_id":"tacm-mainnet-1"`,
 		`"node_id":"mock1"`, `"reachable":true`, `"block_height":42`,
 		`"node_id":"mock2"`, `"reachable":false`, `"error":"unreachable"`,
 		`"self"`,
