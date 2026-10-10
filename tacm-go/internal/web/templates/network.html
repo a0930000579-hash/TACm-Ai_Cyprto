@@ -39,6 +39,25 @@
   </div>
 </section>
 
+<!-- M67：鏈上審計——全鏈供應/獎勵一致性的公開證明 -->
+<section class="panel">
+  <div class="panel-head"><h2>🔍 鏈上審計（coinbase 一致性）</h2></div>
+  <p class="muted" id="audTip">正在驗證最近 100 塊…</p>
+  <div class="consist" id="audBox">
+    <div class="consist-line" id="audLine">—</div>
+  </div>
+  <div class="chain-grid">
+    <div class="cg"><small>審計塊數</small><b id="audBlocks">—</b></div>
+    <div class="cg"><small>coinbase==獎勵</small><b id="audCoin">—</b></div>
+    <div class="cg"><small>pool 12%</small><b id="audPool">—</b></div>
+    <div class="cg"><small>miner/reserve 88%</small><b id="audSplit">—</b></div>
+    <div class="cg"><small>全鏈總產出</small><b id="audMined">—</b></div>
+    <div class="cg"><small>獎勵池餘額</small><b id="audPoolBal">—</b></div>
+    <div class="cg"><small>鏈上在線礦工</small><b id="audMiners">—</b></div>
+  </div>
+  <div id="audIssues" class="muted" style="margin-top:10px"></div>
+</section>
+
 <style>
   .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
   .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
@@ -102,6 +121,37 @@
     }
     function setT(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    // M67：鏈上審計——驗證最近 100 塊 coinbase 不變式，任何入口同鏈結果一致。
+    var audTip = document.getElementById('audTip');
+    var audLine = document.getElementById('audLine');
+    function renderAudit(a) {
+      if (!a || !a.ok) { if (audTip) audTip.textContent = '審計暫不可用'; if (audLine) audLine.innerHTML = '<span class="dot-bad">⚠ 無法驗證</span>'; return; }
+      setT('audBlocks', a.checked_blocks);
+      setT('audCoin', a.coinbase_pass + ' / ' + a.coinbase_fail + ' 異常');
+      setT('audPool', a.pool_pass + ' / ' + a.pool_fail + ' 異常');
+      setT('audSplit', a.split_pass + ' / ' + a.split_fail + ' 異常');
+      setT('audMined', a.total_mined_tacm);
+      setT('audPoolBal', a.reward_pool_tacm);
+      setT('audMiners', a.online_miners);
+      if (a.consistent) {
+        audLine.innerHTML = '<span class="dot-ok">✓ 鏈上一致</span> — 每塊 coinbase 總額嚴格等於出塊獎勵（pool 12% / miner+reserve 88%），無超發/少發，供應與獎勵代表鏈上真實';
+      } else {
+        audLine.innerHTML = '<span class="dot-bad">✗ 發現異常</span> — 鏈上獎勵不一致，需立即檢查';
+      }
+      var iss = document.getElementById('audIssues');
+      if (iss && a.issues && a.issues.length) {
+        iss.textContent = '異常清單：' + a.issues.join('；');
+        iss.style.color = '#f6465d';
+      } else if (iss) {
+        iss.textContent = '';
+      }
+    }
+    function freshAudit() {
+      fetch('/api/audit?blocks=100', { cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(renderAudit).catch(function () { if (audTip) audTip.textContent = '無法取得審計結果'; });
+    }
+    freshAudit();
+    setInterval(freshAudit, 10000);
     function fresh() {
       fetch('/api/network', { cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); })
         .then(render).catch(function () { if (tip) tip.textContent = '無法取得全網狀態'; });

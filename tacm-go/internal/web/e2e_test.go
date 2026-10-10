@@ -161,4 +161,20 @@ func TestExplorerRealNode(t *testing.T) {
 		t.Errorf("/api/block/999999 應 404，實際 %d", resp.StatusCode)
 	}
 	resp.Body.Close()
+
+	// M67：公開鏈上審計——真實節點驗證最近塊 coinbase 不變式，結果必須一致。
+	resp, err = http.Get(ts.URL + "/api/audit?blocks=10")
+	if err != nil {
+		t.Fatalf("audit API: %v", err)
+	}
+	body = readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("audit API 狀態=%d", resp.StatusCode)
+	}
+	for _, want := range []string{`"chain_id":"tacm-mainnet-1"`, `"consistent":true`, `"coinbase_fail":0`, `"structure_ok":true`, `"total_mined_tacm"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/api/audit 缺少 %q（body=%s）", want, body)
+		}
+	}
+	resp.Body.Close()
 }

@@ -135,6 +135,8 @@ func (s *Server) routes() {
 	// 「每塊 coinbase 總額 == BlockReward」；/block/{height} 仍為 HTML 瀏覽器頁。
 	s.mux.HandleFunc("GET /api/block/{height}", s.handleBlockAPI)
 	s.mux.HandleFunc("GET /block/{height}", s.handleBlock)
+	// M67：公開鏈上審計——任何入口 /api/audit 即可驗證「鏈上供應與獎勵一致」。
+	s.mux.HandleFunc("GET /api/audit", s.handleAuditAPI)
 	s.mux.HandleFunc("GET /address/{address}", s.handleAddress)
 	s.mux.HandleFunc("GET /tx/{hash}", s.handleTx)
 	s.mux.HandleFunc("GET /wallet", s.handleWallet)
