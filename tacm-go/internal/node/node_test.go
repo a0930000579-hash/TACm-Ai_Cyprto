@@ -77,13 +77,20 @@ func TestNodeProducesBlocks(t *testing.T) {
 		10*time.Second, "節點未持續出塊")
 
 	height := n.DB().GetTipHeight()
-	// coinbase：每塊 10 TACM 結給節點地址。
+	// M58：coinbase 瓜分寫入區塊——無「開機」礦工時 88%+12% 全數入獎勵池，節點地址不進帳。
 	bal, err := strconv.ParseFloat(n.DB().GetBalance(n.Address()), 64)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := float64(height) * 10; bal != want {
-		t.Errorf("coinbase 餘額=%g want %g (height=%d)", bal, want, height)
+	if bal != 0 {
+		t.Errorf("節點未開機 coinbase 餘額=%g want 0 (全數入池)", bal)
+	}
+	pool, err := strconv.ParseFloat(n.DB().GetBalance(chaindb.RewardPoolAddr), 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := float64(height) * 10; pool != want {
+		t.Errorf("獎勵池=%g want %g (height=%d)", pool, want, height)
 	}
 }
 

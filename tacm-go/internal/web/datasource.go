@@ -179,22 +179,45 @@ func (d *nodeDS) ChainStats() ChainStatsView {
 		// M38.1：TiUSD 最小單位為 1e6（micro），須以 TiUSD 精度縮放，不能用 TACm 的 1e18（FormatAmountBig）。
 		out.TiUSDSupply = wallet.FormatAmountI64(sup.Supply, wallet.AssetTiUSD)
 	}
-	if ms, err := d.n.Wallet().Store().Miners(); err == nil {
-		var totalHr float64
-		on := 0
-		for _, m := range ms {
-			if m.Online {
-				on++
-				if v, ok := new(big.Int).SetString(m.Hashrate, 10); ok {
-					f, _ := new(big.Float).SetInt(v).Float64()
-					totalHr += f
-				}
-			}
-		}
-		out.OnlineMiners = on
-		out.TotalHashrate = fmt.Sprintf("%.2fM", totalHr/1e6)
+	// 全網在線礦工＝鏈上視角（最近 60 塊內收到 coinbase 瓜分的礦工）：任何節點只要同步了
+	// 同一條鏈，看到的總人數與總算力就完全一致（鏈上事實），不再用各節點本地 SQL
+	// （本地 SQL 會造成「錨點 3 台、follower 1 台」的入口不一致）。
+	addrs, nominalHr := d.OnChainMiners(60)
+	out.OnlineMiners = len(addrs)
+	if len(addrs) > 0 {
+		// 總算力＝鏈上瓜分礦工的等效算力（每台標稱 5M：1vCPU×1M + 2vGPU×2M）。
+		out.TotalHashrate = fmt.Sprintf("%.2fM", nominalHr/1e6)
+	} else {
+		out.TotalHashrate = "0.00M"
 	}
 	return out
+}
+
+// OnChainMiners 從鏈上反推「全網在線礦工」：掃鏈頂回溯 window 塊的 coinbase 瓜分交易
+// （收款人非 reward_pool、非空），收集唯一礦工地址與等效算力總和。返回結果只依賴已同步
+// 的區塊，因此任何節點看到的礦工集合與總算力都一致。
+func (d *nodeDS) OnChainMiners(window int64) ([]string, float64) {
+	tip := d.n.DB().GetTipHeight()
+	start := tip - window + 1
+	if start < 1 {
+		start = 1
+	}
+	seen := map[string]bool{}
+	var addrs []string
+	for h := start; h <= tip; h++ {
+		txs, err := d.n.DB().GetTransactionsByBlock(h)
+		if err != nil {
+			continue
+		}
+		for _, tx := range txs {
+			if tx.FromAddr == "" && tx.ToAddr != "" && tx.ToAddr != wallet.RewardPoolAddr && !seen[tx.ToAddr] {
+				seen[tx.ToAddr] = true
+				addrs = append(addrs, tx.ToAddr)
+			}
+		}
+	}
+	// 等效算力總和：每台標稱 5M（1vCPU×1M + 2vGPU×2M）。
+	return addrs, float64(len(addrs)) * 5e6
 }
 
 func (d *nodeDS) Status() StatusView {

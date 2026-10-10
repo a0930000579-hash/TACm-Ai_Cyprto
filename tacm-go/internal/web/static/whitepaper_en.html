@@ -74,12 +74,12 @@ footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padd
 </div>
 
 <h2 id="s1">1. Background and Problems</h2>
-<p>Since the emergence of Bitcoin in 2009, the Proof-of-Work (PoW) consensus mechanism has become the most widely adopted consensus algorithm in the blockchain field. However, as network scale expands, the PoW mechanism has exposed a series of fundamental problems:</p>
+<p>Since the emergence of the Proof-of-Work (PoW) consensus mechanism in 2009 has become the most widely adopted consensus algorithm in the blockchain field. However, as network scale expands, the PoW mechanism has exposed a series of fundamental problems:</p>
 <ol>
 <li><b>Computing Power Monopolization</b>: Mining machine manufacturing and mining farm operations show a strong trend of centralization. Small-scale participants struggle to compete fairly, contradicting the original decentralized intention of blockchain.</li>
-<li><b>Energy Waste</b>: The Bitcoin network's annual electricity consumption exceeds that of some medium-sized countries. Vast amounts of energy are used for meaningless hash computations, resulting in high social costs.</li>
+<li><b>Energy Waste</b>: Traditional PoW networks consume annual electricity exceeding that of some medium-sized countries. Vast amounts of energy are used for meaningless hash computations, resulting in high social costs.</li>
 <li><b>Participation Barriers</b>: Application-Specific Integrated Circuits (ASICs) are expensive, making it impossible for ordinary users to directly participate in the consensus process. Blockchain has become a game for the few.</li>
-<li><b>Performance Bottlenecks</b>: To ensure security, the PoW mechanism sacrifices transaction processing capacity. Bitcoin can only process approximately 7 transactions per second, unable to meet the demands of large-scale commercial applications.</li>
+<li><b>Performance Bottlenecks</b>: To ensure security, the PoW mechanism sacrifices transaction processing capacity. legacy PoW chains only process single-digit transactions per second, unable to meet the demands of large-scale commercial applications.</li>
 </ol>
 <p>Subsequent consensus mechanisms such as Proof-of-Stake (PoS) and Delegated Proof-of-Stake (DPoS) have improved energy efficiency and performance, but introduced new problems such as capital monopolization, token concentration, and governance centralization. How to achieve a balance between decentralization, security, and performance remains the core challenge in the blockchain field.</p>
 <p>TACm proposes a Consortium PoW consensus mechanism based on Time Warrant, treating "time" — the fairest, non-purchasable resource — as the consensus foundation. Through a consortium chain architecture that balances performance and security, TACm provides a new solution for blockchain consensus mechanisms.</p>
@@ -152,8 +152,8 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>3.4 Consensus Mechanism Comparison</h3>
 <table>
 <tr><th>Consensus Mechanism</th><th>Decentralization</th><th>Throughput</th><th>Energy</th><th>Finality</th><th>Sybil Resistance</th></tr>
-<tr><td>PoW (Bitcoin)</td><td>High</td><td>~7 TPS</td><td>Extremely High</td><td>Probabilistic</td><td>Medium (computing barrier)</td></tr>
-<tr><td>PoS (Ethereum)</td><td>Medium-High</td><td>~15 TPS</td><td>Low</td><td>Probabilistic</td><td>Low (capital barrier)</td></tr>
+<tr><td>PoW</td><td>High</td><td>~7 TPS</td><td>Extremely High</td><td>Probabilistic</td><td>Medium (computing barrier)</td></tr>
+<tr><td>PoS</td><td>Medium-High</td><td>~15 TPS</td><td>Low</td><td>Probabilistic</td><td>Low (capital barrier)</td></tr>
 <tr><td>DPoS (EOS)</td><td>Medium</td><td>~4000 TPS</td><td>Low</td><td>Immediate</td><td>Medium (voting barrier)</td></tr>
 <tr><td>PoA (Consortium)</td><td>Low</td><td>High</td><td>Extremely Low</td><td>Immediate</td><td>High (permissioned)</td></tr>
 <tr><td><b>TACm Consortium PoW</b></td><td><b>Medium</b></td><td><b>~1000 TPS</b></td><td><b>Low</b></td><td><b>Immediate</b></td><td><b>High (time barrier)</b></td></tr>
@@ -185,7 +185,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s5">5. Account and Transaction Model</h2>
 
 <h3>5.1 Account Model</h3>
-<p>TACm adopts the Account Model, rather than Bitcoin's UTXO model. Each account contains the following state:</p>
+<p>TACm adopts the Account Model, rather than the UTXO model. Each account contains the following state:</p>
 <div class="kv">
 <div class="k">Address</div><div>Blockchain address prefixed with <code>tx0</code>, generated from public key hash</div>
 <div class="k">Balance</div><div>Amount of TACM held by the account, supporting 18 decimal places</div>
@@ -269,12 +269,12 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <p>TACm is not only a blockchain network, but also a complete decentralized financial ecosystem. Above the consensus layer, TACm has built the following financial infrastructure:</p>
 
 <h3>7.1 Matching-Engine Exchange</h3>
-<p>A built-in matching-engine exchange (self-owned order-book engine): order-book matching, market/limit orders, Flash Swap (instant conversion among open trading assets), automated trading bots (configurable auto buy/sell strategies), deposit/withdraw and a wealth pool. The exchange supports TACM, TiUSD and USDT with differentiated fees (TACm 200bp, TiUSD 50bp, USDT 125bp) to encourage stablecoin adoption. Reward pool funds serve as exchange market-making capital.</p>
+<p>A built-in matching-engine exchange (self-owned order-book engine): order-book matching, market/limit orders, Flash Swap (instant conversion among open trading assets), automated trading bots (configurable auto buy/sell strategies), deposit/withdraw and a wealth pool. The exchange supports TACm and TiUSD with differentiated fees (TACm 200bp, TiUSD 50bp) to encourage the autonomous stablecoin. Reward pool funds serve as exchange market-making capital.</p>
 <div class="kv">
 <div class="k">Matching engine</div><div>Order book + market/limit</div>
 <div class="k">Flash swap</div><div>Instant conversion of listed assets</div>
 <div class="k">Auto trading</div><div>Buy/sell bot strategies</div>
-<div class="k">Fees</div><div>TACm 200bp / TiUSD 50bp / USDT 125bp</div>
+<div class="k">Fees</div><div>TACm 200bp / TiUSD 50bp</div>
 </div>
 
 <h3>7.2 Derivatives Trading</h3>
@@ -303,7 +303,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 </ul>
 
 <h3>8.3 TiUSD Applications</h3>
-<p>TiUSD has a wide range of application scenarios within the TACm ecosystem: as a low-fee trading pair (TiUSD trading pairs charge only 0.5% fees, significantly lower than the 1.25% charged by USDT trading pairs), as a lending asset in the DeFi lending market, as a target asset for yield aggregators, and as a stable asset safe haven for users to avoid market volatility.</p>
+<p>TiUSD has a wide range of application scenarios within the TACm ecosystem: as a low-fee trading pair (TiUSD trading pairs enjoy the lowest fees at only 0.5%), as a lending asset in the DeFi lending market, as a target asset for yield aggregators, and as a stable asset safe haven for users to avoid market volatility.</p>
 
 <h2 id="s9">9. Governance Mechanism</h2>
 
@@ -359,7 +359,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <tr><td>Phase 5</td><td>Perpetual contract trading (125x), DeFi ecosystem (liquidity/lending/IDO/aggregator), PWA mobile</td><td>Completed</td></tr>
 <tr><td>Phase 6</td><td>Real cryptographic signatures (secp256k1), P2P node discovery & distributed BFT, dynamic difficulty, on-chain governance voting</td><td>Completed</td></tr>
 <tr><td>Phase 7</td><td>Smart contract VM (gas governance/atomic rollback), Token Studio issuance, on-chain DEX (AMM), liquidity mining</td><td>Completed</td></tr>
-<tr><td>Phase 8</td><td>Layer2 Rollup (fraud proofs/SPV), Ethereum eth_* compatibility layer, real BSC cross-chain bridge, Go/JS developer SDKs</td><td>Completed</td></tr>
+<tr><td>Phase 8</td><td>Layer2 Rollup (fraud proofs/SPV), standard JSON-RPC compatibility layer, real heterogeneous-chain bridge, Go/JS developer SDKs</td><td>Completed</td></tr>
 </table>
 
 <h3>11.2 Future Plans</h3>
@@ -374,11 +374,11 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>13.1 Official Developer SDKs</h3>
 <p>TACm ships official SDKs in Go (<code>sdk/tacclient</code>) and JavaScript (<code>sdk/tacjs</code>) covering key generation, address derivation, transaction signing, and node RPC query/submit. Signing formats are fully interoperable across both languages (whitelisted-field Canonical serialization &rarr; DoubleSHA256 &rarr; RFC6979 ECDSA &rarr; DER), verified by fixed-vector interop tests: <b>transactions signed by tacjs in the browser are validated directly by the Go node</b>, so third-party dApps and wallets can integrate seamlessly.</p>
 
-<h3>13.2 Ethereum Compatibility Layer (eth_* JSON-RPC)</h3>
-<p>Nodes expose the full eth_* JSON-RPC set (eth_blockNumber, eth_getBalance, eth_getTransactionCount, eth_call, eth_sendRawTransaction, etc.), enabling MetaMask and other standard Ethereum wallets to connect directly; addresses interoperate (tx0 &harr; 0x+Hash160) and wei amounts are converted to TACm automatically.</p>
+<h3>13.2 Standard JSON-RPC Compatibility Layer (eth_*)</h3>
+<p>Nodes expose the full eth_* JSON-RPC set (eth_blockNumber, eth_getBalance, eth_getTransactionCount, eth_call, eth_sendRawTransaction, etc.), enabling standard JSON-RPC wallets to connect directly; addresses use the Hash160 standard (tx0 &harr; 0x prefix) and wei amounts are converted to TACm automatically.</p>
 
-<h3>13.3 Real Cross-Chain Bridge (TAC &harr; BSC)</h3>
-<p>A built-in BSC two-way relayer: TAC assets locked on TAC mint the mapped token TACMBSC on BSC; burning on BSC unlocks on TAC. Cross-chain messages are signed and submitted on-chain by the relayer's BSC key, supporting testnet (chain-id 97) and mainnet (chain-id 56); deployment details are in BSC_DEPLOY.md.</p>
+<h3>13.3 Real Cross-Chain Bridge (TAC &harr; Heterogeneous Chain)</h3>
+<p>A built-in heterogeneous-chain two-way relayer: TAC assets locked on TAC mint the mapped token on the target chain; burning on the target chain unlocks on TAC. Cross-chain messages are signed and submitted on-chain by the relayer, supporting testnet and mainnet; deployment details are in the cross-chain deployment guide.</p>
 
 <h3>13.4 Asset Issuance and Supply Governance</h3>
 <p>TACm has a hard supply cap of 52,003,300 tokens enforced on-chain; Token Studio supports on-chain issuance of custom tokens and contract calls. The TiUSD stablecoin mints/burns by market capitalization while keeping a minimum circulation of 0.330&times; of total supply to maintain stability and prevent de-pegging.</p>

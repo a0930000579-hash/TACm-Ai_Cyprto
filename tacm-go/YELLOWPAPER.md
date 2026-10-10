@@ -1,7 +1,7 @@
 # TAC Autonomous Chain — Technical Yellowpaper
 # TAC 自主智能鏈 — 技術黃皮書（v1.0 / M40）
 
-> TAC 是一條自主研發的 Layer-1 區塊鏈（不依附以太坊/幣安智能鏈），整合 PoW 出塊、BFT+PoS 最終性、鏈上治理、智能合約（TAC VM）、Rollup L2、跨鏈橋與去中心化交易所生態。本文為其技術規格總覽，所有數值對應真實實作（Go 語言）。
+> TAC 是一條自主研發的 Layer-1 區塊鏈（不依附任何外部鏈），整合 PoW 出塊、BFT+PoS 最終性、鏈上治理、智能合約（TAC VM）、Rollup L2、跨鏈橋與去中心化交易所生態。本文為其技術規格總覽，所有數值對應真實實作（Go 語言）。
 
 ---
 
@@ -12,7 +12,7 @@
 | 共識 | PoW + Dynamic Difficulty | 工作量證明出塊，每 10 區塊重定標難度 |
 | 最終性 | BFT + PoS + View Change | 驗證人投票即時最終化；Slashing 罰沒；多數認證切輪 |
 | 網路 | P2P | 多節點廣播區塊/交易/共識投票/跨鏈提案 |
-| 執行 | TAC VM | EVM 風格智能合約解釋器（WorldState/Storage/Gas） |
+| 執行 | TAC VM | TAC VM 智慧合約解釋器（WorldState/Storage/Gas） |
 | 擴容 | Optimistic Rollup L2 | L2 狀態樹 + 詐欺證明 + L1 錨定 |
 | 互通 | Cross-Chain Bridge | 鎖定/鑄造狀態機 + SPV 輕客戶端 + 守衛多簽 |
 | 治理 | On-Chain Governance | 提案/權重投票/到期自動執行參數 |
@@ -46,8 +46,8 @@ Transaction { TxHash, BlockHeight, BlockHash, TxIndex, FromAddr, ToAddr,
 ## 5. State & Accounts / 狀態與帳戶
 
 - SQLite（`chain.db`）：`blocks / transactions / accounts / mempool / peers`。
-- 多資產帳戶模型：TACm（原生幣）、TiUSD（穩定幣）、USDT。
-- 帳戶餘額以字串精確存儲；手續費：TACm 2% / TiUSD 0.5% / USDT 1.25%。
+- 多資產帳戶模型：TACm（原生幣）、TiUSD（穩定幣）。
+- 帳戶餘額以字串精確存儲；手續費：TACm 2% / TiUSD 0.5%
 
 ## 6. Tokenomics / 代幣經濟
 
@@ -58,7 +58,7 @@ Transaction { TxHash, BlockHeight, BlockHash, TxIndex, FromAddr, ToAddr,
 
 ## 7. Smart Contracts / 智能合約（TAC VM）
 
-- EVM 風格：WorldState（帳戶 code/storage）+ 位元組碼解釋器 + Gas 計費。
+- TAC VM 架構：WorldState（帳戶 code/storage）+ 位元組碼解釋器 + Gas 計費。
 - 支援：合約部署、呼叫、storage 讀寫、呼叫棧、錯誤回滾；管理器註冊進節點；合約交易入池前只讀模擬（失敗即拒）。
 - 防注入：地址/金額/位元組碼嚴格校驗；`isContractMemo` 路由。
 
@@ -110,4 +110,4 @@ Transaction { TxHash, BlockHeight, BlockHash, TxIndex, FromAddr, ToAddr,
 ## 14. Roadmap / 路線圖
 
 - M40（當前）：鏈上治理、壓力測試、白皮書 PDF、技術黃皮書。
-- 下一階段：主網/測試網網路隔離、EVM 完整相容擴充、多節點雲端部署（Render/雲廠商）、第三方審計。
+- 下一階段：主網/測試網網路隔離、合約擴充指令集、多節點雲端部署、第三方審計。

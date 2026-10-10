@@ -74,12 +74,12 @@ footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padd
 </div>
 
 <h2 id="s1">一、背景與問題</h2>
-<p>自比特幣於 2009 年誕生以來，工作量證明（PoW）共識機制成為區塊鏈領域最廣泛採用的共識算法。然而，隨著網絡規模擴大，PoW 機制暴露出一系列根本性問題：</p>
+<p>自 2009 年工作量證明（PoW）共識機制誕生以來成為區塊鏈領域最廣泛採用的共識算法。然而，隨著網絡規模擴大，PoW 機制暴露出一系列根本性問題：</p>
 <ol>
 <li><b>算力壟斷</b>：礦機製造與礦場運營呈現高度集中化趨勢，小規模參與者難以公平競爭，違背區塊鏈去中心化初衷。</li>
-<li><b>能源浪費</b>：比特幣網絡年耗電量超過部分中等國家，大量能源用於無意義的哈希運算，社會成本高昂。</li>
+<li><b>能源浪費</b>：傳統 PoW 網絡年耗電量超過部分中等國家，大量能源用於無意義的哈希運算，社會成本高昂。</li>
 <li><b>參與門檻</b>：專用礦機（ASIC）價格昂貴，普通用戶無法直接參與共識過程，區塊鏈變為少數人的遊戲。</li>
-<li><b>性能瓶頸</b>：PoW 機制為保證安全性，犧牲了交易處理能力，比特幣每秒僅能處理約 7 筆交易，無法滿足大規模商業應用需求。</li>
+<li><b>性能瓶頸</b>：PoW 機制為保證安全性，犧牲了交易處理能力，傳統 PoW 鏈每秒僅能處理個位數交易，無法滿足大規模商業應用需求。</li>
 </ol>
 <p>後續的權益證明（PoS）、委託權益證明（DPoS）等共識機制雖在能耗與性能上有所改進，但又引入了資本壟斷、代幣集中、治理中心化等新問題。如何在去中心化、安全性與性能之間取得平衡，仍是區塊鏈領域的核心挑戰。</p>
 <p>TACm 提出一種基於時間權證的聯盟鏈改進型 PoW 共識機制，將「時間」這一最公平、不可購買的資源作為共識基礎，同時通過聯盟鏈架構兼顧性能與安全，為區塊鏈共識機制提供一種新的解決思路。</p>
@@ -152,8 +152,8 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>3.4 共識機制對比</h3>
 <table>
 <tr><th>共識機制</th><th>去中心化程度</th><th>吞吐量</th><th>能耗</th><th>最終性</th><th>抗女巫攻擊</th></tr>
-<tr><td>PoW（比特幣）</td><td>高</td><td>~7 TPS</td><td>極高</td><td>概率性</td><td>中（算力門檻）</td></tr>
-<tr><td>PoS（以太坊）</td><td>中高</td><td>~15 TPS</td><td>低</td><td>概率性</td><td>低（資本門檻）</td></tr>
+<tr><td>PoW</td><td>高</td><td>~7 TPS</td><td>極高</td><td>概率性</td><td>中（算力門檻）</td></tr>
+<tr><td>PoS</td><td>中高</td><td>~15 TPS</td><td>低</td><td>概率性</td><td>低（資本門檻）</td></tr>
 <tr><td>DPoS（EOS）</td><td>中</td><td>~4000 TPS</td><td>低</td><td>即時</td><td>中（投票門檻）</td></tr>
 <tr><td>PoA（聯盟鏈）</td><td>低</td><td>高</td><td>極低</td><td>即時</td><td>高（許可制）</td></tr>
 <tr><td><b>TACm Consortium PoW</b></td><td><b>中</b></td><td><b>~1000 TPS</b></td><td><b>低</b></td><td><b>即時</b></td><td><b>高（時間門檻）</b></td></tr>
@@ -185,7 +185,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s5">五、賬戶與交易模型</h2>
 
 <h3>5.1 賬戶模型</h3>
-<p>TACm 採用賬戶模型（Account Model），而非比特幣的 UTXO 模型。每個賬戶包含以下狀態：</p>
+<p>TACm 採用賬戶模型（Account Model），而非 UTXO 模型。每個賬戶包含以下狀態：</p>
 <div class="kv">
 <div class="k">地址</div><div>以 <code>tx0</code> 為前綴的區塊鏈地址，由公鑰哈希生成</div>
 <div class="k">餘額</div><div>賬戶持有的 TACM 數量，支持 18 位小數精度</div>
@@ -268,13 +268,13 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h2 id="s7">七、金融生態</h2>
 <p>TACm 不僅是一個區塊鏈網絡，更是一個完整的去中心化金融生態。在共識層之上，TACm 構建了以下金融基礎設施：</p>
 
-<h3>7.1 幣安風交易所</h3>
-<p>內建撮合式交易所（自主訂單簿撮合引擎）：訂單簿撮合、市價/限價掛單、閃兌（快速兌換當前開放交易幣種）、自動交易機器人（可設定自動掛買/掛賣策略）、充值/提現與理財資金池。交易所支持 TACM、TiUSD、USDT 多資產，採用差異化手續費（TACm 200bp、USDT 125bp、TiUSD 50bp）鼓勵穩定幣採用。獎勵池資金作為交易所做市與運營資金池。</p>
+<h3>7.1 專業級交易所</h3>
+<p>內建撮合式交易所（自主訂單簿撮合引擎）：訂單簿撮合、市價/限價掛單、閃兌（快速兌換當前開放交易幣種）、自動交易機器人（可設定自動掛買/掛賣策略）、充值/提現與理財資金池。交易所支持 TACm、TiUSD 等多資產，採用差異化手續費（TACm 200bp、TiUSD 50bp）鼓勵自主穩定幣採用。獎勵池資金作為交易所做市與運營資金池。</p>
 <div class="kv">
 <div class="k">撮合引擎</div><div>訂單簿＋市價/限價</div>
 <div class="k">閃兌</div><div>快速兌換開放交易幣種</div>
 <div class="k">自動交易</div><div>掛買/掛賣機器人策略</div>
-<div class="k">手續費</div><div>TACm 200bp / TiUSD 50bp / USDT 125bp</div>
+<div class="k">手續費</div><div>TACm 200bp / TiUSD 50bp</div>
 </div>
 
 <h3>7.2 衍生品交易</h3>
@@ -304,7 +304,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 </div>
 
 <h3>8.3 TiUSD 應用</h3>
-<p>TiUSD 在 TACm 生態中具有廣泛應用場景：作為低手續費交易對（TiUSD 交易對手續費僅 0.5%，顯著低於 USDT 交易對的 1.25%）、作為交易所撮合/閃兌的主流幣種、作為 DeFi 借貸市場的借貸資產、作為收益聚合器的標的資產、以及作為用戶規避市場波動的穩定資產避風港。</p>
+<p>TiUSD 在 TACm 生態中具有廣泛應用場景：作為低手續費交易對（TiUSD 交易對享有最低手續費，僅 0.5%）、作為交易所撮合/閃兌的主流幣種、作為 DeFi 借貸市場的借貸資產、作為收益聚合器的標的資產、以及作為用戶規避市場波動的穩定資產避風港。</p>
 
 <h2 id="s9">九、治理機制</h2>
 
@@ -360,7 +360,7 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <tr><td>第五階段</td><td>永續合約交易（125x）、DeFi 生態（流動性/借貸/IDO/聚合器）、PWA 移動端</td><td>已完成</td></tr>
 <tr><td>第六階段</td><td>真實密碼學簽名（secp256k1）、P2P 節點發現與分布式 BFT、動態難度、治理投票上鏈</td><td>已完成</td></tr>
 <tr><td>第七階段</td><td>智能合約虛擬機（gas 治理/原子回滾）、Token Studio 發幣、鏈上 DEX（AMM）、流動性挖礦</td><td>已完成</td></tr>
-<tr><td>第八階段</td><td>Layer2 Rollup（欺詐證明/SPV）、以太坊 eth_* 兼容層、BSC 真實跨鏈橋、Go/JS 開發者 SDK</td><td>已完成</td></tr>
+<tr><td>第八階段</td><td>Layer2 Rollup（欺詐證明/SPV）、標準 JSON-RPC 兼容層、異構鏈跨鏈橋、Go/JS 開發者 SDK</td><td>已完成</td></tr>
 </table>
 
 <h3>11.2 未來規劃</h3>
@@ -375,11 +375,11 @@ T(t) = 4.0, &nbsp;&nbsp; t ≥ 12h
 <h3>13.1 官方開發者 SDK</h3>
 <p>TACm 提供 Go（<code>sdk/tacclient</code>）與 JavaScript（<code>sdk/tacjs</code>）雙語官方 SDK，封裝密鑰生成、地址推導、交易簽章與節點 RPC 查詢/提交。兩端簽章格式完全互通（白名單字段 Canonical 序列化 → DoubleSHA256 → RFC6979 ECDSA → DER），並由固定向量互操作測試驗證：<b>前端 tacjs 簽署的交易，Go 節點可直接驗證入池</b>，第三方 dApp 與錢包可無縫接入。</p>
 
-<h3>13.2 以太坊兼容層（eth_* JSON-RPC）</h3>
-<p>節點提供全套 eth_* JSON-RPC（eth_blockNumber、eth_getBalance、eth_getTransactionCount、eth_call、eth_sendRawTransaction 等），支持 MetaMask 等標準以太坊錢包直連；地址體系與以太坊地址互通（tx0 地址 ↔ 0x+Hash160），wei 金額自動換算 TACm。</p>
+<h3>13.2 標準 JSON-RPC 兼容層（eth_*）</h3>
+<p>節點提供全套 eth_* JSON-RPC（eth_blockNumber、eth_getBalance、eth_getTransactionCount、eth_call、eth_sendRawTransaction 等），支持標準 JSON-RPC 錢包直連；地址體系採 Hash160 標準（tx0 地址 ↔ 0x 前綴），wei 金額自動換算 TACm。</p>
 
-<h3>13.3 真實跨鏈橋（TAC ↔ BSC）</h3>
-<p>內建 BSC 雙向中繼：TAC 資產經鎖定（lock）後在 BSC 側自動 mint 映射代幣 TACMBSC；BSC 側銷毀（burn）後在 TAC 自動解鎖。跨鏈訊息由中繼器以 BSC 私鑰簽名上鏈，支持測試網（chain-id 97）與主網（chain-id 56），部署細節見 BSC_DEPLOY.md。</p>
+<h3>13.3 真實跨鏈橋（TAC ↔ 異構鏈）</h3>
+<p>內建異構鏈雙向中繼：TAC 資產經鎖定（lock）後在目標鏈自動 mint 映射代幣；目標鏈銷毀（burn）後在 TAC 自動解鎖。跨鏈訊息由中繼器簽名上鏈，支持測試網與主網，部署細節見跨鏈部署文件。</p>
 
 <h3>13.4 資產發行與供應治理</h3>
 <p>TACm 供應總量上限 52,003,300 枚，由鏈上規則強制執行；Token Studio 支持在鏈上發行自定義代幣與呼叫合約。穩定幣 TiUSD 按市值自動增發/銷毀，且保有總供應量 0.330 倍的最低流通量以維持幣值穩定，防止脫錨崩盤。</p>

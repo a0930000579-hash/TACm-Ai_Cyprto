@@ -1,8 +1,27 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M56）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M58）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M56）
+## 本版重點（M58）
+
+- **白皮書/黃皮書全面「自主 AI 智能鏈」化**：移除全部外部鏈與品牌名稱——
+  幣安/Binance、BSC、比特幣/Bitcoin、以太坊/Ethereum、MetaMask、EVM、USDT、Render 等，
+  改為自主 TAC 表述（專業級交易所、標準 JSON-RPC 兼容層、TAC ↔ 異構鏈跨鏈橋、TAC VM、
+  USD 穩定幣等）。同步更新：whitepaper_zh.html、whitepaper_en.html、yellowpaper_en.html、
+  YELLOWPAPER.md、wp_zh.pdf、wp_en.pdf。
+- 重建 tacweb 並冒煙驗證：中/英/黃皮書結構完整（十三、開發者生態與跨鏈／Developer Ecosystem／TAC VM），
+  外部名稱殘留 **0**，節點正常出塊。
+- **完整部署教學已直接提供於對話**（Oracle VPS 錨點→Render follower→防休眠→驗收）；
+  zip 內另附 `DEPLOY_STEP_BY_STEP.md` 完整操作單。
+
+## 上版重點（M57）
+
+- **新增 `DEPLOY_STEP_BY_STEP.md`（完整逐步部署操作單）**：從 0 到上線——
+  階段 A Oracle Cloud 免費 VPS 申請與實例建立 → 階段 B VPS 一鍵部署錨點（含 Oracle 第二層防火牆）→
+  階段 C Render 改跟隨節點（完整 Build/Start Command）→ 階段 D cron 防休眠 → 階段 E 驗收與監控 ＋
+  疑難排解表。全程 0 元。
+
+## 上版重點（M56）
 
 - **全系統盤點與清理（無 Python 殘留）**：
   1. 刪除廢棄檔案：`.fix_pools.py`（Python 殘留）、舊二進位 `web`（與 `tacweb` 重複）、全部 `.smoke*` 測試暫存。

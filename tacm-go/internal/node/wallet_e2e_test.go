@@ -149,11 +149,19 @@ func TestWalletSyncChainTx(t *testing.T) {
 		t.Fatal(err)
 	}
 	bobAddr := mustAddr(t, bobKP)
-	// M36：節點自身 coinbase 不再入節點錢包（無開機礦工入池）——付款前先為節點地址充值，
-	// 使 wallet 層餘額與鏈上 proposer 獎勵對齊（真實場景由會員/節點自有餘額付款）。
-	if err := n.Wallet().Deposit(n.nodeAddress, wallet.AssetTACm, wallet.Amount{Big: new(big.Int).Mul(big.NewInt(10), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))}, "test-fund"); err != nil {
+	// M58：coinbase 瓜分寫入區塊——無開機礦工時全數入池，節點地址鏈上無餘額；
+	// 模擬「節點開機挖礦」：註冊節點地址為礦工並開機，coinbase 88% 按算力瓜分給它。
+	st := n.Wallet().Store()
+	if err := st.RegisterMiner(n.nodeAddress, 1, 1); err != nil {
 		t.Fatal(err)
 	}
+	if err := st.SetActiveMiner(n.nodeAddress, true); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool {
+		bal, _ := parseBal(n.db.GetBalance(n.nodeAddress))
+		return bal > 2
+	}, 20*time.Second, "等待 coinbase 瓜分入節點地址")
 	tx := signedTx(t, n.keypair, bobAddr, "1.5", "0.03", n.DB().GetNonce(n.nodeAddress))
 	if _, err := n.SubmitTransaction(tx); err != nil {
 		t.Fatal(err)

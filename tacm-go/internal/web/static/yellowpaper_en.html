@@ -36,7 +36,7 @@
 <h1 id="tac-自主智能鏈-技術黃皮書v1.0-m40">TAC 自主智能鏈 —
 技術黃皮書（v1.0 / M40）</h1>
 <blockquote>
-<p>TAC 是一條自主研發的 Layer-1 區塊鏈（不依附以太坊/幣安智能鏈），整合
+<p>TAC 是一條自主研發的 Layer-1 區塊鏈（不依附任何外部鏈），整合
 PoW 出塊、BFT+PoS 最終性、鏈上治理、智能合約（TAC VM）、Rollup
 L2、跨鏈橋與去中心化交易所生態。本文為其技術規格總覽，所有數值對應真實實作（Go
 語言）。</p>
@@ -75,7 +75,7 @@ L2、跨鏈橋與去中心化交易所生態。本文為其技術規格總覽，
 <tr class="even">
 <td>執行</td>
 <td>TAC VM</td>
-<td>EVM 風格智能合約解釋器（WorldState/Storage/Gas）</td>
+<td>TAC VM 智慧合約解釋器（WorldState/Storage/Gas）</td>
 </tr>
 <tr class="odd">
 <td>擴容</td>
@@ -140,9 +140,8 @@ Transaction { TxHash, BlockHeight, BlockHash, TxIndex, FromAddr, ToAddr,
 狀態與帳戶</h2>
 <ul>
 <li>SQLite（<code>chain.db</code>）：<code>blocks / transactions / accounts / mempool / peers</code>。</li>
-<li>多資產帳戶模型：TACm（原生幣）、TiUSD（穩定幣）、USDT。</li>
-<li>帳戶餘額以字串精確存儲；手續費：TACm 2% / TiUSD 0.5% / USDT
-1.25%。</li>
+<li>多資產帳戶模型：TACm（原生幣）、TiUSD（穩定幣）。</li>
+<li>帳戶餘額以字串精確存儲；手續費：TACm 2% / TiUSD 0.5%。</li>
 </ul>
 <h2 id="tokenomics-代幣經濟">6. Tokenomics / 代幣經濟</h2>
 <ul>
@@ -158,7 +157,7 @@ micro。</li>
 <h2 id="smart-contracts-智能合約tac-vm">7. Smart Contracts /
 智能合約（TAC VM）</h2>
 <ul>
-<li>EVM 風格：WorldState（帳戶 code/storage）+ 位元組碼解釋器 + Gas
+<li>TAC VM 架構：WorldState（帳戶 code/storage）+ 位元組碼解釋器 + Gas
 計費。</li>
 <li>支援：合約部署、呼叫、storage
 讀寫、呼叫棧、錯誤回滾；管理器註冊進節點；合約交易入池前只讀模擬（失敗即拒）。</li>
@@ -257,8 +256,8 @@ Go）。</li>
 <h2 id="roadmap-路線圖">14. Roadmap / 路線圖</h2>
 <ul>
 <li>M40（當前）：鏈上治理、壓力測試、白皮書 PDF、技術黃皮書。</li>
-<li>下一階段：主網/測試網網路隔離、EVM
-完整相容擴充、多節點雲端部署（Render/雲廠商）、第三方審計。</li>
+<li>下一階段：主網/測試網網路隔離、合約擴充指令集
+完整相容擴充、多節點雲端部署、第三方審計。</li>
 </ul>
 
   <div class="bottom">TAC Autonomous Chain · Yellowpaper v1.0</div>

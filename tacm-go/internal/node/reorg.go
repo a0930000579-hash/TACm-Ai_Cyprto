@@ -90,32 +90,39 @@ func (h *p2pHost) ReorgChain(forkPoint int64, blocks []chaindb.Block, txs [][]ch
 }
 
 // verifyBlockStructure 驗證區塊的結構有效性（不依賴賬戶狀態）：
-// coinbase 首位、普通交易簽名、Merkle 根、PoW。
+// coinbase 總額、普通交易簽名、Merkle 根、PoW。
 func verifyBlockStructure(b *chaindb.Block, txs []chaindb.Transaction) error {
 	if len(txs) == 0 {
 		return errors.New("區塊缺少 coinbase 交易")
 	}
-	cb := txs[0]
-	if cb.FromAddr != "" {
-		return errors.New("首筆交易必須為 coinbase（from 為空）")
-	}
-	if cb.ToAddr != b.ProposerAddress {
-		return errors.New("coinbase 接收方必須為提議者")
+	// coinbase：開頭連續 from 為空的交易（M58 鏈上瓜分可多筆），總額須等於區塊獎勵。
+	cbTotal := 0.0
+	i := 0
+	for i < len(txs) && txs[i].FromAddr == "" {
+		cb := txs[i]
+		if cb.ToAddr == "" {
+			return errors.New("coinbase 收款人缺失")
+		}
+		got, err := parseFloat64(cb.Amount)
+		if err != nil {
+			return fmt.Errorf("coinbase 金額非法: %s", cb.Amount)
+		}
+		cbTotal += got
+		i++
 	}
 	wantReward := chaindb.BlockReward(b.Height)
-	got, err := parseFloat64(cb.Amount)
-	if err != nil || abs(got-wantReward) > 1e-9 {
-		return fmt.Errorf("coinbase 金額=%s 應為 %g", cb.Amount, wantReward)
+	if abs(cbTotal-wantReward) > 1e-9 {
+		return fmt.Errorf("coinbase 總額=%g 應為 %g", cbTotal, wantReward)
 	}
 
-	for i := 1; i < len(txs); i++ {
-		t := txs[i]
+	for j := i; j < len(txs); j++ {
+		t := txs[j]
 		m := map[string]any{
 			"from": t.FromAddr, "to": t.ToAddr, "amount": t.Amount, "fee": t.Fee,
 			"memo": t.Memo, "ts": t.Ts, "nonce": t.Nonce, "pubkey": t.Pubkey,
 		}
 		if !verifyTxSignature(m, t.Signature, t.FromAddr) {
-			return fmt.Errorf("交易 %d（%s）簽名無效", i, t.TxHash)
+			return fmt.Errorf("交易 %d（%s）簽名無效", j, t.TxHash)
 		}
 	}
 

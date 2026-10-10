@@ -143,26 +143,30 @@ type acctState struct {
 	nonce int64
 }
 
-// verifyIncomingTxs 完整驗證區塊交易：coinbase 首位、普通交易簽名、
+// verifyIncomingTxs 完整驗證區塊交易：coinbase 總額、普通交易簽名、
 // nonce 順序與餘額（含同塊內連鎖轉賬）、手續費歸提議者。
 func verifyIncomingTxs(n *Node, b *chaindb.Block, txs []chaindb.Transaction) error {
 	if len(txs) == 0 {
 		return errors.New("區塊缺少 coinbase 交易")
 	}
-	cb := txs[0]
-	if cb.FromAddr != "" {
-		return errors.New("首筆交易必須為 coinbase（from 為空）")
-	}
-	if cb.ToAddr != b.ProposerAddress {
-		return errors.New("coinbase 接收方必須為提議者")
+	// coinbase：開頭連續 from 為空的交易（M58 鏈上瓜分可多筆），總額須等於區塊獎勵。
+	cbTotal := 0.0
+	i := 0
+	for i < len(txs) && txs[i].FromAddr == "" {
+		cb := txs[i]
+		if cb.ToAddr == "" {
+			return errors.New("coinbase 收款人缺失")
+		}
+		v, err := strconv.ParseFloat(cb.Amount, 64)
+		if err != nil {
+			return errors.New("coinbase 金額非法")
+		}
+		cbTotal += v
+		i++
 	}
 	wantReward := chaindb.BlockReward(b.Height)
-	gotReward, err := strconv.ParseFloat(cb.Amount, 64)
-	if err != nil {
-		return errors.New("coinbase 金額非法")
-	}
-	if abs(gotReward-wantReward) > 1e-9 {
-		return fmt.Errorf("coinbase 金額=%g 應為 %g", gotReward, wantReward)
+	if abs(cbTotal-wantReward) > 1e-9 {
+		return fmt.Errorf("coinbase 總額=%g 應為 %g", cbTotal, wantReward)
 	}
 
 	states := make(map[string]*acctState)
@@ -176,23 +180,23 @@ func verifyIncomingTxs(n *Node, b *chaindb.Block, txs []chaindb.Transaction) err
 		return s
 	}
 
-	for i := 1; i < len(txs); i++ {
-		t := txs[i]
+	for j := i; j < len(txs); j++ {
+		t := txs[j]
 		m := map[string]any{
 			"from": t.FromAddr, "to": t.ToAddr, "amount": t.Amount, "fee": t.Fee,
 			"memo": t.Memo, "ts": t.Ts, "nonce": t.Nonce, "pubkey": t.Pubkey,
 		}
 		if !verifyTxSignature(m, t.Signature, t.FromAddr) {
-			return fmt.Errorf("交易 %d（%s）簽名無效", i, t.TxHash)
+			return fmt.Errorf("交易 %d（%s）簽名無效", j, t.TxHash)
 		}
 		s := get(t.FromAddr)
 		if t.Nonce != s.nonce {
-			return fmt.Errorf("交易 %d nonce 錯亂: 應為 %d 得到 %d", i, s.nonce, t.Nonce)
+			return fmt.Errorf("交易 %d nonce 錯亂: 應為 %d 得到 %d", j, s.nonce, t.Nonce)
 		}
 		amt, _ := strconv.ParseFloat(t.Amount, 64)
 		fee, _ := strconv.ParseFloat(t.Fee, 64)
 		if s.bal < amt+fee {
-			return fmt.Errorf("交易 %d 付款方餘額不足", i)
+			return fmt.Errorf("交易 %d 付款方餘額不足", j)
 		}
 		s.bal -= amt + fee
 		s.nonce++

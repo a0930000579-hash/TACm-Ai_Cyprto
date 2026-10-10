@@ -47,46 +47,10 @@ func (s *Service) ApplyBlock(height int64, txs []chaindb.Transaction) error {
 		}
 		memo := fmt.Sprintf("block:%d:%d:%s", height, i, tx.TxHash)
 		if tx.FromAddr == "" {
-			// coinbase（原本方式）：12% 挹注獎勵池，其餘按在線礦工算力瓜分；
-			// 無在線礦工時全數歸提議者（fallback，維持單節點語義）。
-			share := new(big.Int).Mul(amount, big.NewInt(PoolShareBps))
-			share.Div(share, big.NewInt(10000))
-			rest := new(big.Int).Sub(amount, share)
-			splits, err := s.st.OnlineMinerSplits(time.Now().Unix())
-			if err != nil {
-				return fmt.Errorf("wallet: coinbase 讀取在線礦工 height=%d: %w", height, err)
-			}
-			if len(splits) == 0 {
-				// M36：無「開機」礦工時，礦工份額全數挹注獎勵池（交易所資金池），
-				// 不再歸入提議者/訪客地址——避免「未開機卻持續進帳」。
-				if rest.Sign() <= 0 {
-					return fmt.Errorf("wallet: coinbase 分潤異常 height=%d", height)
-				}
-				entries = append(entries,
-					Entry(KindReward, RewardPoolAddr, AssetTACm, rest, memo+":reserve"),
-					Entry(KindReward, RewardPoolAddr, AssetTACm, share, memo+":pool"),
-				)
-				if minedTotal == nil {
-					minedTotal = new(big.Int)
-				}
-				minedTotal.Add(minedTotal, amount)
-				continue
-			}
-			portions, err := DistributeByHashrate(rest, splits)
-			if err != nil {
-				return fmt.Errorf("wallet: coinbase 瓜分計算 height=%d: %w", height, err)
-			}
-			for _, sp := range splits {
-				p := portions[sp.Address]
-				if p.Sign() <= 0 {
-					continue
-				}
-				entries = append(entries,
-					Entry(KindReward, sp.Address, AssetTACm, p, memo+":miner"),
-				)
-			}
+			// M58：coinbase 已在鏈上由出塊者按礦工表瓜分（多筆：miner/pool/reserve），
+			// 錢包層照單入帳，不再本地再分配 → 所有節點帳本一致。
 			entries = append(entries,
-				Entry(KindReward, RewardPoolAddr, AssetTACm, share, memo+":pool"),
+				Entry(KindReward, tx.ToAddr, AssetTACm, amount, memo),
 			)
 			if minedTotal == nil {
 				minedTotal = new(big.Int)

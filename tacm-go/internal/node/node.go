@@ -797,15 +797,26 @@ func (n *Node) produceBlock() error {
 
 	// coinbase 增發交易置於首位（height>0），其哈希進入 Merkle 根。
 	// 供應模型：TACM_MAX_SUPPLY 設定後依年衰減發行（上限 52,003,300）；未設定維持減半模式。
+	// M58：coinbase 瓜分明細（礦工按算力 + 獎勵池 12%）寫入區塊 → 全網節點照單執行，帳本一致。
 	if height > 0 {
-		cb := chaindb.BuildCoinbaseTx(height, n.nodeAddress, ts)
+		reward := chaindb.BlockReward(height)
 		if cfg, err := chaindb.LoadEmission(int64(n.cfg.BlockTime)); err == nil && cfg.Model == "annual_decay" {
-			// 上限模式：單塊獎勵由年衰減模型決定（鏈上帳本一致性）。
-			cb.Amount = chaindb.FormatFloat(chaindb.EmissionAmount(height, int64(n.cfg.BlockTime)))
-			cb.TxHash = chaindb.CoinbaseTxHash(height, n.nodeAddress, chaindb.EmissionAmount(height, int64(n.cfg.BlockTime)), ts)
+			reward = chaindb.EmissionAmount(height, int64(n.cfg.BlockTime))
 		}
-		txs = append(txs, cb)
-		txHashes = append(txHashes, cb.TxHash)
+		var splits []chaindb.CoinbaseSplit
+		if n.walletSvc != nil {
+			if sps, err := n.walletSvc.Store().OnlineMinerSplits(time.Now().Unix()); err == nil {
+				for _, sp := range sps {
+					if v := sp.Share.Int64(); v > 0 {
+						splits = append(splits, chaindb.CoinbaseSplit{Address: sp.Address, Share: v})
+					}
+				}
+			}
+		}
+		for _, cb := range chaindb.BuildCoinbaseTxs(height, n.nodeAddress, ts, splits, reward) {
+			txs = append(txs, cb)
+			txHashes = append(txHashes, cb.TxHash)
+		}
 	}
 
 	for _, m := range mempool {

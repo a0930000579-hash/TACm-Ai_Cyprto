@@ -301,13 +301,14 @@ func TestApplyBlock(t *testing.T) {
 		t.Fatal("跳號同步應報錯")
 	}
 	miner, _ := svc.Balance("miner1")
-	// M36：無「開機」礦工時 coinbase 88% 全數挹注獎勵池（交易所資金池），不再歸提議者/訪客地址。
-	if miner.TACmBalance.Sign() != 0 {
-		t.Fatalf("miner1=%s want 0 (無開機礦工不再進帳)", miner.TACmBalance)
+	// M58：coinbase 收款人在鏈上瓜分時已確定（出塊者只把份額寫給開機且在線的礦工），
+	// 錢包層照單入帳，不再本地判斷在線 → 全網帳本一致。
+	if miner.TACmBalance.Cmp(bigS("10000000000000000000")) != 0 {
+		t.Fatalf("miner1=%s want 10 TACM (coinbase 照單入帳)", miner.TACmBalance)
 	}
 	pool, _ := svc.Balance(RewardPoolAddr)
-	if pool.TACmBalance.Cmp(bigS("10000000000000000000")) != 0 {
-		t.Fatalf("reward_pool=%s want 10 TACM (88pct reserve + 12pct pool)", pool.TACmBalance)
+	if pool.TACmBalance.Sign() != 0 {
+		t.Fatalf("reward_pool=%s want 0 (無 pool coinbase)", pool.TACmBalance)
 	}
 	alice, _ := svc.Balance("alice")
 	// 5 - (1.5+0.03) = 3.47。

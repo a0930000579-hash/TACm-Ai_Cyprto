@@ -159,10 +159,11 @@ function render(ms, splits, st){
     var btnS = document.getElementById('btnStart'), btnT = document.getElementById('btnStop');
     if (on) { if(btnS) btnS.style.display='none'; if(btnT) btnT.style.display='block'; }
     else { if(btnS) btnS.style.display='block'; if(btnT) btnT.style.display='none'; }
-    // M33：效率圓環＋算力條（個人算力佔全鏈比例）。
-    var cpu = me.vcpu*1000000, gpu = me.vgpu*2000000, mine = cpu+gpu, totalHr2 = 0;
-    (splits||[]).forEach(function(s){ totalHr2 += parseFloat(s.share||0); });
-    var pct = totalHr2>0 ? Math.min(100, mine/totalHr2*100) : (mine>0 ? 100 : 0);
+    // M33：效率圓環＋算力條（個人算力佔全鏈比例）。M58：佔比以鏈上瓜分份額為準
+    // （我的瓜分額/全網瓜分額＝算力佔比），與「在線礦工排行」同一視角。
+    var cpu = me.vcpu*1000000, gpu = me.vgpu*2000000, mine = cpu+gpu, totalHr2 = 0, myShare = 0;
+    (splits||[]).forEach(function(s){ var sv = parseFloat(s.share||0); totalHr2 += sv; if(s.address===myAddr) myShare = sv; });
+    var pct = totalHr2>0 ? Math.min(100, (myShare>0?myShare:mine)/totalHr2*100) : (mine>0 ? 100 : 0);
     var ring = document.getElementById('ringFg');
     var C = 2*Math.PI*40;
     if(ring){ ring.style.strokeDasharray = (pct/100*C) + ' ' + C; }

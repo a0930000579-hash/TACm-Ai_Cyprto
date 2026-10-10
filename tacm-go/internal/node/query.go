@@ -36,6 +36,13 @@ func (n *Node) GetStatus() Status {
 	if dist {
 		consensus = "pow_bft_distributed"
 	}
+	// 難度是鏈上事實：以鏈頂區塊記錄的難度為準（follower 與錨點顯示同一值），
+	// 僅在鏈空（創世後尚未出塊）時退回本地調整值。
+	if tip := n.db.GetTipHeight(); tip > 0 {
+		if b, err := n.db.GetBlock(tip); err == nil && b != nil && b.Difficulty > 0 {
+			diff = b.Difficulty
+		}
+	}
 	st := Status{
 		NodeID:        n.nodeID,
 		Address:       n.nodeAddress,

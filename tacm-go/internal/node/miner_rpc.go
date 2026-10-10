@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
-	"time"
+	"strconv"
 
 	"tacm/internal/wallet"
 )
@@ -115,11 +115,10 @@ func (s *RPCServer) handleMiners(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	splits, err := s.node.walletSvc.Store().OnlineMinerSplits(time.Now().Unix())
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	// M58：splits 改用「鏈上瓜分視角」——任何節點只要同步了同一條鏈，看到的在線礦工與份額
+	// 就完全一致；share 為瓜分額換算的等效算力（佔比＝瓜分額佔比＝算力佔比）。
+	// 不再用各節點本地 SQL（避免「錨點 3 台、follower 1 台」的入口不一致）。
+	splits := s.onChainMinerSplits(60)
 	// M32：附加每台礦機的推薦註冊人數（算力加成來源）。
 	out := make([]map[string]any, 0, len(ms))
 	for _, m := range ms {
@@ -134,6 +133,42 @@ func (s *RPCServer) handleMiners(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "miners": out, "online_count": len(splits), "splits": splits,
 	})
+}
+
+// onChainMinerSplits 從鏈上反推「全網在線礦工瓜分視角」（最近 window 塊的 coinbase 瓜分）：
+// 收款人（非 reward_pool、非空）即鏈上實際瓜分到獎勵的礦工；share 為瓜分額換算的等效算力
+// （每台標稱 5M＝1vCPU×1M + 2vGPU×2M），佔比即算力佔比。任何節點同步同一條鏈結果一致。
+func (s *RPCServer) onChainMinerSplits(window int64) []map[string]any {
+	tip := s.node.DB().GetTipHeight()
+	start := tip - window + 1
+	if start < 1 {
+		start = 1
+	}
+	shares := map[string]float64{}
+	var total float64
+	for h := start; h <= tip; h++ {
+		txs, err := s.node.DB().GetTransactionsByBlock(h)
+		if err != nil {
+			continue
+		}
+		for _, tx := range txs {
+			if tx.FromAddr == "" && tx.ToAddr != "" && tx.ToAddr != wallet.RewardPoolAddr {
+				if v, err := strconv.ParseFloat(tx.Amount, 64); err == nil {
+					shares[tx.ToAddr] += v
+					total += v
+				}
+			}
+		}
+	}
+	n := len(shares)
+	out := make([]map[string]any, 0, n)
+	if n > 0 && total > 0 {
+		nominal := float64(n) * 5e6 // 每台標稱 5M（1vCPU×1M + 2vGPU×2M）
+		for a, v := range shares {
+			out = append(out, map[string]any{"address": a, "share": v / total * nominal})
+		}
+	}
+	return out
 }
 
 // handleMinerEarnings GET /api/miner/earnings?address= — 礦工累計收益（KindReward 分錄）。
