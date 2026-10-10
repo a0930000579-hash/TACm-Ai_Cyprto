@@ -69,6 +69,7 @@ func TestServerPages(t *testing.T) {
 		{"/explorer", http.StatusOK, "最新交易"},
 		{"/join", http.StatusOK, "加入 TAC 自主智能鏈主網"},
 		{"/join", http.StatusOK, "2.28.201.174:8080"},
+		{"/network", http.StatusOK, "節點監控"},
 		{"/block/5", http.StatusOK, "blockhash5"},
 		{"/address/tx0proposeraddr", http.StatusOK, "100"},
 		{"/tx/txhash1", http.StatusOK, "txhash1"},
@@ -184,6 +185,52 @@ func TestPeersAPI(t *testing.T) {
 		t.Fatalf("狀態=%d 想要 200", resp.StatusCode)
 	}
 	for _, want := range []string{`"ok":true`, `"network":"tacm-mainnet-1"`, `2.28.201.174:8080`, `tacm-ai-cyprto.onrender.com`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("未包含 %q（body=%s）", want, body)
+		}
+	}
+	resp.Body.Close()
+}
+
+// TestNetworkAPI 驗證全網監控：seed 探測（Goroutine 並行）＋本節點狀態＋離線容錯。
+func TestNetworkAPI(t *testing.T) {
+	// 模擬一個線上 seed：回真實 /status JSON。
+	mockOK := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"node_id":"mock1","address":"tx0mockaddr","network":"mainnet","chain_id":"tacm-mainnet-1","block_height":42,"final_block_height":42,"mempool_size":0,"effective_difficulty":3,"uptime_sec":100,"consensus":"pow_dynamic"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer mockOK.Close()
+
+	// 模擬一個離線 seed：直接關閉的 server（連不上）。
+	mockDown := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	mockDown.Close()
+
+	srv, _ := New(newFake())
+	srv.seedURLs = []SeedInfo{
+		{NodeID: "mock1", URL: mockOK.URL, Role: "test"},
+		{NodeID: "mock2", URL: mockDown.URL, Role: "test"},
+	}
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/network")
+	if err != nil {
+		t.Fatalf("GET /api/network: %v", err)
+	}
+	body := readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("狀態=%d 想要 200", resp.StatusCode)
+	}
+	for _, want := range []string{
+		`"ok":true`, `"network":"tacm-mainnet-1"`,
+		`"node_id":"mock1"`, `"reachable":true`, `"block_height":42`,
+		`"node_id":"mock2"`, `"reachable":false`, `"error":"unreachable"`,
+		`"self"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("未包含 %q（body=%s）", want, body)
 		}

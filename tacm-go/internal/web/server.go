@@ -25,6 +25,8 @@ type Server struct {
 	tplSet    *pongo2.TemplateSet
 	mux       *http.ServeMux
 	community map[string]string
+	// M64：全網監控探測的 seed 列表（New 時拷貝自 mainnetSeeds；測試可注入替身）。
+	seedURLs []SeedInfo
 }
 
 // New 構造 Web 服務：加載嵌入模板、註冊 filter 與路由。
@@ -37,6 +39,7 @@ func New(ds DataSource) (*Server, error) {
 	registerFilters()
 
 	s := &Server{ds: ds, tplSet: tplSet, mux: http.NewServeMux()}
+	s.seedURLs = append([]SeedInfo(nil), mainnetSeeds...)
 	// 社群連結（env 配置：TAC_COMMUNITY_TELEGRAM / TAC_COMMUNITY_X / TAC_COMMUNITY_DISCORD / TAC_COMMUNITY_SITE）。
 	s.community = map[string]string{
 		"telegram": os.Getenv("TAC_COMMUNITY_TELEGRAM"),
@@ -115,6 +118,9 @@ func (s *Server) routes() {
 	// M63：節點加入指引＋公開 seed 列表（去中心化多節點入口）。
 	s.mux.HandleFunc("GET /join", s.handleJoin)
 	s.mux.HandleFunc("GET /api/peers", s.handlePeersAPI)
+	// M64：節點健康度監控（全網狀態統一視界）。
+	s.mux.HandleFunc("GET /network", s.handleNetwork)
+	s.mux.HandleFunc("GET /api/network", s.handleNetworkAPI)
 	s.mux.HandleFunc("GET /block/{height}", s.handleBlock)
 	s.mux.HandleFunc("GET /address/{address}", s.handleAddress)
 	s.mux.HandleFunc("GET /tx/{hash}", s.handleTx)

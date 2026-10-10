@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/flosch/pongo2/v6"
 
@@ -87,6 +89,71 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 		"seeds": mainnetSeeds,
 		"repo":  "https://github.com/a0930000579-hash/TACm-Ai_Cyprto",
 	})
+}
+
+// nodeStatusResp 對應鏈節點 HTTP /status 回應（M64 監控探測用）。
+// 注意：節點 /status 的 JSON 欄位名是 block_height/effective_difficulty，
+// 與 Web 內部 StatusView（height/difficulty）不同——探測外部節點必須用此協議結構。
+type nodeStatusResp struct {
+	NodeID             string `json:"node_id"`
+	Address            string `json:"address"`
+	Network            string `json:"network"`
+	ChainID            string `json:"chain_id"`
+	BlockHeight        int64  `json:"block_height"`
+	FinalBlockHeight   int64  `json:"final_block_height"`
+	MempoolSize        int    `json:"mempool_size"`
+	EffectiveDifficulty int   `json:"effective_difficulty"`
+	UptimeSec          int64  `json:"uptime_sec"`
+	Consensus          string `json:"consensus"`
+}
+
+// probeSeed 探測單一 seed 節點（M64）：GET {seed}/status、2 秒超時。
+// 並行探測由呼叫方以 Goroutine 執行（Go 慣用併發寫法），本函式只做單點探測。
+func probeSeed(sd SeedInfo) map[string]any {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(sd.URL + "/status")
+	base := map[string]any{"node_id": sd.NodeID, "url": sd.URL, "role": sd.Role, "reachable": false}
+	if err != nil {
+		base["error"] = "unreachable"
+		return base
+	}
+	defer resp.Body.Close()
+	var st nodeStatusResp
+	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
+		base["error"] = "bad_status"
+		return base
+	}
+	base["reachable"] = true
+	base["status"] = st
+	return base
+}
+
+// handleNetworkAPI GET /api/network — 全網狀態統一視界（M64）：
+// 並行探測所有公開 seed 節點的 /status，加上本節點狀態，一次回傳全網節點健康度。
+// seed 列表來自單一權威來源（mainnetSeeds），任何節點/入口看到的節點集合一致。
+func (s *Server) handleNetworkAPI(w http.ResponseWriter, r *http.Request) {
+	seeds := s.seedURLs
+	results := make([]map[string]any, len(seeds))
+	var wg sync.WaitGroup
+	for i, sd := range seeds {
+		wg.Add(1)
+		go func(i int, sd SeedInfo) {
+			defer wg.Done()
+			results[i] = probeSeed(sd)
+		}(i, sd)
+	}
+	wg.Wait()
+	writeJSON(w, map[string]any{
+		"ok":      true,
+		"network": "tacm-mainnet-1",
+		"self":    s.ds.Status(),
+		"seeds":   results,
+	})
+}
+
+// handleNetwork GET /network — 節點健康度監控頁（M64）：頁面以 JS 定時拉取 /api/network。
+func (s *Server) handleNetwork(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "network.html", pongo2.Context{})
 }
 
 func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}節點監控 · TAC Network{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head"><h2>🖥️ 節點監控（全網統一視界）</h2></div>
+  <p class="muted" id="netTip">正在探測全網節點…</p>
+</section>
+
+<!-- M64：本節點狀態 -->
+<section class="panel">
+  <div class="panel-head"><h2>📡 本節點</h2></div>
+  <div class="chain-grid">
+    <div class="cg"><small>節點 ID</small><b id="nSelfId">—</b></div>
+    <div class="cg"><small>節點位址</small><b class="mono" id="nSelfAddr">—</b></div>
+    <div class="cg"><small>鏈高</small><b id="nSelfH">—</b></div>
+    <div class="cg"><small>最終化</small><b id="nSelfF">—</b></div>
+    <div class="cg"><small>難度</small><b id="nSelfD">—</b></div>
+    <div class="cg"><small>共識</small><b id="nSelfC">—</b></div>
+    <div class="cg"><small>運行</small><b id="nSelfU">—</b></div>
+    <div class="cg"><small>待打包</small><b id="nSelfM">—</b></div>
+  </div>
+</section>
+
+<!-- M64：seed 節點健康表 + 全網一致性 -->
+<section class="panel">
+  <div class="panel-head"><h2>🌐 全網節點</h2></div>
+  <div class="consist" id="consistBox">
+    <div class="consist-line" id="consistLine">—</div>
+  </div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>節點</th><th>URL</th><th>角色</th><th>狀態</th><th>鏈高</th><th>最終化</th><th>難度</th><th>運行</th></tr>
+    </thead>
+    <tbody id="netRows">
+      <tr><td colspan="8" class="muted center">載入中…</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<style>
+  .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .cg small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+  .cg b{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums;word-break:break-all}
+  .consist{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+  .consist-line{font-size:14px;color:var(--text)}
+  .dot-ok{color:#0ecb81;font-weight:700}
+  .dot-bad{color:#f6465d;font-weight:700}
+  .dot-warn{color:#f0b90b;font-weight:700}
+  .hbar{height:8px;border-radius:4px;background:rgba(255,255,255,.06);margin:4px 0 10px;overflow:hidden}
+  .hbar i{display:block;height:100%;border-radius:4px;background:#f0b90b}
+</style>
+
+<script>
+  // M64：每 10s 拉取 /api/network 渲染全網節點健康度與鏈高一致性。
+  (function () {
+    var tip = document.getElementById('netTip');
+    var rows = document.getElementById('netRows');
+    var consistLine = document.getElementById('consistLine');
+    function render(d) {
+      if (!d || !d.ok) { if (tip) tip.textContent = '無法取得全網狀態'; return; }
+      if (tip) tip.textContent = '更新於 ' + new Date().toLocaleTimeString() + '（每 10 秒自動刷新）';
+      // 本節點
+      var st = d.self || {};
+      setT('nSelfId', st.node_id); setT('nSelfAddr', (st.address || '').length > 14 ? st.address.slice(0,6)+'…'+st.address.slice(-4) : st.address || '—');
+      setT('nSelfH', st.block_height != null ? st.block_height : '—');
+      setT('nSelfF', st.finalized_height != null ? st.finalized_height : '—');
+      setT('nSelfD', st.effective_difficulty != null ? st.effective_difficulty : '—');
+      setT('nSelfC', st.consensus || '—'); setT('nSelfU', (st.uptime_sec||0)+'s'); setT('nSelfM', st.mempool_size != null ? st.mempool_size : '—');
+      // seed 表
+      var html = ''; var maxH = (st.block_height || 0);
+      var all = [{node_id: 'self', url: location.origin, role: 'self', st: st}];
+      (d.seeds || []).forEach(function (s) {
+        all.push(s);
+        if (s.status && s.status.block_height > maxH) maxH = s.status.block_height;
+      });
+      all.forEach(function (s) {
+        var ok = s.st || s.status;
+        if (s.node_id === 'self' && !ok) return;
+        var reach = s.node_id === 'self' ? true : !!s.reachable;
+        var cls = reach ? 'dot-ok' : 'dot-bad';
+        var state = reach ? '● 在線' : '○ 離線';
+        var h = ok && ok.block_height != null ? ok.block_height : '—';
+        var f = ok && ok.finalized_height != null ? ok.finalized_height : '—';
+        var dd = ok && ok.effective_difficulty != null ? ok.effective_difficulty : '—';
+        var u = ok && ok.uptime_sec != null ? ok.uptime_sec + 's' : '—';
+        var role = s.role || '—';
+        var pct = (typeof h === 'number' && maxH > 0) ? Math.max(2, Math.round(h / maxH * 100)) : 2;
+        html += '<tr><td class="mono">' + esc(s.node_id) + '</td><td class="mono">' + esc(s.url || '') + '</td><td>' + esc(role) + '</td>' +
+          '<td class="' + cls + '">' + state + '</td><td class="mono">' + h + '</td><td class="mono">' + f + '</td><td>' + dd + '</td><td>' + u + '</td></tr>';
+        html += '<tr><td colspan="8" class="hbar-cell"><div class="hbar"><i style="width:' + pct + '%"></i></div></td></tr>';
+      });
+      rows.innerHTML = html;
+      // 一致性判定：全網（含 seed）鏈高一致 → 同步 ✓；否則標出差異。
+      var hs = all.map(function (s) { return s.status ? s.status.block_height : null; }).filter(function (v) { return v !== null && v !== undefined; });
+      var uniq = {}; hs.forEach(function (h) { uniq[h] = 1; });
+      var keys = Object.keys(uniq);
+      if (keys.length <= 1) { consistLine.innerHTML = '<span class="dot-ok">✓ 全網同步</span> — 所有節點鏈高一致（#' + hs[0] + '）'; }
+      else { consistLine.innerHTML = '<span class="dot-bad">⚠ 鏈高不一致</span> — 各節點：#' + hs.join(' / #') + '（等待同步或檢查節點）'; }
+    }
+    function setT(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    function fresh() {
+      fetch('/api/network', { cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(render).catch(function () { if (tip) tip.textContent = '無法取得全網狀態'; });
+    }
+    fresh();
+    setInterval(fresh, 10000);
+  })();
+</script>
+{% endblock %}
