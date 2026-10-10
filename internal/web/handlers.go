@@ -1,0 +1,200 @@
+package web
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"github.com/flosch/pongo2/v6"
+
+	"tacm/internal/wallet"
+)
+
+// writeJSON 寫出 JSON 回應（M39 健康/指標 API 共用）。
+func writeJSON(w http.ResponseWriter, v any) {
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	blocks, err := s.ds.Blocks(10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.render(w, "index.html", pongo2.Context{"blocks": blocks, "chain": s.ds.ChainStats()})
+}
+
+func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {
+	h, err := strconv.ParseInt(r.PathValue("height"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid height", http.StatusBadRequest)
+		return
+	}
+	b, err := s.ds.Block(h)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if b == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.render(w, "block.html", pongo2.Context{"b": b})
+}
+
+func (s *Server) handleAddress(w http.ResponseWriter, r *http.Request) {
+	addr := r.PathValue("address")
+	a, err := s.ds.Address(addr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.render(w, "address.html", pongo2.Context{"a": a})
+}
+
+func (s *Server) handleTx(w http.ResponseWriter, r *http.Request) {
+	hash := r.PathValue("hash")
+	t, err := s.ds.Transaction(hash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if t == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.render(w, "tx.html", pongo2.Context{"t": t})
+}
+
+// handleDashboard GET /dashboard — 幣安風系統管理儀表板（聚合鏈/錢包/交易所/獎勵池/L2/橋）。
+func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "dashboard.html", pongo2.Context{
+		"node": s.ds.Status(),
+	})
+}
+
+// handleExchange GET /exchange — 幣安風交易所頁面（行情/撮合/閃兌/機器人）。
+func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "exchange.html", pongo2.Context{
+		"exchange": map[string]any{"NodeAddress": s.ds.Status().Address},
+	})
+}
+
+// handleMining GET /mining — 挖礦中心：節點/出塊/PoW/coinbase 分潤/獎勵池/驗證人。
+// 實時數據由前端直接讀取節點 RPC（與 exchange 頁一致：?rpc= 可覆蓋）。
+func (s *Server) handleMining(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "mining.html", pongo2.Context{})
+}
+
+// handleCommunity GET /community — 內建社群（FB 風動態牆/市集/廣告，App 化）。
+// 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
+func (s *Server) handleCommunity(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "community.html", pongo2.Context{})
+}
+
+// handleGovernance GET /governance — 鏈上治理（提案/投票/參數，App 化）。
+// 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
+func (s *Server) handleGovernance(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "governance.html", pongo2.Context{})
+}
+
+// handleDefi GET /defi — DeFi 中心（流動性挖礦＋借貸市場，App 化）。
+// 實時數據由前端直接讀取節點 RPC（?rpc= 可覆蓋）。
+func (s *Server) handleDefi(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "defi.html", pongo2.Context{})
+}
+
+// handleC2C GET /c2c — C2C 場外交易（法幣兌加密貨幣，App 化）。
+func (s *Server) handleC2C(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "c2c.html", pongo2.Context{})
+}
+
+// handleTokens GET /tokens — 代幣工作室（Token Studio）：鏈上標準代幣發行
+// （節點官方金鑰代簽）＋列表/詳情/轉帳，App 化。實時數據由前端讀取 RPC。
+func (s *Server) handleTokens(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "tokens.html", pongo2.Context{})
+}
+
+// handleDex GET /dex — 鏈上 DEX（AMM 恆定乘積）：池列表/建池/流動性/即時兌換，
+// 與 Token Studio 打通（發幣→建池→交易閉環）。實時數據由前端讀取 RPC。
+func (s *Server) handleDex(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "dex.html", pongo2.Context{})
+}
+
+// handleWallet GET /wallet?address=tx0xxx — 幣安風多資產錢包頁面。
+func (s *Server) handleWallet(w http.ResponseWriter, r *http.Request) {
+	addr := r.URL.Query().Get("address")
+	if addr == "" {
+		// M37：登入會員優先顯示「會員自己的鏈上錢包」；未登入訪客由前端覆寫訪客獨立地址。
+		if u, err := s.ds.CurrentUser(r); err == nil && u != nil && u.WalletAddr != "" {
+			addr = u.WalletAddr
+		} else {
+			addr = s.ds.Status().Address
+		}
+	}
+	wv, err := s.ds.Wallet(addr)
+	if err != nil {
+		http.Error(w, "錢包讀取失敗: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// M37：「我的地址」渲染當前視圖地址（登入會員＝會員鏈上地址；訪客＝節點地址 fallback，由前端覆寫訪客獨立地址）。
+	wv.NodeAddress = addr
+	// 鏈上獎勵池餘額（coinbase 15% 挹注 + 交易所手續費結算）。
+	pool := "0"
+	if poolAcct, err := s.ds.Wallet(wallet.RewardPoolAddr); err == nil {
+		pool = poolAcct.TACm
+	}
+	s.render(w, "wallet.html", pongo2.Context{
+		"wallet": wv, "address": addr, "addrParam": addr, "rewardPool": pool,
+	})
+}
+
+// handleAuthLoginPage 會員登入頁（幣安風；JS 呼叫 /api/auth/login）。
+func (s *Server) handleAuthLoginPage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "auth.html", pongo2.Context{"activeTab": "auth"})
+}
+
+// handleAuthRegisterPage 會員註冊頁（JS 呼叫 /api/auth/register）。
+func (s *Server) handleAuthRegisterPage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "auth.html", pongo2.Context{"activeTab": "auth"})
+}
+
+// handleHealth GET /api/health — 節點存活探針（監控告警/負載均衡用）。
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	st := s.ds.Status()
+	w.Header().Set("Content-Type", "application/json")
+	writeJSON(w, map[string]any{
+		"ok":                 true,
+		"node_id":            st.NodeID,
+		"address":            st.Address,
+		"block_height":       st.Height,
+		"final_block_height": st.FinalizedHeight,
+		"uptime_sec":         st.UptimeSec,
+		"consensus":          st.Consensus,
+	})
+}
+
+// handleMetrics GET /api/metrics — 節點運行指標（區塊高度/難度/礦工/算力/供應）。
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	st := s.ds.Status()
+	cs := s.ds.ChainStats()
+	w.Header().Set("Content-Type", "application/json")
+	writeJSON(w, map[string]any{
+		"ok":               true,
+		"height":           st.Height,
+		"finalized_height": st.FinalizedHeight,
+		"difficulty":       st.Difficulty,
+		"mempool_size":     st.MempoolSize,
+		"uptime_sec":       st.UptimeSec,
+		"consensus":        st.Consensus,
+		"online_miners":    cs.OnlineMiners,
+		"network_hashrate": cs.TotalHashrate,
+		"total_mined_tacm": cs.TotalMinedTacm,
+		"tiusd_supply":     cs.TiUSDSupply,
+		"reward_pool":      cs.RewardPool,
+	})
+}

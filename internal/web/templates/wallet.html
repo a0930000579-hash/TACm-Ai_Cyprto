@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  :root { --bn-bg:#0b0e11; --bn-card:#161a1e; --bn-card2:#1e2329; --bn-line:#2b3139;
+          --bn-txt:#eaecef; --bn-sub:#848e9c; --bn-yellow:#fcd535; --bn-green:#0ecb81;
+          --bn-red:#f6465d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bn-bg); color:var(--bn-txt); margin:0; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; }
+  .bn-top { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--bn-line); position:sticky; top:0; background:var(--bn-bg); z-index:5; }
+  .bn-logo { font-weight:800; font-size:20px; letter-spacing:.5px; }
+  .bn-logo b { color:var(--bn-yellow); }
+  .bn-search { flex:1; }
+  .bn-search input { width:100%; background:var(--bn-card); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
+  .bn-addr { font-size:12px; color:var(--bn-sub); display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; max-width:100%; }
+  .bn-addr-tag { font-size:10px; color:var(--bn-sub); border:1px solid var(--border); border-radius:999px; padding:1px 8px; white-space:nowrap; }
+  .bn-copy { font-size:11px; color:#f0b90b; background:rgba(240,185,11,.08); border:1px solid rgba(240,185,11,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
+  .bn-copy:hover { background:rgba(240,185,11,.15); }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  .bn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .asset-card { background:var(--bn-card); border:1px solid var(--bn-line); border-radius:12px; padding:16px; }
+  .asset-card .sym { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--bn-sub); }
+  .asset-card .sym .tag { font-size:11px; padding:2px 8px; border-radius:10px; background:var(--bn-card2); color:var(--bn-yellow); }
+  .asset-card .val { font-size:26px; font-weight:700; margin-top:10px; word-break:break-all; }
+  .asset-card .fees { margin-top:10px; font-size:11px; color:var(--bn-sub); }
+  .bn-row { display:flex; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .bn-panel { background:var(--bn-card); border:1px solid var(--bn-line); border-radius:12px; padding:16px; flex:1; min-width:280px; }
+  .bn-panel h3 { margin:0 0 12px; font-size:15px; font-weight:600; }
+  .bn-form { display:grid; gap:10px; }
+  .bn-form label { font-size:12px; color:var(--bn-sub); }
+  .bn-form input, .bn-form select { background:var(--bn-card2); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
+  .bn-btn { background:var(--bn-yellow); color:#181a20; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+  .bn-btn:disabled { opacity:.5; cursor:not-allowed; }
+  .bn-msg { margin-top:8px; font-size:12px; min-height:16px; }
+  .ok { color:var(--bn-green); } .err { color:var(--bn-red); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { color:var(--bn-sub); text-align:left; padding:8px 6px; border-bottom:1px solid var(--bn-line); font-weight:500; }
+  td { padding:8px 6px; border-bottom:1px solid var(--bn-line); }
+  .pos { color:var(--bn-green); } .neg { color:var(--bn-red); }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--bn-sub); }
+  .bn-chip { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; background:var(--bn-card2); color:var(--bn-sub); }
+  .tacm { color:var(--bn-yellow); font-weight:600; }
+  a { color:var(--bn-yellow); text-decoration:none; }
+</style>
+
+<div class="bn-top">
+  <div class="bn-logo"><b>TAC</b> WALLET</div>
+  <div class="bn-search">
+    <form method="get" action="/wallet">
+      <input name="address" value="{{ addrParam }}" placeholder="enter tx0 address to query wallet" autocomplete="off">
+    </form>
+  </div>
+  <div class="bn-addr mono">
+      <span class="bn-addr-tag">我的地址</span>
+      <span id="myAddrText">{{ wallet.NodeAddress }}</span>
+      <button type="button" class="bn-copy" onclick="copyAddr()">複製</button>
+    </div>
+</div>
+
+<main>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <div style="font-size:13px; color:var(--bn-sub);">Assets Overview · Wallet synced to Block <span class="bn-chip">#{{ wallet.SyncedBlock }}</span></div>
+    <a href="/">← Block Explorer</a>
+  </div>
+
+  <!-- M38：訪客私鑰備份/恢復（僅未登入訪客顯示） -->
+  <div id="guestBackup" style="display:none; border:1px solid var(--bn-line); border-radius:10px; padding:12px; margin-bottom:12px; background:var(--bn-card);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--bn-yellow); font-weight:600;">訪客錢包（未登入）</span>
+      <button type="button" class="bn-copy" onclick="showBackup()">備份私鑰</button>
+    </div>
+    <div id="wifBox" style="display:none; margin-top:8px;">
+      <textarea id="wifText" readonly style="width:100%; box-sizing:border-box; min-height:64px; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;"></textarea>
+      <div style="margin-top:6px; display:flex; gap:8px;">
+        <button type="button" class="bn-copy" onclick="copyWif()">複製私鑰</button>
+        <span style="font-size:11px; color:var(--bn-sub); align-self:center;">請妥善保管，換裝置時用下方「恢復」取回同一地址</span>
+      </div>
+    </div>
+    <div style="margin-top:8px; display:flex; gap:8px;">
+      <input id="wifRestore" placeholder="paste WIF to restore guest address" autocomplete="off" style="flex:1; min-width:0; background:var(--bn-card2); color:var(--bn-text); border:1px solid var(--bn-line); border-radius:8px; padding:8px; font-size:12px; font-family:monospace;">
+      <button type="button" class="bn-copy" onclick="restoreWif()">恢復</button>
+    </div>
+  </div>
+
+  <div class="bn-grid">
+    <div class="asset-card">
+      <div class="sym"><span>TACm 原生幣</span><span class="tag">主網資產</span></div>
+      <div class="val tacm">{{ wallet.TACm }}</div>
+      <div class="fees">轉帳手續費 {{ wallet.FeeTACmBps }}bp (2%)</div>
+    </div>
+    <div class="asset-card">
+      <div class="sym"><span>TiUSD 穩定幣</span><span class="tag">1 TiUSD = 1 USDT</span></div>
+      <div class="val">{{ wallet.TiUSD }}</div>
+      <div class="fees">轉帳手續費 {{ wallet.FeeTiUSDBps }}bp (0.5%)</div>
+    </div>
+    <div class="asset-card">
+      <div class="sym"><span>USDT</span><span class="tag">估值對映</span></div>
+      <div class="val">{{ wallet.USDT }}</div>
+      <div class="fees">轉帳手續費 {{ wallet.FeeUSDTBps }}bp (1.25%)</div>
+    </div>
+  </div>
+
+  <div class="bn-row">
+    <div class="bn-panel">
+      <h3 data-i18n="wallet.transfer">站內轉帳</h3>
+      <form class="bn-form" id="tf" onsubmit="return doTransfer(event)">
+        <label>資產</label>
+        <select id="asset">
+          <option value="TACm">TACm（手續費 2%）</option>
+          <option value="TIUSD" selected>TiUSD（手續費 0.5%）</option>
+          <option value="USDT">USDT（手續費 1.25%）</option>
+        </select>
+        <label>付款地址</label>
+        <input id="from" value="{{ address }}" autocomplete="off">
+        <label>收款地址</label>
+        <input id="to" placeholder="tx0 address" autocomplete="off">
+        <label>金額</label>
+        <input id="amount" placeholder="0.00" autocomplete="off">
+        <label>備註</label>
+        <input id="memo" placeholder="optional" autocomplete="off">
+        <button class="bn-btn" type="submit">確認轉帳</button>
+        <div class="bn-msg" id="tfmsg"></div>
+      </form>
+    </div>
+    <script>
+      function copyAddr() {
+        var t = document.getElementById('myAddrText');
+        if (!t) return;
+        var txt = t.textContent.trim();
+        function done(ok){ var b=document.querySelector('.bn-copy'); if(b){ b.textContent = ok ? '已複製' : '複製失敗'; setTimeout(function(){ b.textContent='複製'; }, 1500); } }
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(function(){ done(true); }).catch(function(){ done(false); }); }
+        else { var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(true); }catch(e){ done(false); } document.body.removeChild(ta); }
+      }
+      // M37：訪客獨立地址覆寫——未登入且未指定查詢地址時，改用本機訪客地址（首次由伺服器生成），
+      // 不再共用節點地址；登入會員由伺服器渲染為其鏈上錢包地址（不覆寫）。
+      (function () {
+        var waddr = "{{ address }}";
+        var qAddr = new URLSearchParams(location.search).get('address');
+        if (!qAddr) {
+          var applyGuest = function (a) {
+            if (!a) return;
+            waddr = a;
+            var ft = document.getElementById('myAddrText'); if (ft) ft.textContent = a;
+            var fm = document.getElementById('from'); if (fm) fm.value = a;
+            fresh();
+          };
+          var ensureGuest = function () {
+            var g = null; try { g = localStorage.getItem('tac_guest_addr'); } catch (e) {}
+            if (g && g.indexOf('tx0') === 0) { applyGuest(g); }
+            else { ensureGuestAddr().then(applyGuest).catch(function () {}); }
+          };
+          // 先確認登入狀態：已登入會員保留伺服器渲染（會員鏈上地址）；未登入才走訪客獨立地址。
+          fetch('/api/auth/me', { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (j && j.ok && j.logged_in) { fresh(); return; }
+              ensureGuest(); showGuestBackup();
+            }).catch(function () { ensureGuest(); showGuestBackup(); });
+        }
+        // M38：訪客私鑰備份/恢復。
+        function showGuestBackup() {
+          var gb = document.getElementById('guestBackup'); if (gb) gb.style.display = 'block';
+        }
+        window.showBackup = function () {
+          var wif = null; try { wif = localStorage.getItem('tac_guest_wif'); } catch (e) {}
+          var t = document.getElementById('wifText'); if (t) t.value = wif || '（此訪客地址為舊版生成，無可備份私鑰；新訪客首次產生時會自動保存 WIF）';
+          var b = document.getElementById('wifBox'); if (b) b.style.display = 'block';
+        };
+        window.copyWif = function () {
+          var t = document.getElementById('wifText');
+          if (t && t.value) { try { if (navigator.clipboard) navigator.clipboard.writeText(t.value); } catch (e) {} alert('已複製 WIF 私鑰，請妥善保管'); }
+        };
+        window.restoreWif = function () {
+          var i = document.getElementById('wifRestore');
+          if (!i || !i.value || !i.value.trim()) { alert('請先貼上 WIF 私鑰'); return; }
+          fetch('/api/guest/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wif: i.value.trim() }) })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (j && j.ok && j.address) {
+                try { localStorage.setItem('tac_guest_addr', j.address); localStorage.setItem('tac_guest_wif', i.value.trim()); } catch (e) {}
+                alert('恢復成功：' + j.address); location.reload();
+              } else { alert('WIF 無效，無法恢復'); }
+            }).catch(function () { alert('恢復失敗，請稍後再試'); });
+        };
+        function fresh() {
+          var u = (typeof base !== 'undefined' && base) ? base : window.location.origin;
+          fetch(u + '/api/wallet/info?address=' + encodeURIComponent(waddr), { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (j) {
+              if (!j) return;
+              if (j.ok === false) return;
+              var els = document.querySelectorAll('.bn-grid .val');
+              if (els[0]) els[0].textContent = j.tacm;
+              if (els[1]) els[1].textContent = j.tiusd;
+              if (els[2]) els[2].textContent = j.usdt;
+            }).catch(function () {});
+          fetch(u + '/status', { credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
+            .then(function (st) {
+              if (st && st.block_height != null) {
+                var el = document.querySelector('.bn-chip');
+                if (el) el.textContent = '#' + st.block_height;
+              }
+            }).catch(function () {});
+        }
+        fresh();
+        setInterval(fresh, 10000);
+        fetch('/api/miners').then(function(r){ return r.json(); }).then(function(d){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='M0:'+(d.miners[0].address===d.miners[0].address)+' on:'+d.miners[0].online+' n:'+d.miners.length;
+        }).catch(function(e){ var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='ERR'; });
+        // M37：移除重複 setInterval（僅保留上方 10s 輪詢）。
+        // M36 debug：footer 顯示 pill 判定鏈
+        fetch('/api/auth/me').then(function(r){ return r.json(); }).then(function(j){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='A:'+(j.ok?'ok':'x');
+          return fetch('/status');
+        }).then(function(r){ return r.json(); }).then(function(s){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' S:'+(s.address?('Y'):'N');
+          return fetch('/api/miners');
+        }).then(function(r){ return r.json(); }).then(function(d){
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' M:'+(d.miners[0].online?'ON':'OFF');
+        }).catch(function(e){ var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='ERR:'+e.message; });
+      })();
+    </script>
+
+    <div class="bn-panel">
+      <h3>Assets Info</h3>
+      <div class="bn-note" style="background:rgba(240,185,11,.07); border:1px solid rgba(240,185,11,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
+        ・Wallet shows only <b style="color:var(--bn-yellow)">personal assets</b>; <b>Total TACm Mined &amp; TiUSD Circulation</b> are on the Mining page's Chain Overview.<br>
+        ・TiUSD is produced by <b style="color:var(--bn-yellow)">on-chain mechanism (supply-layer minting)</b> — DeFi pools / Exchange settlement auto-mint &amp; credit, <b>private issuance or burning prohibited</b>.
+      </div>
+    </div>
+  </div>
+
+  <div class="bn-panel" style="margin-top:16px;">
+    <h3 data-i18n="wallet.ledger">最近帳本流（審計分錄）</h3>
+    {% if wallet.Ledger %}
+    <div class="tbl-scroll">
+    <table>
+      <tr><th>時間</th><th>類型</th><th>資產</th><th>帳戶</th><th>變動</th><th>備註</th></tr>
+      {% for e in wallet.Ledger %}
+      <tr>
+        <td class="mono nw">{{ e.Ts|tshort }}</td>
+        <td><span class="bn-chip">{{ e.Kind }}</span></td>
+        <td class="nw">{{ e.Asset }}</td>
+        <td class="mono nw">{{ e.Account|shortaddr }}</td>
+        <td class="nw {% if e.Delta|negdelta %}neg{% else %}pos{% endif %}">{{ e.Delta }}</td>
+        <td class="mono nm">{{ e.Memo|trunc40 }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <div style="color:var(--bn-sub); font-size:13px;">暫無分錄。挖礦出塊後 coinbase 獎勵會自動入帳。</div>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+  // M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+  var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+  var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
+  function post(path, body) {
+    return fetch(base + path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(j){ return {st:r.status, j:j}; }); });
+  }
+  function show(id, cls, msg) { var el = document.getElementById(id); el.className = 'bn-msg ' + cls; el.textContent = msg; }
+  function doTransfer(ev) {
+    ev.preventDefault();
+    show('tfmsg', '', '送出中…');
+    post('/api/wallet/transfer', {
+      from: document.getElementById('from').value.trim(),
+      to: document.getElementById('to').value.trim(),
+      asset: document.getElementById('asset').value,
+      amount: document.getElementById('amount').value.trim(),
+      memo: document.getElementById('memo').value.trim()
+    }).then(function(r){
+      if (r.st === 200) { show('tfmsg', 'ok', '✅ 轉帳成功，手續費 ' + r.j.fee + ' ' + r.j.asset);
+        setTimeout(function(){ location.reload(); }, 800); }
+      else { show('tfmsg', 'err', '❌ ' + (r.j.error || '失敗')); }
+    }).catch(function(e){ show('tfmsg', 'err', '網路錯誤: ' + e); });
+    return false;
+  }
+  // M31：TiUSD 僅由鏈上機制鑄造，已移除發行/銷毀入口（供給由鏈上供給帳本管理）。
+</script>
+{% endblock %}

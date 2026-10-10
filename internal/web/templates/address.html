@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Address · {{ a.Address|shortaddr }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <a class="back" href="/">← 返回</a>
+  <h1 class="mono break-all h1-addr">{{ a.Address }}</h1>
+</div>
+
+<section class="stat-cards">
+  <div class="card">
+    <div class="card-label">可用餘額</div>
+    <div class="card-value">{{ a.Balance }} <small>TACM</small></div>
+  </div>
+  <div class="card">
+    <div class="card-label">交易序號 Nonce</div>
+    <div class="card-value">{{ a.Nonce }}</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>相關交易（{{ a.Transactions|length }}）</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>交易哈希</th><th>方向</th><th>對手方</th><th>金額</th><th>時間</th></tr></thead>
+    <tbody>
+    {% for t in a.Transactions %}
+      <tr>
+        <td class="mono"><a href="/tx/{{ t.Hash }}">{{ t.Hash|shortaddr }}</a></td>
+        <td>{% if t.From == a.Address %}<span class="tag out">發出</span>{% else %}<span class="tag in">收入</span>{% endif %}</td>
+        <td class="mono">{% if t.From == a.Address %}<a href="/address/{{ t.To }}">{{ t.To|shortaddr }}</a>{% else %}{% if t.From %}<a href="/address/{{ t.From }}">{{ t.From|shortaddr }}</a>{% else %}-{% endif %}{% endif %}</td>
+        <td class="amount strong">{{ t.Amount }}</td>
+        <td class="nowrap muted">{{ t.Ts|timefmt }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted center">尚無交易</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

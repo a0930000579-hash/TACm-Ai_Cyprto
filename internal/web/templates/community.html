@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}TAC Community · Feed{% endblock %}
+{% block content %}
+<style>
+  /* M31：社群採 Facebook 淺色風（背景去深色） */
+  body { background: #f0f2f5; color: #1c1e21; }
+  .container { background: transparent; }
+  .footer { background: #fff; border-top-color: #dddfe2; color: #65676b; }
+  .bottom-nav { background: rgba(255, 255, 255, 0.97); border-top-color: #dddfe2; }
+  .bottom-nav a { color: #65676b; }
+  .cm-wrap{max-width:1080px;margin:0 auto}
+  .cm-head{background:#1877f2;background:linear-gradient(135deg,#1877f2,#166fe5);border-radius:16px;padding:16px 18px;color:#fff;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .cm-head .cm-logo{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800}
+  .cm-head h2{margin:0;font-size:19px;font-weight:800}
+  .cm-head .cm-sub{font-size:12px;opacity:.85}
+  .cm-stats{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .cm-stats span{background:rgba(255,255,255,.16);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700}
+  .cm-layout{display:grid;grid-template-columns:250px 1fr 300px;gap:14px;align-items:start}
+  @media (max-width:960px){ .cm-layout{grid-template-columns:1fr} .cm-side-l{display:none} .cm-side-r{order:2} }
+  .cm-card{background:#fff;border:1px solid #dddfe2;border-radius:12px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .cm-card h3{margin:0 0 10px;font-size:14px;color:#1c1e21;display:flex;align-items:center;gap:8px;font-weight:700}
+  .cm-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;background:#e7f3ff;color:#1877f2}
+  .cm-tag.market{background:#e8f5e9;color:#1b8a3a}
+  .cm-tag.ad{background:#fff3e0;color:#e65100}
+  .cm-id{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .cm-id input{flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:9px 10px;font-size:13px;background:#f5f6f7;color:#1c1e21;font-family:ui-monospace,monospace}
+  .cm-id button{background:#1877f2;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;flex:none}
+  .cm-composer{display:flex;gap:10px}
+  .cm-composer textarea{flex:1;min-height:72px;border:1px solid #dddfe2;border-radius:10px;padding:10px 12px;font-size:14px;resize:vertical;background:#f5f6f7}
+  .cm-composer .cm-side{display:flex;flex-direction:column;gap:8px;width:130px;flex:none}
+  .cm-composer .cm-side select,.cm-composer .cm-side input{border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px;background:#fff}
+  .cm-post-btn{background:#1877f2;color:#fff;border:none;border-radius:8px;padding:10px;font-weight:700;font-size:14px;cursor:pointer}
+  .cm-post{margin-bottom:12px;padding:14px}
+  .cm-author{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .cm-ava{width:40px;height:40px;border-radius:50%;background:#1877f2;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:none}
+  .cm-author .nm{font-weight:700;font-size:14px;color:#1c1e21}
+  .cm-author .tm{font-size:11px;color:#65676b}
+  .cm-body{font-size:14px;color:#050505;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:10px}
+  .cm-price{display:inline-block;background:#e7f3ff;color:#1877f2;font-weight:800;border-radius:8px;padding:4px 10px;font-size:13px;margin-bottom:10px}
+  .cm-actions{display:flex;gap:8px;border-top:1px solid #e4e6eb;padding-top:8px}
+  .cm-act{flex:1;text-align:center;background:#f0f2f5;border:none;border-radius:8px;padding:8px 0;font-size:13px;font-weight:600;color:#65676b;cursor:pointer}
+  .cm-act.on{background:#e7f3ff;color:#1877f2}
+  .cm-comments{margin-top:8px;border-top:1px solid #e4e6eb;padding-top:8px;display:none}
+  .cm-comments.open{display:block}
+  .cm-com{margin:6px 0;font-size:13px}
+  .cm-com b{color:#1877f2;margin-right:6px}
+  .cm-comadd{display:flex;gap:6px;margin-top:8px}
+  .cm-comadd input{flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:8px 10px;font-size:13px;background:#f5f6f7}
+  .cm-comadd button{background:#1877f2;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .cm-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e4e6eb}
+  .cm-item:last-child{border-bottom:none}
+  .cm-item .it-t{flex:1;min-width:0;font-weight:700;font-size:13px;color:#1c1e21;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cm-item .it-p{font-weight:800;color:#1877f2;font-size:13px;flex:none}
+  .cm-item button{background:#e7f3ff;color:#1877f2;border:none;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;flex:none}
+  .cm-buy{position:fixed;left:0;right:0;bottom:0;top:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:70}
+  .cm-buy.open{display:flex}
+  .cm-buy .sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:18px;max-height:80vh;overflow:auto}
+  .cm-buy .sheet h3{margin:0 0 10px;font-size:16px;color:#1c1e21}
+  .cm-buy .row{font-size:13px;color:#1c1e21;padding:8px 0;border-bottom:1px solid #e4e6eb;word-break:break-all}
+  .cm-buy .row b{color:#1877f2}
+  .cm-buy .close{background:#f0f2f5;border:none;border-radius:8px;padding:10px;font-weight:700;font-size:14px;margin-top:12px;width:100%;cursor:pointer}
+  .cm-ad{background:#f0f2f5;border:1px dashed #dddfe2;border-radius:12px;padding:12px;margin-bottom:10px}
+  .cm-ad .ad-t{font-weight:800;font-size:14px;color:#1c1e21}
+  .cm-ad .ad-b{font-size:13px;color:#65676b;margin-top:4px}
+  .cm-ad .ad-m{font-size:11px;color:#1877f2;margin-top:6px;font-weight:600}
+  .cm-empty{color:#65676b;font-size:13px;text-align:center;padding:20px 0}
+  .cm-msg{font-size:12px;color:#f02849;margin-top:8px;text-align:center;min-height:14px}
+  .mono-s{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all}
+  .cm-topbtn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer}
+</style>
+
+<div class="cm-wrap">
+  <div class="cm-head">
+    <div class="cm-logo">T</div>
+    <div>
+      <h2>TAC 社群</h2>
+      <div class="cm-sub">礦機內建社群 · 動態牆／市集／廣告池</div>
+    </div>
+    <div class="cm-stats">
+      <span id="stPosts">貼文 0</span>
+      <span id="stMembers">成員 0</span>
+      <span id="stLikes">讚 0</span>
+      <span id="stAds">廣告 0</span>
+    </div>
+  </div>
+
+  <div class="cm-layout">
+    <!-- 左：個人身份 -->
+    <aside class="cm-side-l">
+      <div class="cm-card">
+        <h3>👤 我的身份</h3>
+        <div class="cm-id">
+          <input id="myAddr" placeholder="enter wallet address..." value="">
+          <button onclick="setIdentity()">切換</button>
+        </div>
+        <p style="font-size:12px;color:#65676b;margin:0;line-height:1.6">社群身分＝TAC 錢包地址（tx0 開頭）。發文、按讚、留言、市集與廣告皆以該地址記錄。</p>
+      </div>
+      <div class="cm-card" style="margin-top:12px">
+        <h3>💰 快捷入金至交易所</h3>
+        <div style="display:flex;gap:6px">
+          <input id="depAmt" type="number" min="0" placeholder="TACM" style="flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
+          <button class="cm-topbtn" style="background:#1877f2;color:#fff" onclick="depositEx()">轉入</button>
+        </div>
+        <p id="depMsg" style="font-size:12px;color:#65676b;margin:8px 0 0;word-break:break-all">—</p>
+      </div>
+    </aside>
+
+    <!-- 中：動態牆 -->
+    <section>
+      <div class="cm-card">
+        <h3>📝 發佈動態 / 商品</h3>
+        <div class="cm-composer">
+          <textarea id="postContent" placeholder="Share mining daily & ideas... (market: item description)"></textarea>
+          <div class="cm-side">
+            <select id="postKind">
+              <option value="post">動態</option>
+              <option value="market">市集商品</option>
+            </select>
+            <input id="postPrice" type="number" min="0" step="0.01" placeholder="price TACM (market)">
+            <button class="cm-post-btn" onclick="publish()">發布</button>
+          </div>
+        </div>
+        <div id="postMsg" class="cm-msg"></div>
+      </div>
+      <div id="feed" style="margin-top:12px"></div>
+    </section>
+
+    <!-- 右：市集＋廣告 -->
+    <aside class="cm-side-r">
+      <div class="cm-card">
+        <h3>🛍 市集 <span class="cm-tag market">TACM</span></h3>
+        <div id="marketList"><div class="cm-empty">載入中…</div></div>
+      </div>
+      <div class="cm-card" style="margin-top:12px">
+        <h3>📣 廣告池 <span class="cm-tag ad">Sponsored</span></h3>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input id="adTitle" placeholder="ad title" style="flex:1;min-width:0;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
+          <input id="adBudget" type="number" min="0" step="0.01" placeholder="budget TACM" style="width:86px;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px">
+        </div>
+        <input id="adBody" placeholder="ad content" style="width:100%;border:1px solid #dddfe2;border-radius:8px;padding:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box">
+        <button class="cm-post-btn" style="width:100%;margin-bottom:8px" onclick="createAd()">發佈廣告</button>
+        <div id="adsList"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- 市集購買底單 -->
+<div class="cm-buy" id="buySheet">
+  <div class="sheet">
+    <h3>🛍 購買商品（TACM 鏈上轉帳）</h3>
+    <div id="buyInfo"></div>
+    <button class="close" onclick="closeBuy()">關閉</button>
+  </div>
+</div>
+
+<script>
+// M31：RPC 預設同源（同埠合併模式 RPC 即 web 埠）；仍可用 ?rpc=端口 覆蓋。
+var RPC = (new URLSearchParams(location.search)).get('rpc') || location.port;
+var base = location.protocol + '//' + location.hostname + (RPC ? ':' + RPC : '');
+function get(p){ return fetch(base + p).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
+function post(p,b){ return fetch(base + p, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})}).then(function(r){ if(!r.ok) return r.json().then(function(j){throw new Error(j.error||r.status)}); return r.json(); }); }
+var me = '';
+function shortAddr(a){ if(!a) return '—'; if(a.length<=16) return a; return a.slice(0,10)+'…'+a.slice(-6); }
+function timeAgo(ts){ var d=Date.now()/1000-ts; if(d<60) return '剛剛'; if(d<3600) return Math.floor(d/60)+' 分鐘前'; if(d<86400) return Math.floor(d/3600)+' 小時前'; return Math.floor(d/86400)+' 天前'; }
+function setIdentity(){ me = document.getElementById('myAddr').value.trim(); localStorage.setItem('cm_id', me); refresh(); }
+function ensureMe(){ if(!me){ me=(localStorage.getItem('cm_id')||''); document.getElementById('myAddr').value=me; if(!me){ document.getElementById('postMsg').textContent='請先輸入你的錢包地址（tx0 開頭）'; return false; } } return true; }
+
+function renderFeed(items){
+  var el = document.getElementById('feed');
+  if(!items.length){ el.innerHTML='<div class="cm-card cm-empty">尚無動態，來發第一篇吧！</div>'; return; }
+  el.innerHTML = items.map(function(p){
+    var market = p.kind==='market';
+    var likeOn = '';
+    var price = p.price_tacm ? '<div class="cm-price">'+Number(p.price_tacm).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM</div>' : '';
+    var buyBtn = market ? '<button class="cm-act" onclick="buyIntent('+p.id+')">🛍 購買</button>' : '';
+    return '<div class="cm-card cm-post">'+
+      '<div class="cm-author"><div class="cm-ava">'+(p.author||p.address||'T').slice(0,1).toUpperCase()+'</div>'+
+      '<div><div class="nm">'+shortAddr(p.address)+'</div><div class="tm">'+timeAgo(p.created_at)+' · <span class="cm-tag'+(market?' market':'')+'">'+(market?'市集':'動態')+'</span></div></div></div>'+
+      '<div class="cm-body">'+escapeHtml(p.content||'')+'</div>'+
+      (market?price:'')+
+      '<div class="cm-actions">'+
+      '<button class="cm-act" onclick="likePost('+p.id+',this)">👍 讚 ('+p.likes+')</button>'+
+      '<button class="cm-act" onclick="toggleComments('+p.id+',this)">💬 留言 ('+p.comments+')</button>'+
+      buyBtn+
+      '</div>'+
+      '<div class="cm-comments" id="cmt-'+p.id+'"><div id="cmtlist-'+p.id+'"></div>'+
+      '<div class="cm-comadd"><input id="cmtin-'+p.id+'" placeholder="Write a comment..."><button onclick="addComment('+p.id+')">送出</button></div></div>'+
+      '</div>';
+  }).join('');
+}
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function publish(){
+  if(!ensureMe()) return;
+  var kind = document.getElementById('postKind').value;
+  var content = document.getElementById('postContent').value.trim();
+  var price = parseFloat(document.getElementById('postPrice').value||'0');
+  if(!content){ document.getElementById('postMsg').textContent='內容不可為空'; return; }
+  if(kind==='market' && !(price>0)){ document.getElementById('postMsg').textContent='市集請填價格'; return; }
+  post('/api/community/post', {address:me, kind:kind, content:content, price_tacm:(kind==='market'?price:null)})
+    .then(function(){ document.getElementById('postContent').value=''; document.getElementById('postPrice').value=''; document.getElementById('postMsg').textContent=''; refresh(); })
+    .catch(function(e){ document.getElementById('postMsg').textContent='發布失敗：'+e; });
+}
+function likePost(id, btn){
+  if(!ensureMe()) return;
+  post('/api/community/post/'+id+'/like', {address:me}).then(function(){ refresh(); }).catch(function(e){ alert('按讚失敗：'+e); });
+}
+function toggleComments(id){
+  var box = document.getElementById('cmt-'+id);
+  box.classList.toggle('open');
+  if(box.classList.contains('open')) loadComments(id);
+}
+function loadComments(id){
+  get('/api/community/post/'+id+'/comments').then(function(d){
+    var el = document.getElementById('cmtlist-'+id);
+    el.innerHTML = (d.items||[]).map(function(c){ return '<div class="cm-com"><b>'+shortAddr(c.address)+'</b>'+escapeHtml(c.body)+'</div>'; }).join('') || '<div class="cm-com" style="color:#65676b">尚無留言</div>';
+  }).catch(function(){});
+}
+function addComment(id){
+  if(!ensureMe()) return;
+  var body = document.getElementById('cmtin-'+id).value.trim();
+  if(!body) return;
+  post('/api/community/post/'+id+'/comments', {address:me, body:body}).then(function(){ loadComments(id); document.getElementById('cmtin-'+id).value=''; refresh(); }).catch(function(e){ alert('留言失敗：'+e); });
+}
+function renderMarket(items){
+  var el = document.getElementById('marketList');
+  el.innerHTML = (items||[]).map(function(p){
+    var soldTag = p.sold ? '<span class="cm-tag sold">已售出</span>' : '';
+    var btn = p.sold ? '<button class="cm-act" disabled>已售出</button>' : '<button class="cm-act" onclick="buyIntent('+p.id+')">🛍 購買</button>';
+    return '<div class="cm-item"><div class="it-t">'+escapeHtml((p.content||'').split('\n')[0])+' '+soldTag+'</div>'+
+      '<div class="it-p">'+Number(p.price_tacm||0).toLocaleString('en-US',{maximumFractionDigits:4})+'</div>'+
+      btn+'</div>';
+  }).join('') || '<div class="cm-empty">市集尚無商品</div>';
+}
+function buyIntent(id){
+  if(!ensureMe()) return;
+  get('/api/community/market/'+id+'/buy-intent?address='+encodeURIComponent(me)).then(function(d){
+    document.getElementById('buySheet').classList.add('open');
+    document.getElementById('buyInfo').innerHTML =
+      '<div class="row">商品 ID：<b>#'+id+'</b></div>'+
+      '<div class="row">賣家地址：<b class="mono-s">'+d.to+'</b></div>'+
+      '<div class="row">金額：<b>'+Number(d.amount_tacm).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM</b></div>'+
+      '<div class="row">鏈上費（2%）：<b>'+Number(d.fee_tacm||0).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM</b></div>'+
+      '<div class="row">合計：<b>'+(Number(d.amount_tacm)+Number(d.fee_tacm||0)).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM</b></div>'+
+      '<div class="row">備註：<b class="mono-s">'+d.memo+'</b></div>'+
+      '<button class="cm-act cm-buybtn" onclick="confirmBuy('+id+')">✅ 確認付款（一鍵轉帳）</button>'+
+      '<div class="row" id="buyResult"></div>';
+  }).catch(function(e){ alert('購買意向失敗：'+e); });
+}
+function confirmBuy(id){
+  var btn = document.querySelector('#buySheet .cm-buybtn');
+  if(btn){ btn.disabled=true; btn.textContent='處理中…'; }
+  post('/api/community/market/'+id+'/buy', {address:me}).then(function(d){
+    document.getElementById('buyResult').innerHTML =
+      '<div class="ok">✅ 付款成功　實付 '+Number(d.fee_tacm||0).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM 鏈上費（已入資金池）</div>'+
+      '<div class="row">賣家：<b class="mono-s">'+d.to+'</b></div>'+
+      '<div class="row">memo：<b class="mono-s">'+d.memo+'</b></div>';
+    setTimeout(refresh, 600);
+  }).catch(function(e){
+    document.getElementById('buyResult').innerHTML='<div class="err">❌ '+e+'</div>';
+    if(btn){ btn.disabled=false; btn.textContent='✅ 確認付款（一鍵轉帳）'; }
+  });
+}
+function closeBuy(){ document.getElementById('buySheet').classList.remove('open'); }
+function renderAds(items){
+  var el = document.getElementById('adsList');
+  el.innerHTML = (items||[]).map(function(a){
+    var st = a.status === 'active' ? '<span class="cm-tag live">投放中</span>' : '<span class="cm-tag">待付款</span>';
+    var payBtn = (a.status !== 'active' && a.address === me) ? '<button class="cm-act" onclick="payAd('+a.id+')">💳 付款投放</button>' : '';
+    return '<div class="cm-ad"><div class="ad-t">'+escapeHtml(a.title)+' '+st+'</div>'+
+      (a.body?'<div class="ad-b">'+escapeHtml(a.body)+'</div>':'')+
+      '<div class="ad-m">Sponsored · 預算 '+Number(a.budget_tacm).toLocaleString('en-US',{maximumFractionDigits:4})+' TACM · '+shortAddr(a.address)+'</div>'+
+      (payBtn?('<div class="cm-actions">'+payBtn+'</div>'):'')+'</div>';
+  }).join('') || '<div class="cm-empty">尚無廣告</div>';
+}
+function payAd(id){
+  if(!ensureMe()) return;
+  if(!confirm('確認支付廣告預算（TACM 全額入資金池）並開始投放？')) return;
+  post('/api/community/ads/'+id+'/pay', {address:me}).then(function(d){
+    alert('✅ 廣告已投放（ID #'+d.ad_id+'，'+d.amount_tacm+' TACM 入資金池）');
+    refresh();
+  }).catch(function(e){ alert('付款失敗：'+e); });
+}
+function createAd(){
+  if(!ensureMe()) return;
+  var title = document.getElementById('adTitle').value.trim();
+  var budget = parseFloat(document.getElementById('adBudget').value||'0');
+  var body = document.getElementById('adBody').value.trim();
+  if(!title || !(budget>0)){ alert('請填寫廣告標題與預算'); return; }
+  post('/api/community/ads/create', {address:me, title:title, body:body, budget_tacm:budget}).then(function(d){
+    alert('廣告已發佈（ID #'+d.ad_id+'）。預算 '+d.amount_tacm+' TACM 請轉至 '+d.pay_to+'，備註：'+d.memo);
+    document.getElementById('adTitle').value=''; document.getElementById('adBody').value=''; document.getElementById('adBudget').value='';
+    refresh();
+  }).catch(function(e){ alert('發佈失敗：'+e); });
+}
+function depositEx(){
+  if(!ensureMe()) return;
+  var amt = document.getElementById('depAmt').value.trim();
+  if(!(parseFloat(amt)>0)){ document.getElementById('depMsg').textContent='請輸入金額'; return; }
+  post('/api/community/transfer/exchange', {address:me, amount:amt}).then(function(d){
+    document.getElementById('depMsg').textContent='已轉入交易所 '+d.amount+' TACM（鏈上費 '+d.chain_fee+'）';
+  }).catch(function(e){ document.getElementById('depMsg').textContent='轉入失敗：'+e; });
+}
+
+function refresh(){
+  Promise.all([get('/api/community/feed'), get('/api/community/market'), get('/api/community/ads'), get('/api/community/stats')])
+    .then(function(rs){
+      renderFeed(rs[0].items||[]);
+      renderMarket(rs[1].items||[]);
+      renderAds(rs[2].items||[]);
+      var s = rs[3].stats;
+      document.getElementById('stPosts').textContent='貼文 '+s.posts;
+      document.getElementById('stMembers').textContent='成員 '+s.members;
+      document.getElementById('stLikes').textContent='讚 '+s.likes;
+      document.getElementById('stAds').textContent='廣告 '+s.ads;
+    }).catch(function(e){ document.getElementById('postMsg').textContent='社群資料載入失敗（'+base+'）：'+e; });
+}
+
+get('/status').then(function(st){
+  if(!localStorage.getItem('cm_id')){ me = st.address||''; document.getElementById('myAddr').value=me; }
+  else { me = localStorage.getItem('cm_id'); document.getElementById('myAddr').value=me; }
+  refresh();
+}).catch(function(){ refresh(); });
+</script>
+{% endblock %}
