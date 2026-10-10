@@ -187,11 +187,17 @@ func TestP2PLedgerConsistency(t *testing.T) {
 		if err := st.RegisterMiner(a, 1, 1); err != nil {
 			t.Fatal(err)
 		}
-		if err := st.SetActiveMiner(a, true); err != nil {
+		// M60：開機＝鏈上 hb:on（取代本地 SetActiveMiner）——瓜分只認鏈上在線視角。
+		hr, err := st.MinerHashrate(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := anchor.n.SubmitHeartbeat(a, true, hr); err != nil {
 			t.Fatal(err)
 		}
 	}
-	waitHeight(t, anchor.n, 6, 15*time.Second)
+	// 等 hb:on 進塊並讓瓜分生效（高度 ≥ 8，確保窗口內含瓜分塊）。
+	waitHeight(t, anchor.n, 8, 20*time.Second)
 
 	f := startFullNode(t, "fol", []string{anchor.url}, true, "")
 	// 等 follower 至少追到 6（與錨點同一條鏈的核心區塊）。
@@ -262,5 +268,70 @@ func TestP2PLedgerConsistency(t *testing.T) {
 	}
 	if want := new(big.Int).Mul(perBlock, big.NewInt(fh)); fm.Cmp(want) != 0 {
 		t.Fatalf("follower 總產出≠高度×10: %s vs %d×10", fm, fh)
+	}
+}
+
+// TestFollowerMinerOnChain：M60「開機狀態上鏈」核心場景——在 follower 端註冊並開機的礦工，
+// 透過鏈上 hb:on 交易（follower 代簽廣播）讓錨點出塊時把它算入 coinbase 瓜分；
+// 同步後兩節點的「鏈上在線礦工視角」、礦工餘額完全一致——對應「節點上有 1 個礦工＋
+// 錨點上有 3 個礦工＝全網 4 個礦工、任何入口看到總人數一致」。
+func TestFollowerMinerOnChain(t *testing.T) {
+	anchor := startFullNode(t, "anc", nil, false, "")
+	f := startFullNode(t, "fol", []string{anchor.url}, true, "")
+	waitHeight(t, f.n, 4, 25*time.Second)
+
+	kp, _ := crypto.GenerateKeyPair()
+	minerAddr, _ := kp.Address()
+	fst := f.n.Wallet().Store()
+	if err := fst.RegisterMiner(minerAddr, 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	hr, err := fst.MinerHashrate(minerAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// follower 節點代簽 hb:on（入 follower mempool + P2P 廣播 → 錨點打包上鏈）。
+	if _, err := f.n.SubmitHeartbeat(minerAddr, true, hr); err != nil {
+		t.Fatal(err)
+	}
+	// 等 hb 進塊並累積 ≥2 塊瓜分。
+	waitHeight(t, anchor.n, 10, 25*time.Second)
+	waitHeight(t, f.n, 10, 30*time.Second)
+
+	// 兩節點鏈上在線視角一致（hb 視角，取代各節點本地 SQL）。
+	aAddrs, aTotal, _ := anchor.n.OnChainMiners(60)
+	fAddrs, fTotal, _ := f.n.OnChainMiners(60)
+	if len(aAddrs) != 1 || aAddrs[0] != minerAddr || aTotal != hr {
+		t.Fatalf("anchor 鏈上在線視角錯誤: %v total=%d want %s %d", aAddrs, aTotal, minerAddr, hr)
+	}
+	if len(fAddrs) != 1 || fAddrs[0] != minerAddr || fTotal != hr {
+		t.Fatalf("follower 鏈上在線視角錯誤: %v total=%d want %s %d", fAddrs, fTotal, minerAddr, hr)
+	}
+
+	// 礦工餘額＝鏈上瓜分累計，兩節點一致。
+	ab, _ := parseBal(anchor.n.DB().GetBalance(minerAddr))
+	fb, _ := parseBal(f.n.DB().GetBalance(minerAddr))
+	if ab <= 0 || fb <= 0 {
+		t.Fatalf("礦工未收到瓜分: anchor=%g follower=%g", ab, fb)
+	}
+	if math.Abs(ab-fb) > 1e-6 {
+		t.Fatalf("礦工餘額不一致: anchor=%g follower=%g", ab, fb)
+	}
+
+	// 關機上鏈：先停伺服器排程（active=false，30s 心跳循環不再續發 hb:on），再發 hb:off；
+	// 對應產品端 /api/miner/stop（StopMiner + SubmitHeartbeat(off)）。
+	if err := fst.SetActiveMiner(minerAddr, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.n.SubmitHeartbeat(minerAddr, false, 0); err != nil {
+		t.Fatal(err)
+	}
+	// 等 off 交易進塊（錨點/追隨者各前進 2 塊）。
+	waitHeight(t, anchor.n, anchor.n.DB().GetTipHeight()+2, 20*time.Second)
+	waitHeight(t, f.n, f.n.DB().GetTipHeight()+2, 25*time.Second)
+	_, aTotal2, _ := anchor.n.OnChainMiners(60)
+	_, fTotal2, _ := f.n.OnChainMiners(60)
+	if aTotal2 != 0 || fTotal2 != 0 {
+		t.Fatalf("關機後仍顯示在線: anchor=%d follower=%d", aTotal2, fTotal2)
 	}
 }

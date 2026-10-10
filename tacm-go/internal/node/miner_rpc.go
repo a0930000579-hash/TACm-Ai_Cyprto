@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
-	"strconv"
 
 	"tacm/internal/wallet"
 )
@@ -56,7 +55,7 @@ func (s *RPCServer) handleMinerStart(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "參數解析失敗: "+err.Error())
 		return
 	}
-	// 開機＝註冊（固定算力）＋啟用排程＋立即心跳（訊號即時轉綠）。
+	// 開機＝註冊（固定算力）＋啟用排程＋鏈上 hb:on（M60：開機狀態上鏈，全網一致在線）。
 	if err := s.node.walletSvc.Store().RegisterMiner(req.Address, 0, 0); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -65,7 +64,17 @@ func (s *RPCServer) handleMinerStart(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "active": true})
+	hr, err := s.node.walletSvc.Store().MinerHashrate(req.Address)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	txHash, err := s.node.SubmitHeartbeat(req.Address, true, hr)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "開機上鏈失敗: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "active": true, "tx_hash": txHash})
 }
 
 // handleMinerTick POST /api/miner/tick — 礦機心跳。
@@ -101,7 +110,13 @@ func (s *RPCServer) handleMinerStop(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "status": "offline"})
+	// M60：關機狀態也上鏈（hb:off）——全網立即停止把該礦工算入瓜分。
+	txHash, err := s.node.SubmitHeartbeat(req.Address, false, 0)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "關機上鏈失敗: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": req.Address, "status": "offline", "tx_hash": txHash})
 }
 
 // handleMiners GET /api/miners — 全部礦機＋在線統計。
@@ -135,37 +150,19 @@ func (s *RPCServer) handleMiners(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// onChainMinerSplits 從鏈上反推「全網在線礦工瓜分視角」（最近 window 塊的 coinbase 瓜分）：
-// 收款人（非 reward_pool、非空）即鏈上實際瓜分到獎勵的礦工；share 為瓜分額換算的等效算力
-// （每台標稱 5M＝1vCPU×1M + 2vGPU×2M），佔比即算力佔比。任何節點同步同一條鏈結果一致。
+// onChainMinerSplits 從鏈上反推「全網在線礦工視角」（最近 window 塊的 hb 交易）：
+// hb:on 的收款人即鏈上在線礦工；share 為其 hb 交易聲明的真實算力（算力佔比＝瓜分佔比）。
+// 取代 M58「掃 coinbase 收款人×標稱 5M」的近似：剛開機尚未收到瓜分的礦工也正確顯示。
+// 任何節點同步同一條鏈結果一致。
 func (s *RPCServer) onChainMinerSplits(window int64) []map[string]any {
-	tip := s.node.DB().GetTipHeight()
-	start := tip - window + 1
-	if start < 1 {
-		start = 1
+	states, err := s.node.onChainOnlineMiners(window)
+	if err != nil {
+		return []map[string]any{}
 	}
-	shares := map[string]float64{}
-	var total float64
-	for h := start; h <= tip; h++ {
-		txs, err := s.node.DB().GetTransactionsByBlock(h)
-		if err != nil {
-			continue
-		}
-		for _, tx := range txs {
-			if tx.FromAddr == "" && tx.ToAddr != "" && tx.ToAddr != wallet.RewardPoolAddr {
-				if v, err := strconv.ParseFloat(tx.Amount, 64); err == nil {
-					shares[tx.ToAddr] += v
-					total += v
-				}
-			}
-		}
-	}
-	n := len(shares)
-	out := make([]map[string]any, 0, n)
-	if n > 0 && total > 0 {
-		nominal := float64(n) * 5e6 // 每台標稱 5M（1vCPU×1M + 2vGPU×2M）
-		for a, v := range shares {
-			out = append(out, map[string]any{"address": a, "share": v / total * nominal})
+	out := make([]map[string]any, 0, len(states))
+	for addr, hr := range states {
+		if hr > 0 {
+			out = append(out, map[string]any{"address": addr, "share": hr})
 		}
 	}
 	return out

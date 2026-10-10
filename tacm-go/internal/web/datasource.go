@@ -193,31 +193,17 @@ func (d *nodeDS) ChainStats() ChainStatsView {
 	return out
 }
 
-// OnChainMiners 從鏈上反推「全網在線礦工」：掃鏈頂回溯 window 塊的 coinbase 瓜分交易
-// （收款人非 reward_pool、非空），收集唯一礦工地址與等效算力總和。返回結果只依賴已同步
-// 的區塊，因此任何節點看到的礦工集合與總算力都一致。
+// OnChainMiners 從鏈上反推「全網在線礦工」：掃鏈頂回溯 window 塊的 hb（心跳）交易
+// （hb:on 的收款人＝在線礦工），收集唯一礦工地址與真實算力總和。
+// M60：取代 M59 的「掃 coinbase 收款人×標稱 5M」近似——hb 交易攜帶礦工聲明的真實算力，
+// 且剛開機尚未收到瓜分的礦工也正確計入。結果只依賴已同步區塊，任何節點看到的
+// 礦工集合與總算力都一致。
 func (d *nodeDS) OnChainMiners(window int64) ([]string, float64) {
-	tip := d.n.DB().GetTipHeight()
-	start := tip - window + 1
-	if start < 1 {
-		start = 1
+	addrs, total, err := d.n.OnChainMiners(window)
+	if err != nil {
+		return nil, 0
 	}
-	seen := map[string]bool{}
-	var addrs []string
-	for h := start; h <= tip; h++ {
-		txs, err := d.n.DB().GetTransactionsByBlock(h)
-		if err != nil {
-			continue
-		}
-		for _, tx := range txs {
-			if tx.FromAddr == "" && tx.ToAddr != "" && tx.ToAddr != wallet.RewardPoolAddr && !seen[tx.ToAddr] {
-				seen[tx.ToAddr] = true
-				addrs = append(addrs, tx.ToAddr)
-			}
-		}
-	}
-	// 等效算力總和：每台標稱 5M（1vCPU×1M + 2vGPU×2M）。
-	return addrs, float64(len(addrs)) * 5e6
+	return addrs, float64(total)
 }
 
 func (d *nodeDS) Status() StatusView {

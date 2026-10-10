@@ -87,11 +87,15 @@ func TestL2RollupEndToEnd(t *testing.T) {
 	defer n.Close()
 
 	// M58：coinbase 瓜分寫入區塊——無「開機」礦工時全數入池；模擬「節點開機挖礦」，
-	// 讓節點地址收到 88% 瓜分，以支付 L1 提交費。
+	// 讓節點地址收到 88% 瓜分，以支付 L1 提交費。M60：開機＝鏈上 hb:on。
 	if err := n.walletSvc.Store().RegisterMiner(n.nodeAddress, 1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := n.walletSvc.Store().SetActiveMiner(n.nodeAddress, true); err != nil {
+	hr, err := n.walletSvc.Store().MinerHashrate(n.nodeAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := n.SubmitHeartbeat(n.nodeAddress, true, hr); err != nil {
 		t.Fatal(err)
 	}
 

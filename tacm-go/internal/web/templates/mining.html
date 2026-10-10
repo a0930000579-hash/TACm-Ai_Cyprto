@@ -244,12 +244,12 @@ function refresh(){
 
 function fmtTacmRaw(v){ var n=parseFloat(v); if(isNaN(n)) return '—'; return n.toLocaleString('en-US',{maximumFractionDigits:6}) + ' TACm'; }
 function startMining(){
-  // M33：開機＝伺服器端排程（節點每 10s 持續心跳）——離開頁面仍繼續挖礦；訊號即時轉綠。
+  // M60：開機＝本地啟用＋鏈上 hb:on 交易（全網一致在線）；按鈕後 1-2 秒進塊，瓜分生效。
   post('/api/miner/start',{address:myAddr}).then(function(){
     mining = true;
     document.getElementById('btnStart').style.display='none';
     document.getElementById('btnStop').style.display='block';
-    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Mining Online':'在線挖礦中';
+    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Mining Online · On-chain':'在線挖礦中 · 已上鏈';
     document.getElementById('stBadge').className='mm-badge';
     document.getElementById('cfgForm').classList.add('open');
     refresh();
@@ -262,7 +262,7 @@ function stopMining(){
     document.getElementById('btnStart').style.display='block';
     document.getElementById('btnStop').style.display='none';
     document.getElementById('cfgForm').classList.remove('open');
-    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Offline':'離線';
+    document.getElementById('stBadge').textContent = (window.TAC_I18N&&TAC_I18N.cur()==='en')?'Offline · On-chain':'離線 · 已上鏈';
     document.getElementById('stBadge').className='mm-badge off';
     refresh();
     try { window.dispatchEvent(new CustomEvent('tac-pill-sync')); } catch (e) {}

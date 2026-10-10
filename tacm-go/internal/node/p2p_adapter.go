@@ -97,6 +97,10 @@ func (h *p2pHost) OnIncomingBlock(b *chaindb.Block, txs []chaindb.Transaction) e
 	if err := n.db.InsertBlock(b, txs); err != nil {
 		return err
 	}
+	// 與本地出塊（produceBlock）一致：新塊入庫後清空 pending nonce，
+	// db.GetNonce 已含全部已入塊交易——否則跟隨節點後續代簽交易的 nonce
+	// 會疊加未清除的 pending 計數，與出塊節點（已重置）的期望不一致而被拒絕。
+	n.resetPendingTx()
 	// 在本地執行外來塊的合約交易，部署/更新 code/storage。
 	if err := n.executeBlockContracts(txs); err != nil {
 		return err

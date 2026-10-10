@@ -473,30 +473,20 @@ func (n *Node) Start() {
 	go n.minerHeartbeatLoop()
 }
 
-// minerHeartbeatLoop M33：伺服器端礦機排程——每 10s 對所有已「開機」的礦工持續心跳，
-// 離開頁面仍繼續挖礦；「開機/關機」由 /api/miner/start|stop 控制（訊號隨開關即時轉換）。
+// minerHeartbeatLoop M60：伺服器端礦機排程——每 30s 對所有已「開機」的礦工續發
+// 鏈上 hb:on 心跳交易（取代 M33 的純本地 TickMiner）：離開頁面仍持續挖礦，
+// 且「在線狀態」寫上鏈，全網任何節點看到同一組在線礦工。
+// 「開機/關機」由 /api/miner/start|stop 控制（開機即發 hb:on、關機即發 hb:off）。
 func (n *Node) minerHeartbeatLoop() {
 	defer n.wg.Done()
-	t := time.NewTicker(10 * time.Second)
+	t := time.NewTicker(hbRefresh)
 	defer t.Stop()
 	for {
 		select {
 		case <-n.stopCh:
 			return
 		case <-t.C:
-			if n.walletSvc == nil {
-				continue
-			}
-			active, err := n.walletSvc.Store().ActiveMiners()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[miner-heartbeat] %v\n", err)
-				continue
-			}
-			for _, a := range active {
-				if err := n.walletSvc.Store().TickMiner(a); err != nil {
-					fmt.Fprintf(os.Stderr, "[miner-heartbeat] tick %s: %v\n", a, err)
-				}
-			}
+			n.submitActiveHeartbeats()
 		}
 	}
 }
@@ -805,10 +795,13 @@ func (n *Node) produceBlock() error {
 		}
 		var splits []chaindb.CoinbaseSplit
 		if n.walletSvc != nil {
-			if sps, err := n.walletSvc.Store().OnlineMinerSplits(time.Now().Unix()); err == nil {
-				for _, sp := range sps {
-					if v := sp.Share.Int64(); v > 0 {
-						splits = append(splits, chaindb.CoinbaseSplit{Address: sp.Address, Share: v})
+			// M60：瓜分明細以「鏈上 heartbeat 視角」為準（取代各節點本地 SQL OnlineMinerSplits）：
+			// 任何節點開機的礦工 hb:on 上鏈後，全網出塊者都把它算入瓜分；hb:off/過期即停。
+			// 結果只依賴已同步區塊 → 錨點/節點瓜分完全一致，不再有入口差異。
+			if states, err := n.onChainOnlineMiners(hbWindow); err == nil {
+				for addr, hr := range states {
+					if hr > 0 {
+						splits = append(splits, chaindb.CoinbaseSplit{Address: addr, Share: hr})
 					}
 				}
 			}

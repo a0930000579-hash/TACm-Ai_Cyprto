@@ -150,12 +150,16 @@ func TestWalletSyncChainTx(t *testing.T) {
 	}
 	bobAddr := mustAddr(t, bobKP)
 	// M58：coinbase 瓜分寫入區塊——無開機礦工時全數入池，節點地址鏈上無餘額；
-	// 模擬「節點開機挖礦」：註冊節點地址為礦工並開機，coinbase 88% 按算力瓜分給它。
+	// 模擬「節點開機挖礦」：註冊節點地址為礦工並發鏈上 hb:on（M60），coinbase 88% 按算力瓜分給它。
 	st := n.Wallet().Store()
 	if err := st.RegisterMiner(n.nodeAddress, 1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.SetActiveMiner(n.nodeAddress, true); err != nil {
+	hr, err := st.MinerHashrate(n.nodeAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := n.SubmitHeartbeat(n.nodeAddress, true, hr); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, func() bool {

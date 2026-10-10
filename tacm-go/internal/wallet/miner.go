@@ -5,8 +5,10 @@ package wallet
 //   按在線礦工算力占比瓜分（PoolShareBps 進獎勵池、其餘 100% 依算力分配）。
 
 import (
+	"database/sql"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 )
 
@@ -53,6 +55,24 @@ const (
 	RefCPU  = 0.01
 	RefGPU  = 0.02
 )
+
+// MinerHashrate 回傳指定地址已註冊礦機的算力（hashrate 欄位；未註冊回 0）。
+// M60：鏈上 hb 交易需要攜帶礦機算力（開機/續心跳），算力由本節點已註冊礦機表提供。
+func (s *Store) MinerHashrate(address string) (int64, error) {
+	var hr string
+	err := s.db.QueryRow(`SELECT hashrate FROM miners WHERE address=?`, address).Scan(&hr)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("wallet: 讀取礦機算力: %w", err)
+	}
+	v, err := strconv.ParseInt(hr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("wallet: 礦機算力格式錯誤: %w", err)
+	}
+	return v, nil
+}
 
 // RegisterMiner 註冊（或更新）一台礦機：算力固定 = 基礎 1vCPU+2vGPU＋推薦加成。
 // vcpu/vgpu 參數被忽略（防止手動改算力），僅為向後相容保留。
