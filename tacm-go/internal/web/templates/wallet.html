@@ -167,19 +167,19 @@
         };
         window.copyWif = function () {
           var t = document.getElementById('wifText');
-          if (t && t.value) { try { if (navigator.clipboard) navigator.clipboard.writeText(t.value); } catch (e) {} alert('已複製 WIF 私鑰，請妥善保管'); }
+          if (t && t.value) { try { if (navigator.clipboard) navigator.clipboard.writeText(t.value); } catch (e) {} alert(TAC_TE('已複製 WIF 私鑰，請妥善保管')); }
         };
         window.restoreWif = function () {
           var i = document.getElementById('wifRestore');
-          if (!i || !i.value || !i.value.trim()) { alert('請先貼上 WIF 私鑰'); return; }
+          if (!i || !i.value || !i.value.trim()) { alert(TAC_TE('請先貼上 WIF 私鑰')); return; }
           fetch('/api/guest/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wif: i.value.trim() }) })
             .then(function (r) { return r.json().catch(function () { return null; }); })
             .then(function (j) {
               if (j && j.ok && j.address) {
                 try { localStorage.setItem('tac_guest_addr', j.address); localStorage.setItem('tac_guest_wif', i.value.trim()); } catch (e) {}
-                alert('恢復成功：' + j.address); location.reload();
-              } else { alert('WIF 無效，無法恢復'); }
-            }).catch(function () { alert('恢復失敗，請稍後再試'); });
+                alert(TAC_TE('恢復成功：') + j.address); location.reload();
+              } else { alert(TAC_TE('WIF 無效，無法恢復')); }
+            }).catch(function () { alert(TAC_TE('恢復失敗，請稍後再試')); });
         };
         function fresh() {
           var u = (typeof base !== 'undefined' && base) ? base : window.location.origin;
@@ -213,10 +213,10 @@
           var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='A:'+(j.ok?'ok':'x');
           return fetch('/status');
         }).then(function(r){ return r.json(); }).then(function(s){
-          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' S:'+(s.address?('Y'):'N');
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||TAC_TE(''))+' S:'+(s.address?('Y'):'N');
           return fetch('/api/miners');
         }).then(function(r){ return r.json(); }).then(function(d){
-          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||'')+' M:'+(d.miners[0].online?'ON':'OFF');
+          var f=document.querySelector('.footer span:first-child'); if(f) f.textContent=(f.textContent||TAC_TE(''))+' M:'+(d.miners[0].online?'ON':'OFF');
         }).catch(function(e){ var f=document.querySelector('.footer span:first-child'); if(f) f.textContent='ERR:'+e.message; });
       })();
     </script>

@@ -126,7 +126,7 @@
     var el = $('paramsList');
     if (!state.params || !state.params.length) { el.innerHTML = '<div class="gov-empty">—</div>'; return; }
     el.innerHTML = state.params.map(function (p) {
-      return '<div class="gov-param-row"><div><span class="k">' + p.key + '</span><span class="d">' + (p.desc || '') + '</span></div><span class="v">' + p.value + '</span></div>';
+      return '<div class="gov-param-row"><div><span class="k">' + p.key + '</span><span class="d">' + TAC_TE(p.desc || '') + '</span></div><span class="v">' + p.value + '</span></div>';
     }).join('');
   }
 
@@ -207,7 +207,7 @@
   };
 
   window.govVote = function (id, choice) {
-    var addr = window.prompt('Your address (tx0...):');
+    var addr = window.prompt(TAC_TE('Your address (tx0...):'));
     if (!addr || !addr.trim()) return;
     var msg = $('pMsg');
     msg.className = 'gov-msg';

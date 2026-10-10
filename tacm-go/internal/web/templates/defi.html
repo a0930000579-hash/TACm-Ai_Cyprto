@@ -178,7 +178,7 @@ var me = localStorage.getItem('tac_defi_addr') || '';
 var api = (new URLSearchParams(location.search).get('rpc')) || (location.origin.replace(/:\d+$/, ':8781'));
 function esc(x){ var d=document.createElement('div'); d.textContent=(x==null?'':String(x)); return d.innerHTML; }
 function num(x){ return Number(x||0).toLocaleString('en-US',{maximumFractionDigits:6}); }
-function post(u,b){ return fetch(api+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(d){ if(!d.ok) throw new Error(d.message||(d.error||'失敗')); return d; });}); }
+function post(u,b){ return fetch(api+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(d){ if(!d.ok) throw new Error(d.message||(d.error||TAC_TE('失敗'))); return d; });}); }
 function get(u){ return fetch(api+u).then(function(r){return r.json();}); }
 function sw(p){ document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('on',t.dataset.p===p);}); document.querySelectorAll('.panel').forEach(function(x){x.classList.toggle('on',x.id==='panel-'+p);}); }
 function connect(){ me=document.getElementById('me').value.trim(); if(me) localStorage.setItem('tac_defi_addr',me); document.getElementById('topAddr').textContent=me?me.slice(0,10)+'…'+me.slice(-6):'未連接'; refresh(); }
@@ -230,10 +230,10 @@ function refresh(){
 }
 
 function addLp(){
-  if(!me){ alert('請先輸入地址'); return; }
+  if(!me){ alert(TAC_TE('請先輸入地址')); return; }
   var pid=parseInt(document.getElementById('lpPool').value||'0',10);
-  var a0=parseFloat(document.getElementById('lpA0').value||'0');
-  var a1=parseFloat(document.getElementById('lpA1').value||'0');
+  var a0=parseFloat(document.getElementById('lpA0').value||TAC_TE('0'));
+  var a1=parseFloat(document.getElementById('lpA1').value||TAC_TE('0'));
   if(!pid||a0<=0||a1<=0){ document.getElementById('lpMsg').className='bn-msg err'; document.getElementById('lpMsg').textContent='請選擇池並輸入兩種代幣數量'; return; }
   post('/api/defi/add-liquidity',{address:me,pool_id:pid,amount0:a0,amount1:a1}).then(function(d){
     document.getElementById('lpMsg').className='bn-msg ok'; document.getElementById('lpMsg').textContent='✅ 添加成功 · 獲得 LP '+num(d.lp_amount);
@@ -242,32 +242,32 @@ function addLp(){
 }
 function claim(id){
   if(!me) return;
-  post('/api/defi/claim-reward/'+id,{address:me}).then(function(d){ alert('✅ 已領取 '+num(d.reward)+' '+d.token); refresh(); }).catch(function(e){ alert('✕ '+e.message); });
+  post('/api/defi/claim-reward/'+id,{address:me}).then(function(d){ alert(TAC_TE('✅ 已領取 ')+num(d.reward)+' '+d.token); refresh(); }).catch(function(e){ alert('✕ '+TAC_TE(e.message)); });
 }
 function removeLp(id,all){
   if(!me) return;
-  var amt=prompt('移除 LP 數量（最多 '+all+'）：', all);
+  var amt=prompt(TAC_TE('移除 LP 數量（最多 ')+all+TAC_TE('）：'), all);
   if(!amt||parseFloat(amt)<=0) return;
-  post('/api/defi/remove-liquidity',{address:me,position_id:id,lp_amount:parseFloat(amt)}).then(function(d){ alert('✅ 已移除 · 贖回 '+num(d.amount0)+' ＋ '+num(d.amount1)); refresh(); }).catch(function(e){ alert('✕ '+e.message); });
+  post('/api/defi/remove-liquidity',{address:me,position_id:id,lp_amount:parseFloat(amt)}).then(function(d){ alert(TAC_TE('✅ 已移除 · 贖回 ')+num(d.amount0)+' ＋ '+num(d.amount1)); refresh(); }).catch(function(e){ alert('✕ '+TAC_TE(e.message)); });
 }
 function lendDep(){
   if(!me) return;
-  var a=document.getElementById('lendAsset').value, amt=parseFloat(document.getElementById('lendAmt').value||'0');
+  var a=document.getElementById('lendAsset').value, amt=parseFloat(document.getElementById('lendAmt').value||TAC_TE('0'));
   if(!a||amt<=0){ document.getElementById('lendMsg').className='bn-msg err'; document.getElementById('lendMsg').textContent='請選擇資產並輸入金額'; return; }
   post('/api/defi/deposit',{address:me,asset:a,amount:amt}).then(function(d){ document.getElementById('lendMsg').className='bn-msg ok'; document.getElementById('lendMsg').textContent='✅ 存款成功 '+num(d.amount)+' '+a; refresh(); })
     .catch(function(e){ document.getElementById('lendMsg').className='bn-msg err'; document.getElementById('lendMsg').textContent='✕ '+e.message; });
 }
 function lendWd(){
   if(!me) return;
-  var a=document.getElementById('lendAsset').value, amt=parseFloat(document.getElementById('lendAmt').value||'0');
+  var a=document.getElementById('lendAsset').value, amt=parseFloat(document.getElementById('lendAmt').value||TAC_TE('0'));
   if(!a||amt<=0){ document.getElementById('lendMsg').className='bn-msg err'; document.getElementById('lendMsg').textContent='請選擇資產並輸入金額'; return; }
   post('/api/defi/withdraw',{address:me,asset:a,amount:amt}).then(function(d){ document.getElementById('lendMsg').className='bn-msg ok'; document.getElementById('lendMsg').textContent='✅ 取款成功 '+num(d.amount)+' '+a; refresh(); })
     .catch(function(e){ document.getElementById('lendMsg').className='bn-msg err'; document.getElementById('lendMsg').textContent='✕ '+e.message; });
 }
 function doBorrow(){
   if(!me) return;
-  var ca=document.getElementById('colAsset').value, camt=parseFloat(document.getElementById('colAmt').value||'0');
-  var ba=document.getElementById('borrowAsset').value, bamt=parseFloat(document.getElementById('borrowAmt').value||'0');
+  var ca=document.getElementById('colAsset').value, camt=parseFloat(document.getElementById('colAmt').value||TAC_TE('0'));
+  var ba=document.getElementById('borrowAsset').value, bamt=parseFloat(document.getElementById('borrowAmt').value||TAC_TE('0'));
   if(!ca||!ba||camt<=0||bamt<=0){ document.getElementById('borrowMsg').className='bn-msg err'; document.getElementById('borrowMsg').textContent='請填寫抵押與借款'; return; }
   post('/api/defi/borrow',{address:me,collateral_asset:ca,collateral_amount:camt,borrow_asset:ba,borrow_amount:bamt}).then(function(d){
     document.getElementById('borrowMsg').className='bn-msg ok'; document.getElementById('borrowMsg').textContent='✅ 借款成功 #'+d.loan_id+' · '+num(d.borrow_amount)+' '+ba; refresh();
@@ -275,12 +275,12 @@ function doBorrow(){
 }
 function repay(id){
   if(!me) return;
-  var amt=parseFloat(document.getElementById('repayAmt_'+id).value||'0');
-  if(amt<=0){ alert('請輸入還款金額'); return; }
+  var amt=parseFloat(document.getElementById('repayAmt_'+id).value||TAC_TE('0'));
+  if(amt<=0){ alert(TAC_TE('請輸入還款金額')); return; }
   post('/api/defi/repay',{address:me,loan_id:id,amount:amt}).then(function(d){
-    var r=d.result||{}; alert('✅ 還款成功 · '+(r.status===1?'已結清並釋放抵押品':'剩餘 '+num(r.remaining)));
+    var r=d.result||{}; alert(TAC_TE('✅ 還款成功 · ')+(r.status===1?TAC_TE('已結清並釋放抵押品'):TAC_TE('剩餘 ')+num(r.remaining)));
     refresh();
-  }).catch(function(e){ alert('✕ '+e.message); });
+  }).catch(function(e){ alert('✕ '+TAC_TE(e.message)); });
 }
 
 setMe();

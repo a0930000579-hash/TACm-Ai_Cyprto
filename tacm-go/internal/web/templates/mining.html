@@ -141,7 +141,7 @@ var WEI = 1000000000000000000;
 function fmtTacm(w){ var f = parseFloat(w)/WEI; return f.toLocaleString('en-US',{maximumFractionDigits:6}) + ' TACm'; }
 function fmtHr(h){ var n=parseFloat(h); if(n>=1e6) return (n/1e6).toFixed(2)+'M'; if(n>=1e3) return (n/1e3).toFixed(1)+'K'; return n.toFixed(0); }
 function shortAddr(a){ if(!a) return '—'; if(a.length<=16) return a; return a.slice(0,10)+'…'+a.slice(-6); }
-function copyAddr(){ if(!myAddr) return; var done=function(){ alert('地址已複製'); }; if(navigator.clipboard){ navigator.clipboard.writeText(myAddr).then(done,function(){}) } else { done(); } }
+function copyAddr(){ if(!myAddr) return; var done=function(){ alert(TAC_TE('地址已複製')); }; if(navigator.clipboard){ navigator.clipboard.writeText(myAddr).then(done,function(){}) } else { done(); } }
 
 function render(ms, splits, st){
   var me = null;
@@ -234,7 +234,7 @@ function refresh(){
       var pool = rs[2] && rs[2].tacm ? fmtTacm(rs[2].tacm) : '—';
       document.getElementById('pool').textContent = pool;
     } catch (e) {}
-    try { document.getElementById('earned').textContent = (rs[3].tacm||'0') + ' TACm'; } catch (e) {}
+    try { document.getElementById('earned').textContent = (rs[3].tacm||TAC_TE('0')) + ' TACm'; } catch (e) {}
     try {
       var c = rs[4] || {};
       document.getElementById('chainMined').textContent = c.total_mined_tacm ? fmtTacmRaw(c.total_mined_tacm) : '—';
@@ -252,7 +252,7 @@ function freshAuditLine(){
     if(a && a.ok && a.consistent){
       el.style.display='block';
       el.style.borderColor='rgba(14,203,129,.45)';
-      el.innerHTML = '🔍 <b style="color:#0ecb81">鏈上驗證：一致</b> — 審計 '+a.checked_blocks+' 塊 coinbase/pool/split 全過 · 總產出 '+a.total_mined_tacm+' TACm · 獎勵池挹注 '+a.on_chain_pool_share_tacm+' · 在線礦工 '+a.online_miners+' 台（與 /network 同源）';
+      el.innerHTML = TAC_TE('🔍 <b style="color:#0ecb81">鏈上驗證：一致</b>') + ' — ' + TAC_TE('審計 ')+a.checked_blocks+TAC_TE(' 塊 coinbase/pool/split 全過 · 總產出 ')+a.total_mined_tacm+TAC_TE(' TACm · 獎勵池挹注 ')+a.on_chain_pool_share_tacm+TAC_TE(' · 在線礦工 ')+a.online_miners+TAC_TE(' 台（與 /network 同源）');
     } else {
       el.style.display='block';
       el.style.borderColor='rgba(246,70,93,.4)';

@@ -92,7 +92,7 @@
     var consistLine = document.getElementById('consistLine');
     function render(d) {
       if (!d || !d.ok) { if (tip) tip.textContent = '無法取得全網狀態'; return; }
-      if (tip) tip.textContent = '更新於 ' + new Date().toLocaleTimeString() + '（每 10 秒自動刷新）';
+      if (tip) tip.textContent = TAC_TE('更新於 ') + new Date().toLocaleTimeString() + TAC_TE('（每 10 秒自動刷新）');
       // 本節點
       var st = d.self || {};
       setT('nSelfId', st.node_id); setT('nSelfAddr', (st.address || '').length > 14 ? st.address.slice(0,6)+'…'+st.address.slice(-4) : st.address || '—');
@@ -128,8 +128,8 @@
       var hs = all.map(function (s) { return s.status ? s.status.block_height : null; }).filter(function (v) { return v !== null && v !== undefined; });
       var uniq = {}; hs.forEach(function (h) { uniq[h] = 1; });
       var keys = Object.keys(uniq);
-      if (keys.length <= 1) { consistLine.innerHTML = '<span class="dot-ok">✓ 全網同步</span> — 所有節點鏈高一致（#' + hs[0] + '）'; }
-      else { consistLine.innerHTML = '<span class="dot-bad">⚠ 鏈高不一致</span> — 各節點：#' + hs.join(' / #') + '（等待同步或檢查節點）'; }
+      if (keys.length <= 1) { consistLine.innerHTML = '<span class="dot-ok">✓ ' + TAC_TE('全網同步') + '</span> — ' + TAC_TE('所有節點鏈高一致（#') + hs[0] + '）'; }
+      else { consistLine.innerHTML = '<span class="dot-bad">⚠ ' + TAC_TE('鏈高不一致') + '</span> — ' + TAC_TE('各節點：') + '#' + hs.join(' / #') + TAC_TE('（等待同步或檢查節點）'); }
     }
     function setT(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -189,7 +189,7 @@
           var share = parseFloat(s.share) || 0;
           rows += '<div class="rank-row"><div class="rk">'+(i+1)+'</div><div class="rkbody"><div class="ra mono">'+addr+'</div><div class="rb">算力瓜分份額 '+share.toFixed(4)+'</div></div></div>';
         });
-        document.getElementById('onMinerList').innerHTML = rows || '<div class="muted">目前無在線礦工（鏈上瓜分視角，最近 60 塊）</div>';
+        document.getElementById('onMinerList').innerHTML = rows || '<div class="muted">' + TAC_TE('目前無在線礦工（鏈上瓜分視角，最近 60 塊）') + '</div>';
       }).catch(function(){ setT('onMinerN', '—'); });
     }
     freshMiners();

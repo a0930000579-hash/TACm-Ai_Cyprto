@@ -1,8 +1,36 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M71）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M72）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M71）——交易與合約層鏈上審計（全鏈賬本重放）
+## 本版重點（M72）——全站中英完全同步化（英文為主、中文可切換）
+
+M71 之後，本版把**全站 14 個頁面**的英文模式中文殘留全部清空，並補齊前端彈窗（alert/confirm/prompt）、後端回傳訊息與動態渲染文字的雙語支援：
+
+1. **i18n 引擎強化**：`i18n.js` 新增 `TAC_TE()`（後端 message／JS 動態字串雙語轉換）、`document.title` 翻譯、`data-i18n-title/aria/placeholder` 屬性翻譯；字典依鍵長度降序匹配（長句優先），杜絕「子串半翻譯」；
+2. **動態文字全面包覆**：挖礦審計行、/network 全網一致性、鏈上在線礦工、governance 參數描述（後端中文 desc）、join 一鍵指令區塊等全部 TAC_TE 包覆；
+3. **dashboard 獨立頁補載 i18n**：`dashboard.html` 原為獨立頁面未引用 i18n.js，本版補上，全站 14 頁（含 auth）英文模式殘留=0（僅保留語言切換按鈕「中文」）；
+4. **中文模式驗證**：14 頁 `?lang=zh` 全數正常顯示中文，`?lang=en` 全數英文——中英可即時切換；
+5. **後端訊息補鍵**：廣告/訂單/C2C/DeFi/IDO/儲蓄等 21 條後端 `"message":"中文"` 常量納入雙語字典。
+
+### M72 錨點部署步驟（與 M71 相同：先停服務→清資料→解壓→build→重啟，一次一條）
+
+```bash
+sudo systemctl stop tacnode
+rm -rf /var/tac/data
+curl -L -o /tmp/tacm-go-m72.zip 'https://aka.doubaocdn.com/s/4vffYOhajw'
+cd /root && sudo unzip -o /tmp/tacm-go-m72.zip
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+sudo systemctl restart tacnode
+curl -s http://2.28.201.174:8080/status
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+驗收：`/api/audit` 回 `"consistent":true`、`"ledger_ok":true`；網頁 `?lang=en` 全站無中文殘留、`?lang=zh` 正常中文。
+
+Render 端：重新部署（unzip 後 `go build -o tacweb ./cmd/web`，Start Command 不變），
+/network 帶 query 開啟即為新版本；如遇時間戳倒退：Manual Deploy → Clear build cache & deploy。
+
+## 上版重點（M71）——交易與合約層鏈上審計（全鏈賬本重放）
 
 M66/M67/M68/M70 已驗證「每塊 coinbase 總額 == 出塊獎勵」；M71 進一步堵住**普通轉帳與合約交易的作弊面**：從創世起逐塊**重放整條鏈**，獨立驗證（不信任鏈上 accounts 快照）：
 
