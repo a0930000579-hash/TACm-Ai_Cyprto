@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"encoding/hex"
 	"math/big"
 	"strings"
 	"testing"
@@ -240,5 +241,135 @@ func TestERC20DeployMetaTransferAfterMeta(t *testing.T) {
 	}
 	if got := queryErc20(t, world, rt, creator, Erc20BalanceOfCalldata(bob)); got.Cmp(big.NewInt(250)) != 0 {
 		t.Fatalf("bob 餘額應為 250，得到 %s", got)
+	}
+}
+
+// ---- M74-1：標準授權介面（approve/allowance/transferFrom）＋事件 ----
+
+// execErc20As 以指定 caller 執行並回傳完整執行結果（供事件/失敗檢查）。
+func execErc20As(world *WorldState, runtime []byte, caller string, calldata []byte) *ExecutionResult {
+	ix := NewInterpreter(NewContext(), world, 0, false)
+	ix.ctx.Caller = caller
+	return ix.Execute(runtime, calldata)
+}
+
+// TestERC20ApproveAllowance 驗證 approve→allowance 閉環：授權後 spender 可讀到額度。
+func TestERC20ApproveAllowance(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	spender := "0x" + strings.Repeat("33", 20)
+	// approve(spender, 500)
+	if got := queryErc20(t, world, rt, creator, Erc20ApproveCalldata(spender, big.NewInt(500))); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("approve 應回傳 1，得到 %s", got)
+	}
+	// allowance(creator, spender) = 500
+	if got := queryErc20(t, world, rt, creator, Erc20AllowanceCalldata(creator, spender)); got.Cmp(big.NewInt(500)) != 0 {
+		t.Fatalf("allowance 應為 500，得到 %s", got)
+	}
+	// 未授權組合為 0
+	carol := "0x" + strings.Repeat("44", 20)
+	if got := queryErc20(t, world, rt, creator, Erc20AllowanceCalldata(creator, carol)); got.Sign() != 0 {
+		t.Fatalf("未授權 allowance 應為 0，得到 %s", got)
+	}
+}
+
+// TestERC20TransferFrom 驗證 transferFrom 閉環：spender 以授權額度轉移 creator 資產。
+func TestERC20TransferFrom(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	spender := "0x" + strings.Repeat("33", 20)
+	carol := "0x" + strings.Repeat("44", 20)
+	if got := queryErc20(t, world, rt, creator, Erc20ApproveCalldata(spender, big.NewInt(500))); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("approve 失敗: %s", got)
+	}
+	// spender 以 transferFrom(creator→carol, 200) 動用額度
+	if got := retInt(execErc20As(world, rt, spender, Erc20TransferFromCalldata(creator, carol, big.NewInt(200)))); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("transferFrom 應回傳 1，得到 %s", got)
+	}
+	if got := queryErc20(t, world, rt, creator, Erc20BalanceOfCalldata(creator)); got.Cmp(big.NewInt(999800)) != 0 {
+		t.Fatalf("creator 餘額應為 999800，得到 %s", got)
+	}
+	if got := queryErc20(t, world, rt, creator, Erc20BalanceOfCalldata(carol)); got.Cmp(big.NewInt(200)) != 0 {
+		t.Fatalf("carol 餘額應為 200，得到 %s", got)
+	}
+	if got := queryErc20(t, world, rt, creator, Erc20AllowanceCalldata(creator, spender)); got.Cmp(big.NewInt(300)) != 0 {
+		t.Fatalf("allowance 應餘 300，得到 %s", got)
+	}
+}
+
+// TestERC20TransferFromInsufficientAllowance 驗證授權不足時 REVERT。
+func TestERC20TransferFromInsufficientAllowance(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	spender := "0x" + strings.Repeat("33", 20)
+	carol := "0x" + strings.Repeat("44", 20)
+	if got := queryErc20(t, world, rt, creator, Erc20ApproveCalldata(spender, big.NewInt(50))); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("approve 失敗: %s", got)
+	}
+	r := execErc20As(world, rt, spender, Erc20TransferFromCalldata(creator, carol, big.NewInt(200)))
+	if r.Success {
+		t.Fatal("授權不足 transferFrom 應 REVERT")
+	}
+}
+
+// TestERC20TransferFromInsufficientBalance 驗證 from 餘額不足時 REVERT。
+func TestERC20TransferFromInsufficientBalance(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000)
+	spender := "0x" + strings.Repeat("33", 20)
+	carol := "0x" + strings.Repeat("44", 20)
+	if got := queryErc20(t, world, rt, creator, Erc20ApproveCalldata(spender, big.NewInt(10000))); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("approve 失敗: %s", got)
+	}
+	r := execErc20As(world, rt, spender, Erc20TransferFromCalldata(creator, carol, big.NewInt(2000)))
+	if r.Success {
+		t.Fatal("餘額不足 transferFrom 應 REVERT")
+	}
+}
+
+// TestERC20Decimals 驗證 decimals() 回傳 18（主流 ERC-20 慣例）。
+func TestERC20Decimals(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	if got := queryErc20(t, world, rt, creator, Erc20DecimalsCalldata()); got.Cmp(big.NewInt(18)) != 0 {
+		t.Fatalf("decimals 應為 18，得到 %s", got)
+	}
+}
+
+// TestERC20TransferEvent 驗證 transfer 產生標準 Transfer 事件（topic0 與主網一致）。
+func TestERC20TransferEvent(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	bob := "0x" + strings.Repeat("22", 20)
+	ix := NewInterpreter(NewContext(), world, 0, false)
+	ix.ctx.Caller = creator
+	// LOG 事件的 address 語義＝執行合約的地址（ctx.Address，Execute 內經 Ensure 規範化）。
+	// 本測試直接執行 runtime（無 create 部署流程），合約帳戶即 ctx.Address。
+	r := ix.Execute(rt, Erc20TransferCalldata(bob, big.NewInt(250)))
+	if !r.Success {
+		t.Fatalf("transfer 失敗: %v", r.Err)
+	}
+	if len(ix.ctx.Logs) != 1 {
+		t.Fatalf("應產生 1 筆 Transfer 事件，得到 %d", len(ix.ctx.Logs))
+	}
+	log0 := ix.ctx.Logs[0]
+	if log0.Address != ix.ctx.Address {
+		t.Fatalf("事件地址應為執行合約地址 %s，得到 %s", ix.ctx.Address, log0.Address)
+	}
+	if len(log0.Topics) != 3 || log0.Topics[0] != hex.EncodeToString(TopicTransfer) {
+		t.Fatalf("Transfer 事件 topics 異常: %v", log0.Topics)
+	}
+}
+
+// TestERC20ApproveEvent 驗證 approve 產生標準 Approval 事件。
+func TestERC20ApproveEvent(t *testing.T) {
+	world, rt, creator := deployErc20(t, 1000000)
+	spender := "0x" + strings.Repeat("33", 20)
+	ix := NewInterpreter(NewContext(), world, 0, false)
+	ix.ctx.Caller = creator
+	r := ix.Execute(rt, Erc20ApproveCalldata(spender, big.NewInt(500)))
+	if !r.Success {
+		t.Fatalf("approve 失敗: %v", r.Err)
+	}
+	if len(ix.ctx.Logs) != 1 {
+		t.Fatalf("應產生 1 筆 Approval 事件，得到 %d", len(ix.ctx.Logs))
+	}
+	log0 := ix.ctx.Logs[0]
+	if len(log0.Topics) != 3 || log0.Topics[0] != hex.EncodeToString(TopicApproval) {
+		t.Fatalf("Approval 事件 topics 異常: %v", log0.Topics)
 	}
 }

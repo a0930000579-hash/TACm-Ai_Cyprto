@@ -1,8 +1,49 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M73）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M74）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M73-B）——社群獎勵上鏈＋動態牆/關注（「1+3 結合」）
+## 本版重點（M74-1）——ERC-20 標準授權介面（approve/allowance/transferFrom＋標準事件）
+
+M73-B 之後，本版把 Token Studio 的 ERC-20 風格代幣補齊**標準授權三件套**，向主流鏈（BSC/以太坊）代幣標準看齊：
+
+- **新增標準介面**：`approve(spender,amount)`、`allowance(owner,spender)`、`transferFrom(from,to,amount)`、`decimals()`（回傳 18）。
+  - `approve`：授權 spender 可動用 owner 的額度，寫入**嵌套 mapping allowance slot**（EVM 標準布局 `keccak(spender ‖ keccak(owner ‖ 3))`）。
+  - `allowance`：讀回授權額度（未授權回 0）。
+  - `transferFrom`：spender 動用授權額度轉帳（**額度扣減＋from 扣款＋to 加款三者原子**）；額度或餘額不足皆 REVERT，不得超花。
+- **標準事件**：`Transfer(from,to,value)` 與 `Approval(owner,spender,value)` 均以 **LOG3 發出**，topic0 與 BSC/以太坊主網一致（`0xddf252ad…`、`0x8c5be1e5…`）。
+- **runtime 工程重構**：`Erc20Runtime()` 改為 9-selector **程式化建構**（header＋9 對 dispatch＋fallback＋9 個 builtSeg 段，共 842 bytes），每段獨立組裝 JUMPI 目標（段內相對偏移、收集後轉絕對），消除手寫 bytecode 的跳轉錯位風險。
+- **測試**：`internal/vm/erc20_test.go` 擴充至 **8 個 ERC-20 閉環測試全過**（deploy/transfer/approve/allowance/transferFrom/超額拒絕/decimals/雙事件 topics），`internal/node` e2e 回歸綠；`go build ./...` 綠。
+
+### M74 錨點部署步驟（一次一條，勿一次貼多條）
+
+```bash
+sudo systemctl stop tacnode
+```
+```bash
+rm -rf /var/tac/data
+```
+```bash
+curl -L -o /tmp/tacm-go-m74.zip '<M74 aka 連結>'
+```
+```bash
+cd /root && sudo unzip -o /tmp/tacm-go-m74.zip
+```
+```bash
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+```
+```bash
+sudo systemctl restart tacnode
+```
+```bash
+curl -s http://2.28.201.174:8080/status
+```
+```bash
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+> ⚠️ **部署前必讀**：M74-1 沿用 M70 起的鏈上獎勵規則（node 9%／pool 16%／miner 75%），無新創世分配；若伺服器為既有 M73-B 鏈，**不必清資料**（無結構性變更）；若希望全新創世再開始，則執行 `rm -rf /var/tac/data` 後重啟即歸零。Render 端：重新部署（unzip 後 `go build -o tacweb ./cmd/web`，Start Command 不變）。
+
+## 上版重點（M73-B）——社群獎勵上鏈＋動態牆/關注（「1+3 結合」）
 
 M73-A（AI 助手）之後，本版把「社群」升級為**鏈上激勵社群**：互動行為累積積分，每 60 塊由「社群基金」自動結算一期、簽名發放鏈上 TACm 獎勵（memo=`community:reward:P<n>`，進 mempool 出塊上鏈，全鏈可審計、簽名有效、餘額守恆）：
 
