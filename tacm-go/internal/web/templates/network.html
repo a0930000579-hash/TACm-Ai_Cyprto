@@ -59,6 +59,12 @@
   <div id="audIssues" class="muted" style="margin-top:10px"></div>
 </section>
 
+<!-- M69：鏈上在線礦工（與挖礦頁同源：onChainMinerSplits(60)，任何節點同鏈結果一致） -->
+<section class="panel">
+  <div class="panel-head"><h2>🧑‍🚀 鏈上在線礦工（<span id="onMinerN">—</span> 台 · 算力瓜分視角）</h2></div>
+  <div id="onMinerList" class="muted" style="margin-top:8px">載入中…</div>
+</section>
+
 <style>
   .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
   .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
@@ -153,6 +159,22 @@
         .then(renderAudit).catch(function () { if (audTip) audTip.textContent = '無法取得審計結果'; });
     }
     freshAudit();
+    function freshMiners(){
+      fetch('/api/miners', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
+        var splits = (j && j.splits) || [];
+        setT('onMinerN', splits.length);
+        var rows = '';
+        (splits||[]).forEach(function(s,i){
+          var a = s.address || '—';
+          var addr = a.length > 16 ? a.slice(0,10) + '…' + a.slice(-6) : a;
+          var share = parseFloat(s.share) || 0;
+          rows += '<div class="rank-row"><div class="rk">'+(i+1)+'</div><div class="rkbody"><div class="ra mono">'+addr+'</div><div class="rb">算力瓜分份額 '+share.toFixed(4)+'</div></div></div>';
+        });
+        document.getElementById('onMinerList').innerHTML = rows || '<div class="muted">目前無在線礦工（鏈上瓜分視角，最近 60 塊）</div>';
+      }).catch(function(){ setT('onMinerN', '—'); });
+    }
+    freshMiners();
+    setInterval(freshMiners, 10000);
     setInterval(freshAudit, 10000);
     function fresh() {
       fetch('/api/network', { cache: 'no-store' }).then(function (r) { return r.json().catch(function () { return null; }); })

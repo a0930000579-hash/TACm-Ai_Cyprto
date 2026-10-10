@@ -106,6 +106,8 @@
     <div class="mm-cell"><small>動態難度</small><b id="diff">—</b></div>
   </div>
 
+  <div id="onchainLine" style="margin:10px 0;padding:10px 12px;border:1px solid rgba(240,185,11,.25);border-radius:12px;font-size:13px;display:none"></div>
+
   <div class="mm-sec">🌐 全鏈總覽</div>
   <div class="mm-grid">
     <div class="mm-cell"><small data-i18n="chain.mined">全鏈總產出 TACm</small><b id="chainMined">—</b></div>
@@ -239,7 +241,24 @@ function refresh(){
       document.getElementById('tiusdSupply').textContent = (c.tiusd_supply!=null) ? (c.tiusd_supply/1000000).toLocaleString('en-US',{maximumFractionDigits:2}) + ' TiUSD' : '—';
     } catch (e) {}
     document.getElementById('err').textContent = '';
-  });
+  }).then(freshAuditLine);
+}
+
+// M69：鏈上驗證狀態行——/api/audit 與 /network 同源，任何入口一致。
+function freshAuditLine(){
+  var el = document.getElementById('onchainLine');
+  if(!el) return;
+  fetch('/api/audit?blocks=100', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(a){
+    if(a && a.ok && a.consistent){
+      el.style.display='block';
+      el.style.borderColor='rgba(14,203,129,.45)';
+      el.innerHTML = '🔍 <b style="color:#0ecb81">鏈上驗證：一致</b> — 審計 '+a.checked_blocks+' 塊 coinbase/pool/split 全過 · 總產出 '+a.total_mined_tacm+' TACm · 獎勵池挹注 '+a.on_chain_pool_share_tacm+' · 在線礦工 '+a.online_miners+' 台（與 /network 同源）';
+    } else {
+      el.style.display='block';
+      el.style.borderColor='rgba(246,70,93,.4)';
+      el.innerHTML = '🔍 鏈上驗證：暫不可用';
+    }
+  }).catch(function(){});
 }
 
 function fmtTacmRaw(v){ var n=parseFloat(v); if(isNaN(n)) return '—'; return n.toLocaleString('en-US',{maximumFractionDigits:6}) + ' TACm'; }
