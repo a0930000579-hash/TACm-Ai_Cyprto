@@ -12,8 +12,8 @@ import (
 // RewardPoolAddr 鏈上獎勵池帳戶（coinbase 按 PoolShareBps 挹注；交易所手續費可結算入池）。
 const RewardPoolAddr = "reward_pool"
 
-// PoolShareBps 每區塊 coinbase 挹注獎勵池的比例（12% = 1200 bp，對齊原本 POOL_SHARE_SUBSIDY_PCT）。
-const PoolShareBps = 1200
+// PoolShareBps 每區塊 coinbase 挹注獎勵池的比例（16% = 1600 bp，對齊 M70 節點9%/池16%/礦工75% 經濟模型）。
+const PoolShareBps = 1600
 
 // ApplyBlock 把鏈上一個已確認區塊的交易同步到錢包帳本（TACm 資產）。
 // 冪等：僅接受嚴格連續的高度（lastApplied+1）；重複/跳號（含鏈重組）返回錯誤。

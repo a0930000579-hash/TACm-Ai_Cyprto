@@ -39,15 +39,18 @@ type AuditView struct {
 	CheckedBlocks int      `json:"checked_blocks"`
 	CoinbasePass  int      `json:"coinbase_pass"` // coinbase 總額 == BlockReward 的塊數
 	CoinbaseFail  int      `json:"coinbase_fail"`
-	PoolPass      int      `json:"pool_pass"` // pool 份額 == 12% 的塊數
+	PoolPass      int      `json:"pool_pass"` // pool 份額 == 16% 的塊數
 	PoolFail      int      `json:"pool_fail"`
-	SplitPass     int      `json:"split_pass"` // miner/reserve 總額 == 88% 的塊數
+	NodePass      int      `json:"node_pass"` // 節點獎勵份額 == 9% 的塊數（M70）
+	NodeFail      int      `json:"node_fail"`
+	SplitPass     int      `json:"split_pass"` // miner/reserve 總額 == 75% 的塊數
 	SplitFail     int      `json:"split_fail"`
 	StructureOK   bool     `json:"structure_ok"` // 高度連續/時間戳遞增/難度合法
 	Consistent    bool     `json:"consistent"`   // 全部檢查通過（鏈上供應與獎勵一致）
 	AuditedMint  string `json:"audited_mint_tacm"`  // 審計窗口內 coinbase 增發（僅窗口，勿與全鏈混淆）
 	TotalMined   string `json:"total_mined_tacm"`   // 全鏈真實總產出（掃鏈 coinbase 總額，M68 起為鏈上事實）
 	PoolShare    string `json:"on_chain_pool_share_tacm"` // coinbase:pool 累計挹注（獎勵池來源，鏈上事實）
+	NodeShare    string `json:"on_chain_node_share_tacm"`  // coinbase:node 累計（節點獎勵，鏈上事實，M70）
 	RewardPool   string `json:"reward_pool_tacm"`   // 獎勵池帳戶鏈上餘額（與 /explorer 同源）
 	OnlineMiners int    `json:"online_miners"`      // 鏈上在線礦工（最近 60 塊瓜分視角）
 	Issues       []string `json:"issues"`
@@ -119,7 +122,7 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 			continue
 		}
 		reward := chaindb.BlockReward(bd.Block.Height)
-		var coinbaseSum, poolAmt, minerSum float64
+		var coinbaseSum, poolAmt, nodeAmt, minerSum float64
 		for _, tx := range bd.Transactions {
 			if tx == nil || !isCoinbaseMemo(tx.Memo) {
 				continue
@@ -129,15 +132,19 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 				continue
 			}
 			coinbaseSum += amt
-			if strings.HasPrefix(tx.Memo, "coinbase:pool") {
+			switch {
+			case strings.HasPrefix(tx.Memo, "coinbase:pool"):
 				poolAmt += amt
-			} else {
+			case strings.HasPrefix(tx.Memo, "coinbase:node"):
+				nodeAmt += amt
+			default:
 				minerSum += amt
 			}
 		}
 		minted += coinbaseSum
 		expPool := reward * float64(chaindb.PoolShareBps) / 10000
-		expRest := reward - expPool
+		expNode := reward * float64(chaindb.NodeShareBps) / 10000
+		expRest := reward - expPool - expNode
 		if math.Abs(coinbaseSum-reward) <= auditEps {
 			out.CoinbasePass++
 		} else {
@@ -149,6 +156,12 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 		} else {
 			out.PoolFail++
 			out.Issues = append(out.Issues, "h="+strconv.FormatInt(h, 10)+" pool 份額異常")
+		}
+		if math.Abs(nodeAmt-expNode) <= auditEps {
+			out.NodePass++
+		} else {
+			out.NodeFail++
+			out.Issues = append(out.Issues, "h="+strconv.FormatInt(h, 10)+" 節點獎勵份額異常")
 		}
 		if math.Abs(minerSum-expRest) <= auditEps {
 			out.SplitPass++
@@ -165,6 +178,7 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 	if agg, err := ds.OnChainCoinbase(); err == nil {
 		out.TotalMined = chaindb.FormatFloat(agg.Total)
 		out.PoolShare = chaindb.FormatFloat(agg.Pool)
+		out.NodeShare = chaindb.FormatFloat(agg.Node)
 	}
 	cs := ds.ChainStats()
 	out.RewardPool = cs.RewardPool

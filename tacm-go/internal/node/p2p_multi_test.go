@@ -270,13 +270,24 @@ func TestP2PLedgerConsistency(t *testing.T) {
 	// 3) 全鏈總產出＝高度×10（每塊獎勵總額 10，兩節點同規則、無超發）。
 	ah := anchor.n.DB().GetTipHeight()
 	am, _ := anchor.n.Wallet().Store().ChainMinedTacm()
-	fm, _ := f.n.Wallet().Store().ChainMinedTacm()
 	perBlock := new(big.Int).Mul(big.NewInt(10), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
 	if want := new(big.Int).Mul(perBlock, big.NewInt(ah)); am.Cmp(want) != 0 {
 		t.Fatalf("anchor 總產出≠高度×10: %s vs %d×10", am, ah)
 	}
-	if want := new(big.Int).Mul(perBlock, big.NewInt(fh)); fm.Cmp(want) != 0 {
-		t.Fatalf("follower 總產出≠高度×10: %s vs %d×10", fm, fh)
+	// 等 follower 錢包至少追到讀取時高度，且累計產出與其已同步高度一致
+	// （wallet 的 SyncedHeight 與 ChainMinedTacm 在同一 ApplyBlock 內原子更新，避免追鏈時序窗 flaky）。
+	waitFor(t, func() bool {
+		synced, err := f.n.Wallet().SyncedHeight()
+		if err != nil || synced < fh {
+			return false
+		}
+		cur, _ := f.n.Wallet().Store().ChainMinedTacm()
+		return cur != nil && cur.Cmp(new(big.Int).Mul(perBlock, big.NewInt(synced))) == 0
+	}, 15*time.Second, "等待 follower 錢包追平")
+	syncedF, _ := f.n.Wallet().SyncedHeight()
+	fm2, _ := f.n.Wallet().Store().ChainMinedTacm()
+	if want := new(big.Int).Mul(perBlock, big.NewInt(syncedF)); fm2.Cmp(want) != 0 {
+		t.Fatalf("follower 總產出≠已同步高度×10: %s vs %d×10", fm2, syncedF)
 	}
 }
 

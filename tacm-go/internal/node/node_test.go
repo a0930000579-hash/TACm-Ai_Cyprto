@@ -3,6 +3,7 @@ package node
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -77,20 +78,21 @@ func TestNodeProducesBlocks(t *testing.T) {
 		10*time.Second, "節點未持續出塊")
 
 	height := n.DB().GetTipHeight()
-	// M58：coinbase 瓜分寫入區塊——無「開機」礦工時 88%+12% 全數入獎勵池，節點地址不進帳。
+	// M70：coinbase 瓜分寫入區塊——無「開機」礦工時節點 9% 歸出塊節點（節點獎勵），
+	// 其餘 75%+16%＝91% 入獎勵池；節點地址進帳＝高度×0.9。
 	bal, err := strconv.ParseFloat(n.DB().GetBalance(n.Address()), 64)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bal != 0 {
-		t.Errorf("節點未開機 coinbase 餘額=%g want 0 (全數入池)", bal)
+	if want := float64(height) * 0.9; math.Abs(bal-want) > 1e-6 {
+		t.Errorf("節點未開機節點獎勵=%g want %g (9%%×height=%d)", bal, want, height)
 	}
 	pool, err := strconv.ParseFloat(n.DB().GetBalance(chaindb.RewardPoolAddr), 64)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := float64(height) * 10; pool != want {
-		t.Errorf("獎勵池=%g want %g (height=%d)", pool, want, height)
+	if want := float64(height) * 9.1; math.Abs(pool-want) > 1e-6 {
+		t.Errorf("獎勵池=%g want %g (91%%×height=%d)", pool, want, height)
 	}
 }
 

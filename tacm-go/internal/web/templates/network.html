@@ -49,8 +49,8 @@
   <div class="chain-grid">
     <div class="cg"><small>審計塊數</small><b id="audBlocks">—</b></div>
     <div class="cg"><small>coinbase==獎勵</small><b id="audCoin">—</b></div>
-    <div class="cg"><small>pool 12%</small><b id="audPool">—</b></div>
-    <div class="cg"><small>miner/reserve 88%</small><b id="audSplit">—</b></div>
+    <div class="cg"><small>pool 16%</small><b id="audPool">—</b></div>
+    <div class="cg"><small>node 9% · miner 75%</small><b id="audSplit">—</b></div>
     <div class="cg"><small>全鏈總產出</small><b id="audMined">—</b></div>
     <div class="cg"><small>獎勵池餘額</small><b id="audPoolBal">—</b></div>
     <div class="cg"><small>Pool 挹注（鏈上）</small><b id="audPoolShare">—</b></div>
@@ -142,7 +142,7 @@
       setT('audPoolShare', a.on_chain_pool_share_tacm);
       setT('audMiners', a.online_miners);
       if (a.consistent) {
-        audLine.innerHTML = '<span class="dot-ok">✓ 鏈上一致</span> — 每塊 coinbase 總額嚴格等於出塊獎勵（pool 12% / miner+reserve 88%），無超發/少發，供應與獎勵代表鏈上真實';
+        audLine.innerHTML = '<span class="dot-ok">✓ 鏈上一致</span> — 每塊 coinbase 總額嚴格等於出塊獎勵（節點 9% / pool 16% / miner 75%），無超發/少發，供應與獎勵代表鏈上真實';
       } else {
         audLine.innerHTML = '<span class="dot-bad">✗ 發現異常</span> — 鏈上獎勵不一致，需立即檢查';
       }

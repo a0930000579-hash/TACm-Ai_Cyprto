@@ -42,18 +42,20 @@ func TestWalletSyncCoinbase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// M36：節點自身預設礦機（active=0）不參與分潤——無「開機」礦工時 coinbase 100% 入獎勵池，
-	// 訪客/未開機地址不再收到 coinbase（避免「未挖礦卻有資產進入」）。
-	if acc.TACmBalance.Sign() != 0 {
-		t.Fatalf("節點自身未開機不應進帳, 餘額=%s", acc.TACmBalance)
+	// M70：節點 9% 每塊歸出塊節點（節點獎勵歸節點）——節點自身即使未開機也收到節點獎勵；
+	// 無「開機」礦工時其餘 75%+16%＝91% 入獎勵池（M36 語義保留）。
+	// 2 塊 × 10 × 9% ＝ 1.8 TACm。
+	wantNode, _ := new(big.Int).SetString("1800000000000000000", 10)
+	if acc.TACmBalance.Cmp(wantNode) != 0 {
+		t.Fatalf("節點獎勵=%s want 1.8e18（9%%×10×2）", acc.TACmBalance)
 	}
 	pool, err := n.Wallet().Balance(wallet.RewardPoolAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPool, _ := new(big.Int).SetString("20000000000000000000", 10) // 100%×10×2
+	wantPool, _ := new(big.Int).SetString("18200000000000000000", 10) // 91%×10×2
 	if pool.TACmBalance.Cmp(wantPool) != 0 {
-		t.Fatalf("獎勵池挹注=%s want 2e19 (100pct coinbase×2塊)", pool.TACmBalance)
+		t.Fatalf("獎勵池挹注=%s want 1.82e19 (91pct coinbase×2塊)", pool.TACmBalance)
 	}
 }
 

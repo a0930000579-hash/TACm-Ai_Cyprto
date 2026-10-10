@@ -1,8 +1,40 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M58）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M70）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M58）
+## 本版重點（M70）——節點獎勵上鏈＋全鏈數據歸零重來
+
+- **出塊獎勵三分發（鏈上 coinbase 恆等式 9%＋16%＋75%＝100%）**：
+  - 節點 **9%**：每塊自動歸「出塊節點」地址（memo `coinbase:node`）——節點獎勵歸節點；
+  - 池 **16%**：每塊自動挹注獎勵池（memo `coinbase:pool`，交易所資金用途）；
+  - 礦工 **75%**：按鏈上在線礦工算力占比瓜分（memo `coinbase:miner`）；無在線礦工時 75% 併入獎勵池（`coinbase:reserve`）。
+- **節點獎勵與主網同一規則、全網一致**：任何入口（錨點／節點／瀏覽器）看到同一條鏈、同一個獎勵池、同一個總產出、同一個在線礦工數；總產出＝高度×10，獎勵池＝高度×9.1（無礦工時）或按實際瓜分。
+- **審計新增節點份額**：`/api/audit` 新增 `node_pass/node_fail` 與 `on_chain_node_share_tacm`（= 高度×0.9）。
+- **全鏈數據歸零重來**：本版起整條鏈重新創世運行。部署後**錨點必須清空舊資料**（見下方部署步驟），Render 重啟即重來。
+- **前端中英文同步**：挖礦機制說明改 4 行（節點 9%／池 16%／礦工 75%），/network 審計行、/exchange 文案同步更新；英文為主、中文可切換。
+
+### M70 錨點部署步驟（重要：先停服務→清資料→解壓→build→重啟）
+
+一次一條指令：
+
+```bash
+sudo systemctl stop tacnode
+rm -rf /var/tac/data
+curl -L -o /tmp/tacm-go-m70.zip '<M70 aka 連結>'
+cd /root && sudo unzip -o /tmp/tacm-go-m70.zip
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+sudo systemctl restart tacnode
+curl -s http://2.28.201.174:8080/status
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+驗收：`/api/audit` 回 `"consistent":true`、`"coinbase_pass":100`、`"node_pass":100`、
+`"on_chain_node_share_tacm"`＝高度×0.9、`"on_chain_pool_share_tacm"`＝高度×1.6。
+
+Render 端：重新部署（unzip 後 `go build -o tacweb ./cmd/web`，Start Command 不變），
+/network 與 /mining 帶 query 開啟即為新版本。
+
+## 上版重點（M58）
 
 - **白皮書/黃皮書全面「自主 AI 智能鏈」化**：移除全部外部鏈與品牌名稱——
   幣安/Binance、BSC、比特幣/Bitcoin、以太坊/Ethereum、MetaMask、EVM、USDT、Render 等，
