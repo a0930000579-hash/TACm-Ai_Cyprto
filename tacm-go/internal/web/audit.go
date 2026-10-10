@@ -45,11 +45,12 @@ type AuditView struct {
 	SplitFail     int      `json:"split_fail"`
 	StructureOK   bool     `json:"structure_ok"` // 高度連續/時間戳遞增/難度合法
 	Consistent    bool     `json:"consistent"`   // 全部檢查通過（鏈上供應與獎勵一致）
-	AuditedMint   string   `json:"audited_mint_tacm"`  // 審計窗口內 coinbase 增發（僅窗口，勿與全鏈混淆）
-	TotalMined    string   `json:"total_mined_tacm"`   // 全鏈真實總產出（CoinStats 鏈上視角）
-	RewardPool    string   `json:"reward_pool_tacm"`   // 獎勵池帳戶鏈上餘額
-	OnlineMiners  int      `json:"online_miners"`      // 鏈上在線礦工（最近 60 塊瓜分視角）
-	Issues        []string `json:"issues"`
+	AuditedMint  string `json:"audited_mint_tacm"`  // 審計窗口內 coinbase 增發（僅窗口，勿與全鏈混淆）
+	TotalMined   string `json:"total_mined_tacm"`   // 全鏈真實總產出（掃鏈 coinbase 總額，M68 起為鏈上事實）
+	PoolShare    string `json:"on_chain_pool_share_tacm"` // coinbase:pool 累計挹注（獎勵池來源，鏈上事實）
+	RewardPool   string `json:"reward_pool_tacm"`   // 獎勵池帳戶鏈上餘額（與 /explorer 同源）
+	OnlineMiners int    `json:"online_miners"`      // 鏈上在線礦工（最近 60 塊瓜分視角）
+	Issues       []string `json:"issues"`
 }
 
 // auditRecentBlocks 自鏈頂往下驗證最近 n 塊（含創世則跳過 coinbase 驗證）。
@@ -158,9 +159,14 @@ func auditRecentBlocks(ds DataSource, n int) AuditView {
 	}
 	out.AuditedMint = chaindb.FormatFloat(minted)
 	out.StructureOK = out.StructureOK && out.CheckedBlocks == int(tip-start+1)
-	// 全鏈真實數據（鏈上視角，與 /explorer 同源）。
+	// 全鏈真實數據（M68 起改走鏈上掃描聚合，取代本地 chain_stats 快照）：
+	// 總產出＝掃鏈 coinbase 總額；pool 挹注＝coinbase:pool 累計；
+	// 獎勵池帳戶餘額＝與 /explorer 同源；在線礦工＝鏈上 hb 視角。任何節點同步同鏈結果一致。
+	if agg, err := ds.OnChainCoinbase(); err == nil {
+		out.TotalMined = chaindb.FormatFloat(agg.Total)
+		out.PoolShare = chaindb.FormatFloat(agg.Pool)
+	}
 	cs := ds.ChainStats()
-	out.TotalMined = cs.TotalMinedTacm
 	out.RewardPool = cs.RewardPool
 	out.OnlineMiners = cs.OnlineMiners
 	out.Consistent = out.CoinbaseFail == 0 && out.PoolFail == 0 && out.SplitFail == 0 && out.StructureOK

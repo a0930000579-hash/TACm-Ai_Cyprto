@@ -27,6 +27,8 @@ type DataSource interface {
 	CurrentUser(r *http.Request) (*node.AuthUser, error)
 	// M66：鏈上審計——回傳區塊頭與完整交易（含 coinbase 明細），供 /api/block/{h} 使用。
 	BlockDetail(height int64) (*node.BlockDetail, error)
+	// M68：鏈上真實聚合——掃鏈上 coinbase 交易，取代本地 chain_stats/Ledger 快照口徑。
+	OnChainCoinbase() (node.CoinbaseAggregate, error)
 }
 
 type nodeDS struct{ n *node.Node }
@@ -42,6 +44,11 @@ func NewNodeDataSource(n *node.Node) DataSource { return &nodeDS{n: n} }
 // BlockDetail 回傳區塊頭與完整交易（含 coinbase 瓜分明細，M66 鏈上審計用）。
 func (d *nodeDS) BlockDetail(height int64) (*node.BlockDetail, error) {
 	return d.n.GetBlockDetail(height)
+}
+
+// OnChainCoinbase 掃鏈上 coinbase 交易聚合（M68：鏈上真實總產出／礦工收益）。
+func (d *nodeDS) OnChainCoinbase() (node.CoinbaseAggregate, error) {
+	return d.n.OnChainCoinbaseAggregate()
 }
 
 // walletView 把錢包服務快照轉為 Web 視圖。

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 
+	"tacm/internal/chaindb"
 	"tacm/internal/wallet"
 )
 
@@ -168,34 +169,27 @@ func (s *RPCServer) onChainMinerSplits(window int64) []map[string]any {
 	return out
 }
 
-// handleMinerEarnings GET /api/miner/earnings?address= — 礦工累計收益（KindReward 分錄）。
+// handleMinerEarnings GET /api/miner/earnings?address= — 礦工累計收益（M68 起為鏈上事實：
+// 掃鏈上 coinbase:miner 交易聚合，取代本地 wallet Ledger（KindReward 分錄）。
+// 任何節點同步同一條鏈結果一致，直接回應「收益數字必須代表鏈上真實」）。
 func (s *RPCServer) handleMinerEarnings(w http.ResponseWriter, r *http.Request) {
-	if s.node.walletSvc == nil {
-		writeErr(w, http.StatusServiceUnavailable, "錢包未初始化")
-		return
-	}
 	addr := r.URL.Query().Get("address")
 	if addr == "" {
 		writeErr(w, http.StatusBadRequest, "缺少 address")
 		return
 	}
-	led, err := s.node.walletSvc.Ledger(5000)
+	earned, count, err := s.node.MinerEarnedOnChain(addr)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	earned := big.NewInt(0)
-	count := 0
-	for _, e := range led {
-		if e.Account == addr && e.Kind == wallet.KindReward && e.Asset == wallet.AssetTACm {
-			count++
-			// e.Delta 為十進制 wei 字串（正數）。
-			if v, ok := new(big.Int).SetString(e.Delta, 10); ok && v.Sign() > 0 {
-				earned.Add(earned, v)
-			}
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "address": addr, "earned_raw": earned.String(), "reward_count": count})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":           true,
+		"address":      addr,
+		"tacm":         chaindb.FormatFloat(earned), // 前端「我的累計收益」直接顯示（TACm）
+		"earned_raw":   earned,
+		"reward_count": count,
+	})
 }
 
 // handleChainStats GET /api/chain/stats — 全鏈統計（顯示於礦機頁）：

@@ -30,6 +30,9 @@ func (f *fakeDS) ChainStats() ChainStatsView                        { return Cha
 func (f *fakeDS) RecentTransactions(int) ([]TxView, error)          { return f.txList, nil }
 func (f *fakeDS) CurrentUser(*http.Request) (*node.AuthUser, error) { return nil, nil }
 func (f *fakeDS) BlockDetail(int64) (*node.BlockDetail, error)      { return nil, nil }
+func (f *fakeDS) OnChainCoinbase() (node.CoinbaseAggregate, error) {
+	return node.CoinbaseAggregate{Total: 100, Pool: 12, Miners: map[string]float64{"tx0proposeraddr": 88}, Count: 10, TipHeight: 10}, nil
+}
 
 func newFake() *fakeDS {
 	now := time.Now().Unix()

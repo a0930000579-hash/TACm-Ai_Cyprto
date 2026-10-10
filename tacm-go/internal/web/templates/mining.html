@@ -216,7 +216,7 @@ function refresh(){
   var pM = get('/api/miners').catch(function(){ return empty; });
   var pS = get('/status').catch(function(){ return {block_height:0}; });
   var pP = get('/api/rewardpool').catch(function(){ return null; });
-  var pE = get('/api/wallet/info?address=' + encodeURIComponent(myAddr)).catch(function(){ return {tacm:'0'}; });
+  var pE = get('/api/miner/earnings?address=' + encodeURIComponent(myAddr)).catch(function(){ return {tacm:'0'}; });
   var pC = get('/api/chain/stats').catch(function(){ return null; });
   return Promise.all([pM, pS, pP, pE, pC]).then(function(rs){
     try {

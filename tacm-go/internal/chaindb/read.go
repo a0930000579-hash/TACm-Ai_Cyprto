@@ -71,6 +71,19 @@ func (c *ChainDB) GetTransactionsByBlock(height int64) ([]*Transaction, error) {
 	return collectTransactions(rows)
 }
 
+// GetCoinbaseTransactions 返回鏈上全部 coinbase 交易（memo 恰為 "coinbase" 或前綴 "coinbase:"），
+// 供鏈上真實聚合（總產出／礦工收益）——任何節點同步同一條鏈結果一致，
+// 不依賴本地 chain_stats/Ledger 快照（M68）。
+func (c *ChainDB) GetCoinbaseTransactions() ([]*Transaction, error) {
+	rows, err := c.db.Query("SELECT "+txCols+
+		" FROM transactions WHERE memo = 'coinbase' OR memo LIKE 'coinbase:%' ORDER BY block_height, tx_index")
+	if err != nil {
+		return nil, fmt.Errorf("chaindb: 查 coinbase 交易失敗: %w", err)
+	}
+	defer rows.Close()
+	return collectTransactions(rows)
+}
+
 func collectTransactions(rows *sql.Rows) ([]*Transaction, error) {
 	var out []*Transaction
 	for rows.Next() {

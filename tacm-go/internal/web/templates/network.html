@@ -53,6 +53,7 @@
     <div class="cg"><small>miner/reserve 88%</small><b id="audSplit">—</b></div>
     <div class="cg"><small>全鏈總產出</small><b id="audMined">—</b></div>
     <div class="cg"><small>獎勵池餘額</small><b id="audPoolBal">—</b></div>
+    <div class="cg"><small>Pool 挹注（鏈上）</small><b id="audPoolShare">—</b></div>
     <div class="cg"><small>鏈上在線礦工</small><b id="audMiners">—</b></div>
   </div>
   <div id="audIssues" class="muted" style="margin-top:10px"></div>
@@ -132,6 +133,7 @@
       setT('audSplit', a.split_pass + ' / ' + a.split_fail + ' 異常');
       setT('audMined', a.total_mined_tacm);
       setT('audPoolBal', a.reward_pool_tacm);
+      setT('audPoolShare', a.on_chain_pool_share_tacm);
       setT('audMiners', a.online_miners);
       if (a.consistent) {
         audLine.innerHTML = '<span class="dot-ok">✓ 鏈上一致</span> — 每塊 coinbase 總額嚴格等於出塊獎勵（pool 12% / miner+reserve 88%），無超發/少發，供應與獎勵代表鏈上真實';
