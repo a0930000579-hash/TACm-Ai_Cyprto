@@ -127,6 +127,27 @@
       '<div class="tk-field"><label data-i18n="nfts.token_id">Token ID</label><input id="tkXid" placeholder="' + (EN() ? 'e.g. 1' : 'e.g. 1') + '" inputmode="numeric"></div>' +
       '<button class="tk-btn" onclick="tkTransfer(\'' + esc(info.address) + '\')" data-i18n="nfts.transfer_btn">⇄ 代簽轉移</button>' +
       '<div class="tk-msg" id="tkTMsg"></div>' +
+      '<div style="border-top:1px solid #2b3139;margin-top:16px;padding-top:12px">' +
+      '<h3 style="margin:0 0 10px;font-size:13px;color:#a78bfa;font-weight:800" data-i18n="nfts.approve_zone">授權管理（ERC-721 Approval）</h3>' +
+      '<div class="tk-field"><label data-i18n="nfts.approve_to">授權給（tx0 地址）</label><input id="tkApTo" placeholder="tx0..."></div>' +
+      '<div class="tk-field"><label data-i18n="nfts.token_id">Token ID</label><input id="tkApId" placeholder="' + (EN() ? 'e.g. 1' : 'e.g. 1') + '" inputmode="numeric"></div>' +
+      '<button class="tk-btn green" onclick="tkApprove(\'' + esc(info.address) + '\')" data-i18n="nfts.approve_btn">⚡ 代簽授權</button>' +
+      '<div class="tk-msg" id="tkApMsg"></div>' +
+      '<div class="tk-field" style="margin-top:12px"><label data-i18n="nfts.get_approved">查詢 getApproved</label><input id="tkGqId" placeholder="' + (EN() ? 'e.g. 1' : 'e.g. 1') + '" inputmode="numeric"></div>' +
+      '<button class="tk-btn sm ghost" onclick="tkApproved(\'' + esc(info.address) + '\')" data-i18n="nfts.get_approved">查詢 getApproved</button>' +
+      '<div class="tk-msg" id="tkGqMsg"></div>' +
+      '<div class="tk-field" style="margin-top:12px"><label data-i18n="nfts.operator">操作員（tx0）</label><input id="tkOp" placeholder="tx0..."></div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<button class="tk-btn sm green" onclick="tkSetAll(\'' + esc(info.address) + '\',true)" data-i18n="nfts.set_all_true">⇄ 全量授權（true）</button>' +
+      '<button class="tk-btn sm" onclick="tkSetAll(\'' + esc(info.address) + '\',false)" data-i18n="nfts.set_all_false">⇄ 撤銷（false）</button>' +
+      '</div>' +
+      '<div class="tk-msg" id="tkSaMsg"></div>' +
+      '<div class="tk-field" style="margin-top:12px"><label data-i18n="nfts.owner_addr">Owner（tx0）</label><input id="tkOpOwner" placeholder="tx0..."></div>' +
+      '<div class="tk-field"><label data-i18n="nfts.operator_approved">查詢 isApprovedForAll</label><input id="tkOpQ" placeholder="tx0..."></div>' +
+      '<button class="tk-btn sm ghost" onclick="tkOpApproved(\'' + esc(info.address) + '\')" data-i18n="nfts.operator_approved">查詢 isApprovedForAll</button>' +
+      '<div class="tk-msg" id="tkOqMsg"></div>' +
+      '<div class="tk-note" data-i18n="nfts.approve_hint">approve 授權單一 Token 給指定地址；setApprovalForAll 授權操作員代管全部 Token（節點代簽=節點帳戶為 owner/授權人）</div>' +
+      '</div>' +
       '<div class="tk-note" data-i18n="nfts.hint_owner">需由 NFT 所有者本人或授權者轉移（節點代簽=節點帳戶）</div>';
   }
 
@@ -174,6 +195,65 @@
         msg.className = 'tk-msg err'; msg.textContent = (d && d.error) || 'failed';
       }
     }).catch(function () { msg.className = 'tk-msg err'; msg.textContent = 'network error'; });
+  };
+
+  window.tkApprove = function (contract) {
+    var msg = $('tkApMsg');
+    msg.className = 'tk-msg'; msg.textContent = '...';
+    var to = $('tkApTo').value.trim(), tid = $('tkApId').value.trim();
+    if (!to || !tid) { msg.className = 'tk-msg err'; msg.textContent = EN() ? 'Approve To & Token ID required' : '請輸入授權地址與 Token ID'; return; }
+    fetch(api + '/contract/nft/approve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contract: contract, to: to, token_id: tid }), cache: 'no-store'
+    }).then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
+      if (d && d.ok) { msg.className = 'tk-msg ok'; msg.textContent = (EN() ? 'Approved. tx: ' : '已授權。tx: ') + d.tx_hash; }
+      else { msg.className = 'tk-msg err'; msg.textContent = (d && d.error) || 'failed'; }
+    }).catch(function () { msg.className = 'tk-msg err'; msg.textContent = 'network error'; });
+  };
+
+  window.tkApproved = function (contract) {
+    var msg = $('tkGqMsg');
+    msg.className = 'tk-msg'; msg.textContent = '...';
+    var tid = $('tkGqId').value.trim();
+    if (!tid) { msg.className = 'tk-msg err'; msg.textContent = EN() ? 'Token ID required' : '請輸入 Token ID'; return; }
+    fetch(api + '/contract/nft/' + contract + '?token_id=' + encodeURIComponent(tid) + '&get_approved=1', { cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
+        if (d && d.ok) {
+          var v = d.approved;
+          msg.className = 'tk-msg ok';
+          msg.textContent = (EN() ? 'getApproved: ' : '獲批者: ') + ((v && v !== '0') ? v : (EN() ? 'none (0)' : '無 (0)'));
+        } else { msg.className = 'tk-msg err'; msg.textContent = (d && d.error) || 'failed'; }
+      }).catch(function () { msg.className = 'tk-msg err'; msg.textContent = 'network error'; });
+  };
+
+  window.tkSetAll = function (contract, approved) {
+    var msg = $('tkSaMsg');
+    msg.className = 'tk-msg'; msg.textContent = '...';
+    var op = $('tkOp').value.trim();
+    if (!op) { msg.className = 'tk-msg err'; msg.textContent = EN() ? 'Operator required' : '請輸入操作員地址'; return; }
+    fetch(api + '/contract/nft/set-approval-for-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contract: contract, operator: op, approved: approved }), cache: 'no-store'
+    }).then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
+      if (d && d.ok) {
+        msg.className = 'tk-msg ok';
+        msg.textContent = (approved ? (EN() ? 'Approved All. tx: ' : '已全量授權。tx: ') : (EN() ? 'Revoked. tx: ' : '已撤銷。tx: ')) + d.tx_hash;
+      } else { msg.className = 'tk-msg err'; msg.textContent = (d && d.error) || 'failed'; }
+    }).catch(function () { msg.className = 'tk-msg err'; msg.textContent = 'network error'; });
+  };
+
+  window.tkOpApproved = function (contract) {
+    var msg = $('tkOqMsg');
+    msg.className = 'tk-msg'; msg.textContent = '...';
+    var owner = $('tkOpOwner').value.trim(), op = $('tkOpQ').value.trim();
+    if (!owner || !op) { msg.className = 'tk-msg err'; msg.textContent = EN() ? 'Owner & operator required' : '請輸入 Owner 與操作員'; return; }
+    fetch(api + '/contract/nft/' + contract + '?owner=' + encodeURIComponent(owner) + '&operator=' + encodeURIComponent(op), { cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return null; }); }).then(function (d) {
+        if (d && d.ok) {
+          msg.className = 'tk-msg ok';
+          msg.textContent = (EN() ? 'isApprovedForAll: ' : '全量授權狀態: ') + (d.operator_approved === '1' ? '1 (true)' : '0 (false)');
+        } else { msg.className = 'tk-msg err'; msg.textContent = (d && d.error) || 'failed'; }
+      }).catch(function () { msg.className = 'tk-msg err'; msg.textContent = 'network error'; });
   };
 
   window.tkOwner = function (contract) {

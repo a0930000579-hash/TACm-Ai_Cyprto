@@ -14,12 +14,17 @@ import "math/big"
 //	ownerOf(tokenId)            = keccak(tokenId ‖ 3)（mapping base=3）
 //	balanceOf(owner)            = keccak(owner ‖ 4)（mapping base=4）
 //	tokenURI(tokenId)           = keccak(tokenId ‖ 5)（mapping base=5）
+//	getApproved(tokenId)        = keccak(tokenId ‖ 7)（單值 address，M75-1）
+//	approvalForAll(owner,op)    = keccak(op ‖ keccak(owner ‖ 6))（嵌套映射，M75-1）
 //
-// 支援介面（與乙太坊/BSC 標準一致）：
+// 支援介面（與乙太坊/BSC 標準一致，M75-1 補齊授權面後與 ERC-721 全介面對齊）：
 //   - totalSupply() / name() / symbol()
 //   - balanceOf(address) / ownerOf(uint256)
 //   - mint(address,uint256)（無重複 mint 檢查、Transfer(0,to,tokenId) 事件）
-//   - transferFrom(address,address,uint256)（僅 owner 本人可轉、Transfer 事件）
+//   - transferFrom(address,address,uint256)（owner 本人或已授權 operator 可轉、Transfer 事件）
+//   - approve(address,uint256)（授權單一 operator、Approval 事件）
+//   - setApprovalForAll(address,bool)（授權/撤銷全部 operator、ApprovalForAll 事件）
+//   - getApproved(uint256) / isApprovedForAll(address,address)
 //   - tokenURI(uint256)（讀 mapping，未設定回空）
 
 // ERC-721 標準 function selector（4-byte）。
@@ -32,12 +37,38 @@ var (
 	Selector721TotalSupply = []byte{0x18, 0x16, 0x0d, 0xdd} // totalSupply()
 	Selector721Name        = []byte{0x06, 0xfd, 0xde, 0x03} // name()
 	Selector721Symbol      = []byte{0x95, 0xd8, 0x9b, 0x41} // symbol()
+	Selector721Approve          = []byte{0x09, 0x5e, 0xa7, 0xb3} // approve(address,uint256)（與 ERC-20 approve 同簽名）
+	Selector721SetApprovalForAll = []byte{0xa2, 0x2c, 0xb4, 0x65} // setApprovalForAll(address,bool)
+	Selector721GetApproved       = []byte{0x08, 0x18, 0x12, 0xfc} // getApproved(uint256)
+	Selector721IsApprovedForAll  = []byte{0xe9, 0x85, 0xe9, 0xc5} // isApprovedForAll(address,address)
 	// ERC-721 的 Transfer 事件 topic0 與 ERC-20 相同（Transfer(address,address,uint256)）。
 	Topic721Transfer = TopicTransfer
+	// ERC-721 標準事件 topic0（keccak 計算，與乙太坊主網一致）。
+	Topic721Approval     = []byte{0x8c, 0x5b, 0xe1, 0xe5, 0xeb, 0xec, 0x7d, 0x5b, 0xd1, 0x4f, 0x71, 0x42, 0x7d, 0x1e, 0x84, 0xf3, 0xdd, 0x03, 0x14, 0xc0, 0xf7, 0xb2, 0x29, 0x1e, 0x5b, 0x20, 0x0a, 0xc8, 0xc7, 0xc3, 0xb9, 0x25}
+	Topic721ApprovalForAll = []byte{0x17, 0x30, 0x7e, 0xab, 0x39, 0xab, 0x61, 0x07, 0xe8, 0x89, 0x98, 0x45, 0xad, 0x3d, 0x59, 0xbd, 0x96, 0x53, 0xf2, 0x00, 0xf2, 0x20, 0x92, 0x04, 0x89, 0xca, 0x2b, 0x59, 0x37, 0x69, 0x6c, 0x31}
 )
 
 // mapSlotCode 產生「計算 mapping slot（keccak(key ‖ base)）」的 bytecode 片段：
 // mem[0]=key、mem[32]=base → SHA3(0,64)（棧頂回傳 slot）。
+// codeLog2Tail 為「LOG2 size=32 offset=0」尾碼（topic×2，M75-1 用於 ApprovalForAll 事件）。
+var codeLog2Tail = []byte{0x60, 0x20, 0x60, 0x00, 0xA2}
+
+// nestedSlotCode 產生「計算嵌套映射 slot」的 bytecode：
+// mem[0]=key1、mem[32]=base → SHA3(0,64)=inner → mem[0]=inner、mem[32]=key2 → SHA3(0,64)=slot。
+// 用於 ERC-721 approvalForAll(owner,operator)=keccak(operator ‖ keccak(owner ‖ 6))（M75-1）。
+func nestedSlotCode(key1Code, key2Code []byte, base byte) []byte {
+	var b []byte
+	b = append(b, key1Code...)
+	b = append(b, 0x60, 0x00, 0x52)              // MSTORE(0, key1)
+	b = append(b, 0x60, base, 0x60, 0x20, 0x52) // MSTORE(32, base)
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3(0,64) → inner
+	b = append(b, key2Code...)
+	b = append(b, 0x60, 0x00, 0x52)              // MSTORE(0, key2)
+	b = append(b, 0x60, 0x20, 0x52)              // MSTORE(32, inner)
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3(0,64) → keccak(key2 ‖ inner)
+	return b
+}
+
 func mapSlotCode(keyCode []byte, base byte) []byte {
 	var b []byte
 	b = append(b, keyCode...)
@@ -54,6 +85,8 @@ func Erc721Runtime() []byte {
 		Selector721TotalSupply, Selector721BalanceOf, Selector721OwnerOf,
 		Selector721Name, Selector721Symbol, Selector721Mint,
 		Selector721TransferFrom, Selector721TokenURI,
+		Selector721Approve, Selector721SetApprovalForAll,
+		Selector721GetApproved, Selector721IsApprovedForAll,
 	}
 	header := []byte{0x60, 0x00, 0x35} // CALLDATALOAD(0)
 	header = append(header, push32(new(big.Int).Lsh(big.NewInt(1), 224))...)
@@ -73,6 +106,8 @@ func Erc721Runtime() []byte {
 		erc721SegTotalSupply(), erc721SegBalanceOf(), erc721SegOwnerOf(),
 		erc721SegName(), erc721SegSymbol(), erc721SegMint(),
 		erc721SegTransferFrom(), erc721SegTokenURI(),
+		erc721SegApprove(), erc721SegSetApprovalForAll(),
+		erc721SegGetApproved(), erc721SegIsApprovedForAll(),
 	}
 	labs := make([]int, len(segs))
 	off := len(d)
@@ -192,15 +227,44 @@ func erc721SegTransferFrom() builtSeg {
 	jumps = append(jumps, segJump{pos: ok1Pos, target: ok1Pos + 8})
 	b = append(b, 0x60, 0x00, 0x60, 0x00, 0xFD) // REVERT
 	b = append(b, 0x5B)                       // ok1: [ownerSlot]
-	// 2) caller 檢查：caller==from
+	// 2) 授權檢查（M75-1）：caller==from 或 getApproved(tokenId)==caller 或 approvalForAll[from][caller]!=0
+	// 分支 A：caller==from → ok3
+	var authJumps []segJump
 	b = append(b, codeCalldata4...)           // from
-	b = append(b, 0x33)                       // caller
+	b = append(b, codeCaller...)               // caller
 	b = append(b, 0x14)                       // EQ
-	ok2Pos := len(b) + 1
-	b = append(b, 0x61, 0x00, 0x00, 0x57)     // JUMPI ok2
-	jumps = append(jumps, segJump{pos: ok2Pos, target: ok2Pos + 8})
+	aPos := len(b) + 1
+	b = append(b, 0x61, 0x00, 0x00, 0x57)     // JUMPI ok3
+	authJumps = append(authJumps, segJump{pos: aPos, target: 0})
+	// 分支 B：getApproved(tokenId)==caller → ok3
+	b = append(b, mapSlotCode(codeCalldata68, 7)...) // keccak(tokenId‖7)
+	b = append(b, 0x54)                       // approved
+	b = append(b, codeCaller...)               // caller
+	b = append(b, 0x14)                       // EQ
+	bPos := len(b) + 1
+	b = append(b, 0x61, 0x00, 0x00, 0x57)     // JUMPI ok3
+	authJumps = append(authJumps, segJump{pos: bPos, target: 0})
+	// 分支 C：approvalForAll[from][caller]!=0 → ok3
+	// slot = keccak(caller ‖ keccak(from ‖ 6))（與 nestedSlotCode 順序一致）
+	b = append(b, codeCalldata4...)           // from
+	b = append(b, 0x60, 0x00, 0x52)           // mem[0]=from
+	b = append(b, 0x60, 0x06, 0x60, 0x20, 0x52) // mem[32]=6
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3 → inner
+	b = append(b, codeCaller...)               // caller
+	b = append(b, 0x60, 0x00, 0x52)           // mem[0]=caller
+	b = append(b, 0x60, 0x20, 0x52)           // mem[32]=inner
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3 → keccak(caller ‖ inner)
+	b = append(b, 0x54)                       // approvedAll
+	cPos := len(b) + 1
+	b = append(b, 0x61, 0x00, 0x00, 0x57)     // JUMPI ok3（approvedAll!=0）
+	authJumps = append(authJumps, segJump{pos: cPos, target: 0})
 	b = append(b, 0x60, 0x00, 0x60, 0x00, 0xFD) // REVERT
-	b = append(b, 0x5B)                       // ok2: [ownerSlot]
+	ok3Idx := len(b)
+	b = append(b, 0x5B)                       // ok3: [ownerSlot]
+	for i := range authJumps {
+		authJumps[i].target = ok3Idx
+	}
+	jumps = append(jumps, authJumps...)
 	// 3) ownerOf[tokenId]=to（SWAP1 後 ownerSlot 回棧頂當 key）
 	b = append(b, codeCalldata24...)          // to
 	b = append(b, 0x90)                       // SWAP1 → [ownerSlot, to]
@@ -235,6 +299,98 @@ func erc721SegTransferFrom() builtSeg {
 func erc721SegTokenURI() builtSeg {
 	b := []byte{0x5B}
 	b = append(b, mapSlotCode(codeCalldata4, 5)...)
+	b = append(b, 0x54)
+	return builtSeg{code: append(b, RET32...)}
+}
+
+// erc721SegApprove: approve(to, tokenId)——require caller==owner 或
+// approvalForAll[owner][caller]、getApproved[tokenId]=to、
+// LOG3(Approval, caller, to, tokenId)、回傳 1（M75-1）。
+func erc721SegApprove() builtSeg {
+	var b []byte
+	var jumps []segJump
+	// 1) owner 檢查：ownerOf(tokenId)==caller 或 approvalForAll[owner][caller]
+	b = append(b, 0x5B) // JUMPDEST
+	b = append(b, mapSlotCode(codeCalldata24, 3)...) // ownerSlot（tokenId=calldata[36]）
+	b = append(b, 0x80) // DUP1
+	b = append(b, 0x54) // owner
+	b = append(b, codeCaller...)
+	b = append(b, 0x14) // EQ
+	aPos := len(b) + 1
+	b = append(b, 0x61, 0x00, 0x00, 0x57) // JUMPI ok
+	jumps = append(jumps, segJump{pos: aPos, target: 0})
+	// 分支 B：approvalForAll[owner][caller]!=0（棧頂 ownerSlot）
+	b = append(b, 0x80) // DUP1
+	b = append(b, 0x54) // owner
+	b = append(b, 0x60, 0x00, 0x52)           // mem[0]=owner
+	b = append(b, 0x60, 0x06, 0x60, 0x20, 0x52) // mem[32]=6
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3 → inner
+	b = append(b, 0x60, 0x00, 0x52)           // mem[0]=inner
+	b = append(b, codeCaller...)
+	b = append(b, 0x60, 0x20, 0x52)           // mem[32]=caller
+	b = append(b, 0x60, 0x40, 0x60, 0x00, 0x20) // SHA3 → slot
+	b = append(b, 0x54)                       // approved
+	bPos := len(b) + 1
+	b = append(b, 0x61, 0x00, 0x00, 0x57)     // JUMPI ok（approved!=0）
+	jumps = append(jumps, segJump{pos: bPos, target: 0})
+	b = append(b, 0x60, 0x00, 0x60, 0x00, 0xFD) // REVERT
+	okIdx := len(b)
+	b = append(b, 0x5B) // ok: [ownerSlot]
+	for i := range jumps {
+		jumps[i].target = okIdx
+	}
+	// 2) getApproved[tokenId]=to
+	b = append(b, mapSlotCode(codeCalldata24, 7)...) // keccak(tokenId‖7)
+	b = append(b, codeCalldata4...) // to
+	b = append(b, 0x90) // SWAP1 → [to, slot]
+	b = append(b, 0x55) // SSTORE
+	// 3) LOG3(Approval, caller, to, tokenId)
+	b = append(b, codeCalldata24...) // tokenId（data）
+	b = append(b, 0x60, 0x00, 0x52)  // mem[0]=tokenId
+	b = append(b, push32(selNum(Topic721Approval))...)
+	b = append(b, codeCaller...) // topic2=caller
+	b = append(b, codeCalldata4...) // topic3=to
+	b = append(b, codeLog3Tail...)
+	b = append(b, codeReturnTrue...)
+	b = append(b, RET32...)
+	return builtSeg{code: b, jumps: jumps}
+}
+
+// erc721SegSetApprovalForAll: setApprovalForAll(operator, approved)——caller 為 owner，
+// approvalForAll[caller][operator]=approved、LOG2(ApprovalForAll, caller, operator)、回傳 1（M75-1）。
+func erc721SegSetApprovalForAll() builtSeg {
+	var b []byte
+	b = append(b, 0x5B) // JUMPDEST
+	b = append(b, nestedSlotCode(codeCaller, codeCalldata4, 6)...) // approvalForAll[caller][operator]
+	b = append(b, codeCalldata24...) // approved
+	b = append(b, 0x90) // SWAP1 → [approved, slot]
+	b = append(b, 0x55) // SSTORE
+	// LOG2(ApprovalForAll, caller, operator)
+	b = append(b, codeCalldata24...) // approved（data）
+	b = append(b, 0x60, 0x00, 0x52)  // mem[0]=approved
+	b = append(b, push32(selNum(Topic721ApprovalForAll))...)
+	b = append(b, codeCaller...) // topic2=owner（caller）
+	b = append(b, codeCalldata4...) // topic3=operator
+	b = append(b, codeLog3Tail...)
+	b = append(b, codeReturnTrue...)
+	b = append(b, RET32...)
+	return builtSeg{code: b}
+}
+
+// erc721SegGetApproved: getApproved(tokenId) → keccak(tokenId‖7) → SLOAD → RETURN(0,32)（M75-1）。
+func erc721SegGetApproved() builtSeg {
+	b := []byte{0x5B}
+	b = append(b, mapSlotCode(codeCalldata4, 7)...)
+	b = append(b, 0x54)
+	return builtSeg{code: append(b, RET32...)}
+}
+
+// erc721SegIsApprovedForAll: isApprovedForAll(owner, operator) →
+// approvalForAll(owner,operator) slot → SLOAD → RETURN(0,32)（M75-1）。
+func erc721SegIsApprovedForAll() builtSeg {
+	var b []byte
+	b = append(b, 0x5B) // JUMPDEST
+	b = append(b, nestedSlotCode(codeCalldata4, codeCalldata24, 6)...)
 	b = append(b, 0x54)
 	return builtSeg{code: append(b, RET32...)}
 }
@@ -307,4 +463,35 @@ func Erc721NameCalldata() []byte {
 // Erc721SymbolCalldata 組裝 symbol() calldata。
 func Erc721SymbolCalldata() []byte {
 	return append([]byte{}, Selector721Symbol...)
+}
+
+// Erc721ApproveCalldata 組裝 approve(to, tokenId) calldata（M75-1）。
+func Erc721ApproveCalldata(to0x string, tokenID *big.Int) []byte {
+	out := append([]byte{}, Selector721Approve...)
+	out = append(out, IntToBytes(addrToInt(to0x), 32)...)
+	return append(out, IntToBytes(tokenID, 32)...)
+}
+
+// Erc721SetApprovalForAllCalldata 組裝 setApprovalForAll(operator, approved) calldata（M75-1）。
+func Erc721SetApprovalForAllCalldata(operator0x string, approved bool) []byte {
+	out := append([]byte{}, Selector721SetApprovalForAll...)
+	out = append(out, IntToBytes(addrToInt(operator0x), 32)...)
+	flag := big.NewInt(0)
+	if approved {
+		flag = big.NewInt(1)
+	}
+	return append(out, IntToBytes(flag, 32)...)
+}
+
+// Erc721GetApprovedCalldata 組裝 getApproved(tokenId) calldata（M75-1）。
+func Erc721GetApprovedCalldata(tokenID *big.Int) []byte {
+	out := append([]byte{}, Selector721GetApproved...)
+	return append(out, IntToBytes(tokenID, 32)...)
+}
+
+// Erc721IsApprovedForAllCalldata 組裝 isApprovedForAll(owner, operator) calldata（M75-1）。
+func Erc721IsApprovedForAllCalldata(owner0x, operator0x string) []byte {
+	out := append([]byte{}, Selector721IsApprovedForAll...)
+	out = append(out, IntToBytes(addrToInt(owner0x), 32)...)
+	return append(out, IntToBytes(addrToInt(operator0x), 32)...)
 }

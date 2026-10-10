@@ -110,3 +110,98 @@ func TestContractNFTDeployMintTransfer(t *testing.T) {
 		t.Fatalf("重複 mint 應為 REVERT 而非執行錯誤: %v", call["error"])
 	}
 }
+
+// TestContractNFTApproval 驗證 M75-1 ERC-721 授權 RPC 閉環：
+// approve → getApproved 查詢；setApprovalForAll(true/false) → isApprovedForAll 查詢。
+func TestContractNFTApproval(t *testing.T) {
+	n, srv, admin := contractStudioSetup(t)
+	bobKP, err := crypto.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bob, _ := bobKP.Address()
+	carolKP, err := crypto.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+	carol, _ := carolKP.Address()
+
+	out := studioPostJSON(t, srv, "/contract/nft/deploy", map[string]any{
+		"name": "TAC Legends", "symbol": "TACL",
+	})
+	if out["ok"] != true {
+		t.Fatalf("NFT 部署失敗: %v", out)
+	}
+	contractAddr := out["contract_address"].(string)
+	contract0x, err := tx0To0x(contractAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool {
+		return n.contracts.Get(contract0x) != nil && n.contracts.Get(contract0x).CodeSize > 0
+	}, 8*time.Second, "NFT 合約未入塊部署")
+
+	// mint token 1 給 admin（節點金鑰）。
+	m := studioPostJSON(t, srv, "/contract/nft/mint", map[string]any{
+		"contract": contractAddr, "to": admin, "token_id": "1",
+	})
+	if m["ok"] != true {
+		t.Fatalf("mint 失敗: %v", m)
+	}
+	waitFor(t, func() bool {
+		q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?token_id=1")
+		return q["owner"] != "" && q["owner"] != "0"
+	}, 8*time.Second, "mint 未上鏈")
+
+	// 授權 bob：POST /contract/nft/approve。
+	ap := studioPostJSON(t, srv, "/contract/nft/approve", map[string]any{
+		"contract": contractAddr, "to": bob, "token_id": "1",
+	})
+	if ap["ok"] != true {
+		t.Fatalf("approve 失敗: %v", ap)
+	}
+	bob0x, _ := tx0To0x(bob)
+	bobKey, _ := holderKey(bob0x)
+	bobWant := new(big.Int).SetBytes(vm.IntToBytes(bobKey, 32)).String()
+	waitFor(t, func() bool {
+		q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?token_id=1&get_approved=1")
+		return q["approved"] == bobWant
+	}, 8*time.Second, "getApproved 未上鏈")
+	q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?token_id=1&get_approved=1")
+	if q["approved"] != bobWant {
+		t.Fatalf("getApproved(1) 應為 bob，得到 %v", q["approved"])
+	}
+
+	// setApprovalForAll(carol, true) → isApprovedForAll 查詢。
+	sa := studioPostJSON(t, srv, "/contract/nft/set-approval-for-all", map[string]any{
+		"contract": contractAddr, "operator": carol, "approved": true,
+	})
+	if sa["ok"] != true {
+		t.Fatalf("setApprovalForAll 失敗: %v", sa)
+	}
+	carol0x, _ := tx0To0x(carol)
+	carolKey, _ := holderKey(carol0x)
+	_ = carolKey
+	waitFor(t, func() bool {
+		q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?owner="+admin+"&operator="+carol)
+		return q["operator_approved"] == "1"
+	}, 8*time.Second, "approvalForAll 未上鏈")
+	if q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?owner="+admin+"&operator="+carol); q["operator_approved"] != "1" {
+		t.Fatalf("isApprovedForAll(admin,carol) 應為 1，得到 %v", q["operator_approved"])
+	}
+
+	// 撤銷 → isApprovedForAll 歸 0。
+	rv := studioPostJSON(t, srv, "/contract/nft/set-approval-for-all", map[string]any{
+		"contract": contractAddr, "operator": carol, "approved": false,
+	})
+	if rv["ok"] != true {
+		t.Fatalf("撤銷 setApprovalForAll 失敗: %v", rv)
+	}
+	waitFor(t, func() bool {
+		q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?owner="+admin+"&operator="+carol)
+		return q["operator_approved"] == "0"
+	}, 8*time.Second, "撤銷未上鏈")
+	if q := studioGetJSON(t, srv, "/contract/nft/"+contractAddr+"?owner="+admin+"&operator="+carol); q["operator_approved"] != "0" {
+		t.Fatalf("撤銷後 isApprovedForAll 應為 0，得到 %v", q["operator_approved"])
+	}
+}

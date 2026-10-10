@@ -177,6 +177,8 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /contract/nft/{address}", s.handleContractNFTInfo)
 	s.addRoute("POST /contract/nft/mint", s.handleContractNFTMint)
 	s.addRoute("POST /contract/nft/transfer", s.handleContractNFTTransfer)
+	s.addRoute("POST /contract/nft/approve", s.handleContractNFTApprove)
+	s.addRoute("POST /contract/nft/set-approval-for-all", s.handleContractNFTSetApprovalForAll)
 
 	// M45：鏈上 DEX（AMM）。
 	s.addRoute("GET /dex/pools", s.handleDexPools)

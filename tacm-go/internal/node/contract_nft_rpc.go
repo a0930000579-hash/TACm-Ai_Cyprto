@@ -112,6 +112,26 @@ func nftSlotURI(tokenID *big.Int) *big.Int {
 	return vm.Keccak256Hash(vm.IntToBytes(tokenID, 32), vm.IntToBytes(big.NewInt(5), 32))
 }
 
+// nftSlotApproved 計算 ERC-721 getApproved(tokenId) 的 storage slot（keccak(tokenId ‖ 7)，M75-1）。
+func nftSlotApproved(tokenID *big.Int) *big.Int {
+	return vm.Keccak256Hash(vm.IntToBytes(tokenID, 32), vm.IntToBytes(big.NewInt(7), 32))
+}
+
+// nftSlotApprovalForAll 計算 ERC-721 approvalForAll(owner, operator) 的 storage slot
+// （keccak(operator ‖ keccak(owner ‖ 6))，嵌套映射，M75-1）。
+func nftSlotApprovalForAll(owner0x, operator0x string) (*big.Int, error) {
+	oi, err := holderKey(owner0x)
+	if err != nil {
+		return nil, err
+	}
+	opi, err := holderKey(operator0x)
+	if err != nil {
+		return nil, err
+	}
+	inner := vm.Keccak256Hash(vm.IntToBytes(oi, 32), vm.IntToBytes(big.NewInt(6), 32))
+	return vm.Keccak256Hash(vm.IntToBytes(opi, 32), vm.IntToBytes(inner, 32)), nil
+}
+
 // handleContractNFTInfo GET /contract/nft/{address}?holder=tx0...&token_id=1
 // 便利查詢：name/symbol/totalSupply＋（可選）holder 的 NFT 持有數與 tokenId 的 owner。
 func (s *RPCServer) handleContractNFTInfo(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +169,21 @@ func (s *RPCServer) handleContractNFTInfo(w http.ResponseWriter, r *http.Request
 		owner := s.node.contracts.StorageAt(evm, nftSlotOwner(tidInt))
 		out["owner"] = owner.String()
 		out["token_uri"] = s.node.contracts.StorageAt(evm, nftSlotURI(tidInt)).String()
+		// M75-1：getApproved(token_id) 查詢（?get_approved=1）
+		if r.URL.Query().Get("get_approved") != "" {
+			out["approved"] = s.node.contracts.StorageAt(evm, nftSlotApproved(tidInt)).String()
+		}
+	}
+	// M75-1：isApprovedForAll(owner, operator) 查詢（?owner=tx0...&operator=tx0...）
+	if o := r.URL.Query().Get("owner"); o != "" {
+		if op := r.URL.Query().Get("operator"); op != "" {
+			as, err := nftSlotApprovalForAll(o, op)
+			if err != nil {
+				writeErr(w, http.StatusBadRequest, "invalid owner/operator address")
+				return
+			}
+			out["operator_approved"] = s.node.contracts.StorageAt(evm, as).String()
+		}
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -236,5 +271,81 @@ func (s *RPCServer) handleContractNFTTransfer(w http.ResponseWriter, r *http.Req
 		"ok": true, "tx_hash": txHash, "status": "mempool",
 		"from": from, "to": req.Contract,
 		"token_from": req.From, "recipient": req.To, "token_id": tid.String(),
+	})
+}
+
+// handleContractNFTApprove POST /contract/nft/approve
+// body: {contract, to, token_id}——伺服器組 approve(to, tokenId) calldata 並以節點金鑰代簽上鏈（M75-1）。
+func (s *RPCServer) handleContractNFTApprove(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Contract string `json:"contract"`
+		To       string `json:"to"`
+		TokenID  string `json:"token_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad JSON body")
+		return
+	}
+	if !crypto.IsValidAddress(req.Contract) || !crypto.IsValidAddress(req.To) {
+		writeErr(w, http.StatusBadRequest, "invalid contract/to address")
+		return
+	}
+	tid, ok := new(big.Int).SetString(req.TokenID, 10)
+	if !ok || tid.Sign() < 0 {
+		writeErr(w, http.StatusBadRequest, "invalid token_id")
+		return
+	}
+	to0x, err := tx0To0x(req.To)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	calldata := vm.Erc721ApproveCalldata(to0x, tid)
+	txHash, err := s.node.SubmitSignedContractCall(req.Contract, hex.EncodeToString(calldata))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	from, _ := s.node.keypair.Address()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "tx_hash": txHash, "status": "mempool",
+		"from": from, "to": req.Contract,
+		"approved": req.To, "token_id": tid.String(),
+	})
+}
+
+// handleContractNFTSetApprovalForAll POST /contract/nft/set-approval-for-all
+// body: {contract, operator, approved:true|false}——伺服器組 setApprovalForAll(operator, approved)
+// calldata 並以節點金鑰代簽上鏈（M75-1）。
+func (s *RPCServer) handleContractNFTSetApprovalForAll(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Contract string `json:"contract"`
+		Operator string `json:"operator"`
+		Approved bool   `json:"approved"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad JSON body")
+		return
+	}
+	if !crypto.IsValidAddress(req.Contract) || !crypto.IsValidAddress(req.Operator) {
+		writeErr(w, http.StatusBadRequest, "invalid contract/operator address")
+		return
+	}
+	op0x, err := tx0To0x(req.Operator)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	calldata := vm.Erc721SetApprovalForAllCalldata(op0x, req.Approved)
+	txHash, err := s.node.SubmitSignedContractCall(req.Contract, hex.EncodeToString(calldata))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	from, _ := s.node.keypair.Address()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true, "tx_hash": txHash, "status": "mempool",
+		"from": from, "to": req.Contract,
+		"operator": req.Operator, "approved": req.Approved,
 	})
 }

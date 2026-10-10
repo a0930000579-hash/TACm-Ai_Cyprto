@@ -180,3 +180,103 @@ func TestERC721BalanceOfMultiple(t *testing.T) {
 		t.Fatalf("totalSupply 應為 3，得到 %s", got)
 	}
 }
+
+// ---- M75-1：ERC-721 授權面（approve / setApprovalForAll / getApproved / isApprovedForAll）----
+
+// TestERC721ApproveAndTransfer 驗證 approve(address,uint256)：Approval 事件、getApproved 讀回、
+// 被授權 operator 可 transferFrom。
+func TestERC721ApproveAndTransfer(t *testing.T) {
+	world, rt, creator := deployErc721(t, "MyNFT", "MNFT")
+	holder := "0x" + strings.Repeat("22", 20)
+	bob := "0x" + strings.Repeat("44", 20)
+	execErc721As(world, rt, creator, Erc721MintCalldata(holder, big.NewInt(9)))
+	// holder 授權 bob 單一 token 9
+	r := execErc721As(world, rt, holder, Erc721ApproveCalldata(bob, big.NewInt(9)))
+	if !r.Success {
+		t.Fatalf("approve 失敗: %v", r.Err)
+	}
+	// Approval(holder, bob, 9) 事件
+	if len(r.Logs) != 1 || len(r.Logs[0].Topics) != 3 || r.Logs[0].Topics[0] != hex.EncodeToString(Topic721Approval) {
+		t.Fatalf("Approval 事件異常: %v", r.Logs)
+	}
+	if r.Logs[0].Topics[1] != hex.EncodeToString(IntToBytes(addrToInt(holder), 32)) ||
+		r.Logs[0].Topics[2] != hex.EncodeToString(IntToBytes(addrToInt(bob), 32)) {
+		t.Fatalf("Approval 事件 owner/approved 異常: %v", r.Logs[0].Topics)
+	}
+	// getApproved(9) == bob
+	if got := queryErc721(t, world, rt, creator, Erc721GetApprovedCalldata(big.NewInt(9))); got.Cmp(addrToInt(bob)) != 0 {
+		t.Fatalf("getApproved(9) 應為 bob，得到 %s", got)
+	}
+	// bob（operator）代 holder 轉移 token 9 給 carol
+	carol := "0x" + strings.Repeat("55", 20)
+	r2 := execErc721As(world, rt, bob, Erc721TransferFromCalldata(holder, carol, big.NewInt(9)))
+	if !r2.Success {
+		t.Fatalf("授權 operator transferFrom 應成功: %v", r2.Err)
+	}
+	if got := queryErc721(t, world, rt, creator, Erc721OwnerOfCalldata(big.NewInt(9))); got.Cmp(addrToInt(carol)) != 0 {
+		t.Fatalf("ownerOf(9) 應為 carol，得到 %s", got)
+	}
+}
+
+// TestERC721ApproveNotOwner 驗證非 owner 且未獲授權者呼叫 approve → REVERT。
+func TestERC721ApproveNotOwner(t *testing.T) {
+	world, rt, creator := deployErc721(t, "MyNFT", "MNFT")
+	holder := "0x" + strings.Repeat("22", 20)
+	eve := "0x" + strings.Repeat("66", 20)
+	execErc721As(world, rt, creator, Erc721MintCalldata(holder, big.NewInt(9)))
+	if r := execErc721As(world, rt, eve, Erc721ApproveCalldata(eve, big.NewInt(9))); r.Success {
+		t.Fatal("非 owner 未授權 approve 應 REVERT")
+	}
+}
+
+// TestERC721SetApprovalForAll 驗證 setApprovalForAll：ApprovalForAll 事件、
+// isApprovedForAll 讀回、operator 可代轉任意 token。
+func TestERC721SetApprovalForAll(t *testing.T) {
+	world, rt, creator := deployErc721(t, "MyNFT", "MNFT")
+	holder := "0x" + strings.Repeat("22", 20)
+	bob := "0x" + strings.Repeat("44", 20)
+	execErc721As(world, rt, creator, Erc721MintCalldata(holder, big.NewInt(9)))
+	r := execErc721As(world, rt, holder, Erc721SetApprovalForAllCalldata(bob, true))
+	if !r.Success {
+		t.Fatalf("setApprovalForAll 失敗: %v", r.Err)
+	}
+	// ApprovalForAll(holder, bob, true) 事件
+	if len(r.Logs) != 1 || len(r.Logs[0].Topics) != 3 || r.Logs[0].Topics[0] != hex.EncodeToString(Topic721ApprovalForAll) {
+		t.Fatalf("ApprovalForAll 事件異常: %v", r.Logs)
+	}
+	if r.Logs[0].Topics[1] != hex.EncodeToString(IntToBytes(addrToInt(holder), 32)) ||
+		r.Logs[0].Topics[2] != hex.EncodeToString(IntToBytes(addrToInt(bob), 32)) {
+		t.Fatalf("ApprovalForAll 事件 owner/operator 異常: %v", r.Logs[0].Topics)
+	}
+	// isApprovedForAll(holder, bob) == 1
+	if got := queryErc721(t, world, rt, creator, Erc721IsApprovedForAllCalldata(holder, bob)); got.Cmp(big.NewInt(1)) != 0 {
+		t.Fatalf("isApprovedForAll 應為 1，得到 %s", got)
+	}
+	// bob 代 holder 轉移（未單獨 approve 的 token 也可轉）
+	carol := "0x" + strings.Repeat("55", 20)
+	if r2 := execErc721As(world, rt, bob, Erc721TransferFromCalldata(holder, carol, big.NewInt(9))); !r2.Success {
+		t.Fatalf("approvalForAll operator transferFrom 應成功: %v", r2.Err)
+	}
+	if got := queryErc721(t, world, rt, creator, Erc721OwnerOfCalldata(big.NewInt(9))); got.Cmp(addrToInt(carol)) != 0 {
+		t.Fatalf("ownerOf(9) 應為 carol，得到 %s", got)
+	}
+}
+
+// TestERC721SetApprovalForAllRevoke 驗證撤銷後 isApprovedForAll==0 且轉移被拒。
+func TestERC721SetApprovalForAllRevoke(t *testing.T) {
+	world, rt, creator := deployErc721(t, "MyNFT", "MNFT")
+	holder := "0x" + strings.Repeat("22", 20)
+	bob := "0x" + strings.Repeat("44", 20)
+	execErc721As(world, rt, creator, Erc721MintCalldata(holder, big.NewInt(9)))
+	execErc721As(world, rt, holder, Erc721SetApprovalForAllCalldata(bob, true))
+	if r := execErc721As(world, rt, holder, Erc721SetApprovalForAllCalldata(bob, false)); !r.Success {
+		t.Fatalf("撤銷 setApprovalForAll 失敗: %v", r.Err)
+	}
+	if got := queryErc721(t, world, rt, creator, Erc721IsApprovedForAllCalldata(holder, bob)); got.Sign() != 0 {
+		t.Fatalf("撤銷後 isApprovedForAll 應為 0，得到 %s", got)
+	}
+	carol := "0x" + strings.Repeat("55", 20)
+	if r := execErc721As(world, rt, bob, Erc721TransferFromCalldata(holder, carol, big.NewInt(9))); r.Success {
+		t.Fatal("撤銷後 operator transferFrom 應 REVERT")
+	}
+}

@@ -1,8 +1,57 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M74-3）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M75-1）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M74-3）——EIP-1559 動態手續費（gas 市場與以太/BSC 對齊）
+## 本版重點（M75-1）——ERC-721 授權面補齊（與以太 ERC-721 標準全介面對齊）
+
+M74-3（EIP-1559）之後，本版把 **ERC-721 授權面補齊**——這是「與主流鏈（以太坊/BSC）同級」在 NFT 標準上的最後缺口，補上後 ERC-721 與以太主網標準介面完全一致：
+
+- **approve(address to, uint256 tokenId)**：owner 授權單一 Token 給指定地址；寫入 `getApproved(tokenId)` slot（`keccak(tokenId‖7)`），發標準 `Approval` 事件（topic0 與以太主網一致 `0x8c5be1e5…`）。
+- **setApprovalForAll(address operator, bool approved)**：owner 授權操作員代管全部 Token；寫入嵌套 slot `keccak(operator ‖ keccak(owner ‖ 6))`，發標準 `ApprovalForAll` 事件（topic0 `0x17307eab…`）。
+- **getApproved(uint256 tokenId) / isApprovedForAll(address owner, address operator)**：標準只讀查詢介面（RPC：`?token_id=1&get_approved=1` 與 `?owner=&operator=`）。
+- **transferFrom 授權轉移**：三路判定——`caller==from`（本人）、`getApproved(tokenId)==caller`（單 Token 獲批者）、`approvalForAll[from][caller]!=0`（全量操作員）；任一通過即轉移，撤銷後轉移 REVERT。
+- **前端（中英同步）**：NFT 工作室（`/nfts`）新增「授權管理」區——代簽 approve、setApprovalForAll(true/false)、查詢 getApproved／isApprovedForAll，全站英文為主中文可切換。
+- **測試**：`internal/vm/erc721_test.go` 11 測試全過（含授權四件套與撤銷）；`internal/node/contract_nft_e2e_test.go`（部署→mint→approve→getApproved→setApprovalForAll→isApprovedForAll→撤銷歸零）PASS；`go build ./...` 綠；node 全量回歸綠。
+- **部署注意**：本版無鏈表結構變更（合約 storage 布局新增授權 slot），沿用 M74-3 部署指令含 `rm -rf /var/tac/data` 全新創世（新創世合約即含授權段）；Render 端重新部署時清空 data 目錄。
+
+### M75-1 錨點部署步驟（一次一條，勿一次貼多條）
+
+```bash
+sudo systemctl stop tacnode
+```
+```bash
+rm -rf /var/tac/data
+```
+```bash
+curl -L -o /tmp/tacm-go-m751.zip 'https://aka.doubaocdn.com/s/zQxK7sDs5w'
+```
+```bash
+cd /root && sudo unzip -o /tmp/tacm-go-m751.zip
+```
+```bash
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+```
+```bash
+sudo systemctl restart tacnode
+```
+```bash
+curl -s http://2.28.201.174:8080/status
+```
+```bash
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+驗證授權面（部署後，選一個已部署 NFT 合約）：
+```bash
+curl -s 'http://2.28.201.174:8080/contract/nft/<合約地址>?token_id=1&get_approved=1'
+```
+```bash
+curl -s 'http://2.28.201.174:8080/contract/nft/<合約地址>?owner=<tx0地址>&operator=<tx0地址>'
+```
+
+---
+
+## 上一版記錄（M74-3）——EIP-1559 動態手續費（gas 市場與以太/BSC 對齊）
 
 M74-2（鏈上 NFT）之後，本版把**交易費機制升級為 EIP-1559 動態手續費**——這是主流鏈（以太坊/BSC/Solana）與 TACm 之間最後一塊核心協議缺口（舊版手續費固定為 0）：
 
