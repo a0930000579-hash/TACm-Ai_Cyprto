@@ -71,6 +71,24 @@ func (s *Server) handleSearchAPI(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": false, "type": "none", "q": q})
 }
 
+// handlePeersAPI GET /api/peers — 公開 seed 列表（M63）：新節點加入網絡的權威入口。
+// 列表來自單一權威來源 mainnetSeeds（編譯進所有節點），任何入口看到的一致。
+func (s *Server) handlePeersAPI(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]any{
+		"ok":      true,
+		"network": "tacm-mainnet-1",
+		"seeds":   mainnetSeeds,
+	})
+}
+
+// handleJoin GET /join — 節點加入指引頁（M63）：展示 seed 列表、一鍵加入指令與節點要求。
+func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "join.html", pongo2.Context{
+		"seeds": mainnetSeeds,
+		"repo":  "https://github.com/a0930000579-hash/TACm-Ai_Cyprto",
+	})
+}
+
 func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {
 	h, err := strconv.ParseInt(r.PathValue("height"), 10, 64)
 	if err != nil {

@@ -67,6 +67,8 @@ func TestServerPages(t *testing.T) {
 		{"/", http.StatusOK, "最新區塊"},
 		{"/explorer", http.StatusOK, "鏈上搜尋"},
 		{"/explorer", http.StatusOK, "最新交易"},
+		{"/join", http.StatusOK, "加入 TAC 自主智能鏈主網"},
+		{"/join", http.StatusOK, "2.28.201.174:8080"},
 		{"/block/5", http.StatusOK, "blockhash5"},
 		{"/address/tx0proposeraddr", http.StatusOK, "100"},
 		{"/tx/txhash1", http.StatusOK, "txhash1"},
@@ -165,6 +167,28 @@ func TestSearchAPI(t *testing.T) {
 		}
 		resp.Body.Close()
 	}
+}
+
+// TestPeersAPI 驗證公開 seed 列表：單一權威來源、任何入口看到的一致。
+func TestPeersAPI(t *testing.T) {
+	srv, _ := New(newFake())
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/peers")
+	if err != nil {
+		t.Fatalf("GET /api/peers: %v", err)
+	}
+	body := readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("狀態=%d 想要 200", resp.StatusCode)
+	}
+	for _, want := range []string{`"ok":true`, `"network":"tacm-mainnet-1"`, `2.28.201.174:8080`, `tacm-ai-cyprto.onrender.com`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("未包含 %q（body=%s）", want, body)
+		}
+	}
+	resp.Body.Close()
 }
 
 func readAllString(resp *http.Response) string {

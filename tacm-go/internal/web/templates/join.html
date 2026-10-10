@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}加入網絡 · TAC Node{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head"><h2>🚀 加入 TAC 自主智能鏈主網</h2></div>
+  <p class="muted">任何一台伺服器都可成為節點（follower），與錨點同步同一條鏈、共享全網狀態；內建礦機可額外挖礦瓜分出塊獎勵。節點之間嚴格遵循同一套出塊獎勵規則，任何入口看到的鏈上資料與在線礦工完全一致。</p>
+</section>
+
+<!-- M63：網絡概況 -->
+<section class="panel">
+  <div class="panel-head"><h2>🌐 網絡概況</h2></div>
+  <div class="chain-grid">
+    <div class="cg"><small>網絡</small><b>mainnet</b></div>
+    <div class="cg"><small>鏈 ID</small><b class="mono">tacm-mainnet-1</b></div>
+    <div class="cg"><small>共識</small><b>PoW 動態難度 + BFT 投票</b></div>
+    <div class="cg"><small>出塊獎勵</small><b>coinbase 分潤（池 + 礦工）</b></div>
+    <div class="cg"><small>種子節點</small><b>{{ seeds|length }}</b></div>
+    <div class="cg"><small>區塊時間</small><b>2 秒</b></div>
+  </div>
+</section>
+
+<!-- M63：公開 seed 列表 -->
+<section class="panel">
+  <div class="panel-head"><h2>🔗 公開 Seed 列表</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>節點</th><th>URL</th><th>角色</th></tr>
+    </thead>
+    <tbody>
+    {% for sd in seeds %}
+      <tr>
+        <td class="mono">{{ sd.NodeID }}</td>
+        <td class="mono"><a href="{{ sd.URL }}" target="_blank" rel="noopener">{{ sd.URL }}</a></td>
+        <td>{{ sd.Role }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- M63：一鍵加入指令 -->
+<section class="panel">
+  <div class="panel-head"><h2>💻 一鍵加入指令</h2></div>
+  <div class="join-cmd">
+    <pre id="joinCmd">git clone {{ repo }}.git
+cd TACm-Ai_Cyprto/tacm-go
+go build -o tacweb ./cmd/web
+go build -o tacnode ./cmd/node
+./tacweb -web-port 8080 -rpc-port 8080 -data-dir ./data -block-time 2 -difficulty 3 -p2p -p2p-url http://&lt;你的公網IP&gt;:8080 -p2p-seed http://2.28.201.174:8080 -p2p-follower</pre>
+    <button class="search-btn" id="copyBtn" type="button">複製指令</button>
+  </div>
+  <p class="muted">把 <b>&lt;你的公網IP&gt;</b> 換成你自己的 IP 後逐行執行。啟動後以 <b>-p2p-seed</b> 連上錨點完成握手，即開始同步主網。</p>
+</section>
+
+<!-- M63：節點要求 -->
+<section class="panel">
+  <div class="panel-head"><h2>📋 節點要求</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>項目</th><th>要求</th></tr></thead>
+    <tbody>
+      <tr><td>系統</td><td>Linux / macOS（需 Go 1.22+）</td></tr>
+      <tr><td>記憶體</td><td>建議 2GB RAM 以上</td></tr>
+      <tr><td>磁碟</td><td>10GB 以上（鏈資料會持續增長）</td></tr>
+      <tr><td>網路</td><td>開放 TCP 8080 埠（P2P + RPC 同埠合併）</td></tr>
+      <tr><td>同步</td><td>首次啟動自動從 seed 節點同步全鏈</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- M63：驗證與挖礦 -->
+<section class="panel">
+  <div class="panel-head"><h2>✅ 驗證與挖礦</h2></div>
+  <div class="join-cmd">
+    <pre id="joinVerify">curl -s http://127.0.0.1:8080/status
+# 瀏覽器開啟 http://127.0.0.1:8080/explorer 查看你同步的鏈</pre>
+  </div>
+  <p class="muted">啟動後在網頁「挖礦」頁開啟礦機即可參與出塊：收益按鏈上 coinbase 分潤規則發放（池 + 礦工），開機/關機狀態經心跳交易寫入鏈上，任何入口看到你的在線狀態一致。</p>
+</section>
+
+<style>
+  .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .cg small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
+  .cg b{font-size:13px;color:var(--text);word-break:break-all}
+  .join-cmd{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .join-cmd pre{flex:1;min-width:280px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12.5px;line-height:1.7;color:var(--text);overflow-x:auto;white-space:pre;margin:0}
+</style>
+
+<script>
+  // M63：複製一鍵指令。
+  (function () {
+    var btn = document.getElementById('copyBtn');
+    var pre = document.getElementById('joinCmd');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.textContent;
+      function done() { btn.textContent = '已複製 ✓'; setTimeout(function () { btn.textContent = '複製指令'; }, 1500); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
+      } else { fallback(); }
+      function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+    });
+  })();
+</script>
+{% endblock %}

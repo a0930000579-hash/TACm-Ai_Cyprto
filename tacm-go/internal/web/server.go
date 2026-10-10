@@ -112,6 +112,9 @@ func (s *Server) routes() {
 	// M62：公開區塊瀏覽器（公鏈門面）——鏈統計＋搜尋＋最新區塊/交易。
 	s.mux.HandleFunc("GET /explorer", s.handleExplorer)
 	s.mux.HandleFunc("GET /api/search", s.handleSearchAPI)
+	// M63：節點加入指引＋公開 seed 列表（去中心化多節點入口）。
+	s.mux.HandleFunc("GET /join", s.handleJoin)
+	s.mux.HandleFunc("GET /api/peers", s.handlePeersAPI)
 	s.mux.HandleFunc("GET /block/{height}", s.handleBlock)
 	s.mux.HandleFunc("GET /address/{address}", s.handleAddress)
 	s.mux.HandleFunc("GET /tx/{hash}", s.handleTx)

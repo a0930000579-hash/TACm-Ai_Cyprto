@@ -131,4 +131,12 @@ func TestExplorerRealNode(t *testing.T) {
 	check(n.Address(), `"type":"address"`)
 	check(txHash, `"type":"tx"`)
 	check("zzz_no_such", `"type":"none"`)
+
+	// M63：公開 seed 列表——真實節點下任何入口一致。
+	resp, _ = http.Get(ts.URL + "/api/peers")
+	body = readAllString(resp)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"network":"tacm-mainnet-1"`) {
+		t.Errorf("peers API 異常 狀態=%d", resp.StatusCode)
+	}
+	resp.Body.Close()
 }
