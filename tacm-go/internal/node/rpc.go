@@ -170,6 +170,11 @@ func NewRPCServer(n *Node) *RPCServer {
 	// M44：標準代幣便利查詢/轉帳（前端免組 calldata）。
 	s.addRoute("GET /contract/erc20/{address}", s.handleContractERC20Info)
 	s.addRoute("POST /contract/erc20/transfer", s.handleContractERC20Transfer)
+	// M74-2：鏈上 NFT（ERC-721 風格）部署/查詢/mint/轉移。
+	s.addRoute("POST /contract/nft/deploy", s.handleContractNFTDeploy)
+	s.addRoute("GET /contract/nft/{address}", s.handleContractNFTInfo)
+	s.addRoute("POST /contract/nft/mint", s.handleContractNFTMint)
+	s.addRoute("POST /contract/nft/transfer", s.handleContractNFTTransfer)
 
 	// M45：鏈上 DEX（AMM）。
 	s.addRoute("GET /dex/pools", s.handleDexPools)

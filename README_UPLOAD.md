@@ -1,8 +1,53 @@
-# TACm-Go 壓縮檔上傳與 Render 部署說明（M74）
+# TACm-Go 壓縮檔上傳與 Render 部署說明（M74-2）
 
 本壓縮檔解壓後會產生一個 **tacm-go 資料夾**（裡面是整套 Go 區塊鏈系統的完整程式碼）。
 
-## 本版重點（M74-1）——ERC-20 標準授權介面（approve/allowance/transferFrom＋標準事件）
+## 本版重點（M74-2）——鏈上 NFT（ERC-721 標準：mint/transferFrom/ownerOf/tokenURI）
+
+M74-1（ERC-20 標準授權）之後，本版補上**標準 NFT（ERC-721 風格）**，讓 TACm 主網與主流鏈一樣具備**鏈上 NFT 能力**（收藏品/數位資產/票券等）：
+
+- **鏈上 ERC-721 Runtime（748 bytes）**：`Erc721Runtime()` 以程式化建構 8 個 selector dispatch＋8 個 builtSeg 段，實作 `balanceOf / ownerOf / transferFrom / mint / tokenURI / totalSupply / name / symbol`。
+  - **標準 storage 布局**：slot0=totalSupply、slot1=name、slot2=symbol、`ownerOf=keccak(tokenId‖3)`、`balanceOf=keccak(owner‖4)`、`tokenURI=keccak(tokenId‖5)`。
+  - **標準事件**：mint/transfer 發出 `Transfer(from,to,tokenId)` LOG3，topic0 與主流 ERC-721 一致（`0xddf252ad…`）；mint 的 from=零地址。
+  - **鐵律**：重複 mint 同一 tokenId → REVERT；非 owner 且 caller≠from 的 transferFrom → REVERT；未設置 tokenURI 回 0。
+- **節點 RPC 4 端點（與 ERC-20 並存）**：
+  - `POST /contract/nft/deploy`（body: name/symbol）→ 節點官方金鑰代簽部署 NFT 集合，回傳 `contract_address`。
+  - `GET /contract/nft/{address}?holder=tx0...&token_id=1` → name/symbol/supply＋我的持有數＋token owner。
+  - `POST /contract/nft/mint`（body: contract/to/token_id）→ 節點代簽鑄造，上鏈即見。
+  - `POST /contract/nft/transfer`（body: contract/from/to/token_id）→ 節點代簽轉移（caller==from 鐵律；一般用戶持私鑰可走真實簽名管道）。
+- **前端 NFT Studio**：`/nfts` 頁面（導覽列「NFT」入口，中英同步）——發行集合、列表、詳情（名稱/代號/已鑄數量/我的持有數）、查詢 Owner、代簽 mint、代簽轉移。
+- **測試**：`internal/vm/erc721_test.go` 7 測試全過；`internal/node/contract_nft_e2e_test.go`（部署→mint→查詢→transfer→重複 mint REVERT）PASS；node 全量回歸（156s）綠；`go build ./...` 綠；冒煙實測 deploy→mint→查詢 owner/balance 正確。
+
+### M74-2 錨點部署步驟（一次一條，勿一次貼多條）
+
+```bash
+sudo systemctl stop tacnode
+```
+```bash
+rm -rf /var/tac/data
+```
+```bash
+curl -L -o /tmp/tacm-go-m742.zip '<M74-2 aka 連結>'
+```
+```bash
+cd /root && sudo unzip -o /tmp/tacm-go-m742.zip
+```
+```bash
+cd /root/tacm-go && GOTOOLCHAIN=local go build -o tacweb ./cmd/web
+```
+```bash
+sudo systemctl restart tacnode
+```
+```bash
+curl -s http://2.28.201.174:8080/status
+```
+```bash
+curl -s http://2.28.201.174:8080/api/audit
+```
+
+> ⚠️ **部署前必讀**：M74-2 沿用 M70 起的鏈上獎勵規則（node 9%／pool 16%／miner 75%）與 M74-1 的 ERC-20 授權介面，無新創世分配；若伺服器為既有 M74-1 鏈，**不必清資料**（無結構性變更）；若希望全新創世再開始，則執行 `rm -rf /var/tac/data` 後重啟即歸零。Render 端：重新部署（unzip 後 `go build -o tacweb ./cmd/web`，Start Command 不變）。
+
+## 上版重點（M74-1）——ERC-20 標準授權介面（approve/allowance/transferFrom＋標準事件）
 
 M73-B 之後，本版把 Token Studio 的 ERC-20 風格代幣補齊**標準授權三件套**，向主流鏈（BSC/以太坊）代幣標準看齊：
 
@@ -14,7 +59,7 @@ M73-B 之後，本版把 Token Studio 的 ERC-20 風格代幣補齊**標準授�
 - **runtime 工程重構**：`Erc20Runtime()` 改為 9-selector **程式化建構**（header＋9 對 dispatch＋fallback＋9 個 builtSeg 段，共 842 bytes），每段獨立組裝 JUMPI 目標（段內相對偏移、收集後轉絕對），消除手寫 bytecode 的跳轉錯位風險。
 - **測試**：`internal/vm/erc20_test.go` 擴充至 **8 個 ERC-20 閉環測試全過**（deploy/transfer/approve/allowance/transferFrom/超額拒絕/decimals/雙事件 topics），`internal/node` e2e 回歸綠；`go build ./...` 綠。
 
-### M74 錨點部署步驟（一次一條，勿一次貼多條）
+### M74-1 錨點部署步驟（一次一條，勿一次貼多條）
 
 ```bash
 sudo systemctl stop tacnode
@@ -378,3 +423,4 @@ Render 設定路徑：Render Dashboard → 你的服務 → Settings → Build &
 - DeFi：`/defi`（頂部「☰ Tools」選單內有入口）
 - C2C：`/c2c`（頂部「☰ Tools」選單內有入口）
 - 代幣：`/tokens`（Token Studio：發行/查詢/代簽轉帳，頂部導覽與「☰ Tools」選單內有入口）
+- NFT：`/nfts`（NFT Studio：發行 NFT 集合/鑄造/查詢 Owner/代簽轉移，頂部導覽與「☰ Tools」選單內有入口）

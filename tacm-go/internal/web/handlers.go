@@ -286,6 +286,12 @@ func (s *Server) handleTokens(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "tokens.html", pongo2.Context{})
 }
 
+// handleNFTs GET /nfts — NFT 工作室（NFT Studio）：鏈上標準 NFT（ERC-721 風格）
+// 發行/mint/查詢/轉移（M74-2）。實時數據由前端讀取 RPC。
+func (s *Server) handleNFTs(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "nfts.html", pongo2.Context{})
+}
+
 // handleDex GET /dex — 鏈上 DEX（AMM 恆定乘積）：池列表/建池/流動性/即時兌換，
 // 與 Token Studio 打通（發幣→建池→交易閉環）。實時數據由前端讀取 RPC。
 func (s *Server) handleDex(w http.ResponseWriter, r *http.Request) {
