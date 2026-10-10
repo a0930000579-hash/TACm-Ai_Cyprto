@@ -53,6 +53,10 @@ type Node struct {
 	blockTime   time.Duration
 	onlineSince time.Time
 
+	// heartbeatInterval 礦工鏈上心跳續命間隔（M61：所有啟動模式皆跑 minerHeartbeatLoop；
+	// 預設 hbRefresh，測試可注入較短間隔以快速驗證自動續命）。
+	heartbeatInterval time.Duration
+
 	mu       sync.Mutex // 保護以下共識狀態
 	baseDiff int
 	adjDiff  int
@@ -137,14 +141,15 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 	}
 
 	n := &Node{
-		cfg:         cfg,
-		db:          db,
-		nodeID:      nodeID,
-		blockTime:   bt,
-		baseDiff:    baseDifficulty,
-		adjDiff:     baseDifficulty,
-		stopCh:      make(chan struct{}),
-		onlineSince: time.Now(),
+		cfg:               cfg,
+		db:                db,
+		nodeID:            nodeID,
+		blockTime:         bt,
+		baseDiff:          baseDifficulty,
+		adjDiff:           baseDifficulty,
+		stopCh:            make(chan struct{}),
+		onlineSince:       time.Now(),
+		heartbeatInterval: hbRefresh,
 	}
 
 	// 錢包帳本（隨鏈同步；獨立於鏈庫的事務帳本）。
@@ -479,7 +484,11 @@ func (n *Node) Start() {
 // 「開機/關機」由 /api/miner/start|stop 控制（開機即發 hb:on、關機即發 hb:off）。
 func (n *Node) minerHeartbeatLoop() {
 	defer n.wg.Done()
-	t := time.NewTicker(hbRefresh)
+	interval := n.heartbeatInterval
+	if interval <= 0 {
+		interval = hbRefresh
+	}
+	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
 		select {
@@ -493,6 +502,10 @@ func (n *Node) minerHeartbeatLoop() {
 
 // StartAsFollower 以跟隨/全節點模式啟動：不主動 PoW 出塊，
 // 僅參與 BFT 投票，並通過 P2P gossip/同步接收區塊。
+//
+// M61：follower 同樣啟動 minerHeartbeatLoop——Render 等入口以 -p2p-follower 運行，
+// 使用者在本節點開機的礦工由該循環每 heartbeatInterval 續發 hb:on；否則首筆 hb:on
+// 在 hbWindow 塊窗口後過期、礦工無聲下線（即使前端仍顯示挖礦中）。
 func (n *Node) StartAsFollower() {
 	n.mu.Lock()
 	if n.running {
@@ -501,13 +514,18 @@ func (n *Node) StartAsFollower() {
 	}
 	n.running = true
 	n.mu.Unlock()
-	n.wg.Add(1)
+	n.wg.Add(2)
 	go n.runBFT()
+	go n.minerHeartbeatLoop()
 }
 
 // StartDistributed 以分佈式 BFT 模式啟動：每個高度僅輪值 proposer
 // PoW 出塊並廣播，其餘驗證人接收區塊並投票；最終性由跨節點聚合
 // >2/3 precommit 達成；提議超時自動 view change（round+1）。
+//
+// M61：錨點同樣啟動 minerHeartbeatLoop（跟進 M60）——錨點本機 active=1 的礦工
+// （例如營運方經 API 開機者）由循環持續續命上鏈；無 active 礦工時 submitActiveHeartbeats
+// 為空操作，不產生交易、不影響 nonce。節點自身預設礦機 active=0，依 M36 設計不參與分潤。
 func (n *Node) StartDistributed() {
 	n.mu.Lock()
 	if n.running {
@@ -518,9 +536,10 @@ func (n *Node) StartDistributed() {
 	n.distributed = true
 	n.consensusWake = make(chan struct{}, 8)
 	n.mu.Unlock()
-	n.wg.Add(2)
+	n.wg.Add(3)
 	go n.consensusLoop()
 	go n.runBFT()
+	go n.minerHeartbeatLoop()
 }
 
 // Close 停止出塊循環並關閉數據庫。

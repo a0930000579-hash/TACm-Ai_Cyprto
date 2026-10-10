@@ -37,6 +37,12 @@ func listenPort(t *testing.T) (net.Listener, int) {
 }
 
 func startFullNode(t *testing.T, id string, bootstrap []string, follower bool, alice string) *fullNode {
+	return startFullNodeHb(t, id, bootstrap, follower, alice, 0)
+}
+
+// startFullNodeHb 同 startFullNode，但可注入礦工心跳間隔（hbInterval>0 時），
+// 供 M61 自動續命測試以較短間隔快速、確定地驗證 minerHeartbeatLoop。
+func startFullNodeHb(t *testing.T, id string, bootstrap []string, follower bool, alice string, hbInterval time.Duration) *fullNode {
 	l, port := listenPort(t)
 	cfg := config.Default()
 	cfg.DataDir = t.TempDir()
@@ -45,6 +51,9 @@ func startFullNode(t *testing.T, id string, bootstrap []string, follower bool, a
 	n, err := New(cfg, id, 1)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if hbInterval > 0 {
+		n.heartbeatInterval = hbInterval
 	}
 	if alice != "" {
 		insertGenesisWithAlloc(t, n, alice)
@@ -333,5 +342,70 @@ func TestFollowerMinerOnChain(t *testing.T) {
 	_, fTotal2, _ := f.n.OnChainMiners(60)
 	if aTotal2 != 0 || fTotal2 != 0 {
 		t.Fatalf("關機後仍顯示在線: anchor=%d follower=%d", aTotal2, fTotal2)
+	}
+}
+
+// TestFollowerMinerAutoRefresh：M61 核心回歸——follower（Render -p2p-follower）模式下，
+// 使用者經 /api/miner/start 開機後「不再做任何操作」，minerHeartbeatLoop 也必須自動週期
+// 續發 hb:on 上鏈。修正前 follower 不跑循環，首筆 hb:on 在 hbWindow 塊窗口後過期、
+// 礦工無聲下線（前端卻仍顯示挖礦中）。
+func TestFollowerMinerAutoRefresh(t *testing.T) {
+	anchor := startFullNode(t, "anc", nil, false, "")
+	// follower 注入 1.5s 心跳間隔（略慢於 1s 出塊，保持至多約 1 筆未打包，貼近生產的 nonce 時序）。
+	f := startFullNodeHb(t, "fol", []string{anchor.url}, true, "", 1500*time.Millisecond)
+	waitHeight(t, f.n, 4, 25*time.Second)
+
+	kp, _ := crypto.GenerateKeyPair()
+	minerAddr, _ := kp.Address()
+
+	// 走真實產品入口 /api/miner/start（RegisterMiner + SetActiveMiner(true) + 立即 hb:on）。
+	body, _ := json.Marshal(map[string]string{"address": minerAddr})
+	resp, err := http.Post(f.url+"/api/miner/start", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("開機失敗 %d: %s", resp.StatusCode, b)
+	}
+	resp.Body.Close()
+
+	startAt := f.n.DB().GetTipHeight()
+	// 讓鏈推進 14 塊（≈14s）：1.5s 自動續命應在開機的立即 hb:on 之外再產生多筆。
+	waitHeight(t, anchor.n, startAt+14, 30*time.Second)
+	waitHeight(t, f.n, startAt+14, 35*time.Second)
+
+	// 統計鏈上「給該礦工」的 hb:on 筆數（任何節點同一條鏈結果一致）。
+	countHbOn := func(n *Node) int {
+		cnt := 0
+		tip := n.DB().GetTipHeight()
+		for h := int64(1); h <= tip; h++ {
+			txs, qerr := n.DB().GetTransactionsByBlock(h)
+			if qerr != nil {
+				t.Fatal(qerr)
+			}
+			for _, tx := range txs {
+				on, _, ok := parseHeartbeatMemo(tx.Memo)
+				if ok && on && tx.ToAddr == minerAddr {
+					cnt++
+				}
+			}
+		}
+		return cnt
+	}
+	// 開機立即 1 筆 + 14s/1.5s ≈ 9 筆自動續命；寬鬆要求 ≥4 以吸收排程抖動，
+	// 但必須 >1：第 2 筆以後無任何人手觸發，正是循環自動執行的證據。
+	if nOn := countHbOn(f.n); nOn < 4 {
+		t.Fatalf("follower 未自動續命：鏈上 hb:on 僅 %d 筆（預期 ≥4）", nOn)
+	}
+
+	// 礦工仍保持在線且持續收到瓜分。
+	addrs, total, _ := f.n.OnChainMiners(60)
+	if len(addrs) != 1 || addrs[0] != minerAddr || total <= 0 {
+		t.Fatalf("礦工未保持在線: addrs=%v total=%d", addrs, total)
+	}
+	bal, _ := parseBal(f.n.DB().GetBalance(minerAddr))
+	if bal <= 0 {
+		t.Fatal("礦工未持續收到瓜分")
 	}
 }
