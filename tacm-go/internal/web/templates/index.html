@@ -1,36 +1,61 @@
 {% extends "base.html" %}
-{% block title %}TAC Autonomous Chain · Network{% endblock %}
+{% block title %}TAC Autonomous Chain · Mainnet{% endblock %}
 {% block content %}
+
+<!-- M77：以太坊風主頁門面 —— hero＋鏈狀態＋最新區塊/交易 -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Mainnet · Chain ID 1337 (0x539)</div>
+    <h1 class="hero-title">TAC Autonomous Chain</h1>
+    <p class="hero-sub" data-i18n="index.heroTag">Self-sovereign AI-native blockchain · EVM compatible · EIP-1559 · L2 Rollup · BSC Bridge</p>
+    <div class="hero-cta">
+      <a class="btn gold" href="/wallet" data-i18n="index.ctaWallet">進入錢包</a>
+      <a class="btn ghost" href="/mining" data-i18n="index.ctaMining">開始挖礦</a>
+      <a class="btn ghost" href="/join" data-i18n="index.ctaJoin">加入網絡</a>
+      <a class="btn ghost" href="/explorer" data-i18n="index.ctaExplorer">區塊瀏覽</a>
+    </div>
+    <div class="hero-meta">
+      <span class="hm"><small>RPC URL</small><b class="mono" id="heroRpc">…</b></span>
+      <span class="hm"><small>Network</small><b>mainnet</b></span>
+      <span class="hm"><small>Symbol / Decimals</small><b>TACM · 18</b></span>
+    </div>
+  </div>
+</section>
+
 <section class="stat-cards">
   <div class="card">
-    <div class="card-label">鏈頂高度</div>
+    <div class="card-label" data-i18n="index.height">鏈頂高度</div>
     <div class="card-value" id="hHeight">{{ status.Height }}</div>
   </div>
   <div class="card">
-    <div class="card-label">最終化高度</div>
+    <div class="card-label" data-i18n="index.final">最終化高度</div>
     <div class="card-value final" id="hFinal">{{ status.FinalizedHeight }}</div>
   </div>
   <div class="card">
-    <div class="card-label">當前難度</div>
+    <div class="card-label" data-i18n="index.diff">當前難度</div>
     <div class="card-value" id="hDiff">{{ status.Difficulty }}</div>
   </div>
   <div class="card">
-    <div class="card-label">待打包交易</div>
+    <div class="card-label" data-i18n="index.mempool">待打包交易</div>
     <div class="card-value" id="hMempool">{{ status.MempoolSize }}</div>
   </div>
   <div class="card">
     <div class="card-label">Base Fee (TACm/gas)</div>
-    <div class="card-value mono" id="hBaseFee">{{ status.BaseFee }}</div>
+    <div class="card-value mono" id="hBaseFee">{{ status.BaseFee|fee8 }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Gas Price (建議)</div>
+    <div class="card-value mono" id="hGasPrice">{{ status.GasPrice|fee8 }}</div>
   </div>
   <div class="card">
     <div class="card-label">Burned Total (TACm)</div>
-    <div class="card-value mono" id="hBurned">{{ status.BurnedTotal }}</div>
+    <div class="card-value mono" id="hBurned">{{ status.BurnedTotal|fee8 }}</div>
   </div>
 </section>
 
 <!-- M34：<span data-i18n="index.overview">全鏈儀表</span>＋全網挖礦速率圈 -->
 <section class="panel">
-  <div class="panel-head"><h2>🌐 全鏈儀表</h2></div>
+  <div class="panel-head"><h2>🌐 <span data-i18n="index.overview">全鏈儀表</span></h2></div>
   <div class="chain-dash">
     <div class="rate-ring">
       <svg viewBox="0 0 120 120" width="120" height="120">
@@ -49,6 +74,21 @@
 </section>
 
 <style>
+  .hero{background:linear-gradient(135deg,#131a24 0%,#0b0e11 60%,#14100a 100%);border:1px solid rgba(240,185,11,.22);border-radius:18px;padding:34px 26px;margin-bottom:20px;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(240,185,11,.16),transparent 70%)}
+  .hero-inner{position:relative;z-index:1}
+  .hero-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#f0b90b;border:1px solid rgba(240,185,11,.4);border-radius:999px;padding:4px 12px;margin-bottom:14px}
+  .hero-title{font-size:clamp(26px,5vw,42px);font-weight:800;letter-spacing:-.02em;margin:0 0 10px;color:var(--text)}
+  .hero-sub{font-size:15px;color:var(--muted);margin:0 0 20px;max-width:640px}
+  .hero-cta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  .btn{display:inline-block;font-size:14px;font-weight:700;border-radius:12px;padding:11px 22px;text-decoration:none;cursor:pointer}
+  .btn.gold{background:#f0b90b;color:#0b0e11}
+  .btn.ghost{border:1px solid var(--border);color:var(--text);background:transparent}
+  .btn.ghost:hover{border-color:#f0b90b;color:#f0b90b}
+  .hero-meta{display:flex;gap:14px;flex-wrap:wrap}
+  .hm{display:inline-flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+  .hm small{font-size:10px;color:var(--muted)}
+  .hm b{font-size:13px;color:var(--text);word-break:break-all}
   .chain-dash{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
   .rate-ring{position:relative;width:120px;height:120px;flex:none;margin:0 auto}
   .rate-ring svg{transform:rotate(-90deg)}
@@ -60,14 +100,16 @@
   .dash-cards{flex:1;min-width:200px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .dc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
   .dc small{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}
-  .dc b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--text)}
-  @media (max-width:420px){ .chain-dash{flex-direction:column} .dash-cards{width:100%} }
+  .dc b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--text);word-break:break-all}
+  .card-value.mono{font-size:17px;word-break:break-all;overflow-wrap:anywhere}
+  @media (max-width:420px){ .chain-dash{flex-direction:column} .dash-cards{width:100%} .hero{padding:24px 16px} }
 </style>
 
 <script>
-  // M34：首頁全鏈儀表 10s 即時刷新（API 直連不緩存）。
+  // M34/M77：首頁全鏈儀表 10s 即時刷新（API 直連不緩存）；fee 以 TAC_fmtFee 顯示。
   (function () {
     var C = 2*Math.PI*52;
+    function fmtFee(v){ return window.TAC_fmtFee ? window.TAC_fmtFee(v) : v; }
     function fresh() {
       fetch('/api/chain/stats', {cache:'no-store'}).then(function(r){ return r.json().catch(function(){ return null; }); }).then(function(c){
         if (!c || !c.ok) return;
@@ -91,12 +133,16 @@
         el = document.getElementById('hHeight'); if (el && st.block_height!=null) el.textContent = st.block_height;
         el = document.getElementById('hFinal'); if (el && st.finalized_height!=null) el.textContent = st.finalized_height;
         el = document.getElementById('hDiff'); if (el && st.effective_difficulty!=null) el.textContent = st.effective_difficulty;
-        el = document.getElementById('hBaseFee'); if (el && st.base_fee!=null) el.textContent = st.base_fee;
-        el = document.getElementById('hBurned'); if (el && st.burned_total_tacm!=null) el.textContent = st.burned_total_tacm;
+        el = document.getElementById('hMempool'); if (el && st.mempool_size!=null) el.textContent = st.mempool_size;
+        el = document.getElementById('hBaseFee'); if (el && st.base_fee!=null) el.textContent = fmtFee(st.base_fee);
+        el = document.getElementById('hGasPrice'); if (el && st.gas_price!=null) el.textContent = fmtFee(st.gas_price);
+        el = document.getElementById('hBurned'); if (el && st.burned_total_tacm!=null) el.textContent = fmtFee(st.burned_total_tacm);
         el = document.getElementById('dcRate'); if (el && st.block_height!=null) el.textContent = st.block_height + ' 塊';
       }).catch(function(){});
     }
     function fmtN(v){ var n=parseFloat(v); if(isNaN(n)) return '—'; return n.toLocaleString('en-US',{maximumFractionDigits:2}); }
+    var rpcEl = document.getElementById('heroRpc');
+    if (rpcEl) rpcEl.textContent = location.protocol + '//' + location.host;
     fresh();
     setInterval(fresh, 10000);
   })();
@@ -120,6 +166,31 @@
       </tr>
     {% empty %}
       <tr><td colspan="5" class="muted center">尚無區塊</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2 data-i18n="index.latestTx">最新交易</h2></div>
+  <div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>哈希</th><th>區塊</th><th>來源</th><th>目標</th><th>金額 TACm</th><th>備註</th></tr>
+    </thead>
+    <tbody>
+    {% for t in txs %}
+      <tr>
+        <td class="mono"><a href="/tx/{{ t.Hash }}">{{ t.Hash|shortaddr }}</a></td>
+        <td><a class="mono strong" href="/block/{{ t.BlockHeight }}">{{ t.BlockHeight }}</a></td>
+        <td class="mono"><a href="/address/{{ t.From }}">{{ t.From|shortaddr }}</a></td>
+        <td class="mono"><a href="/address/{{ t.To }}">{{ t.To|shortaddr }}</a></td>
+        <td class="nowrap">{{ t.Amount|fmtamt }}</td>
+        <td class="muted">{{ t.Memo|trunc40 }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted center">尚無交易</td></tr>
     {% endfor %}
     </tbody>
   </table>

@@ -44,6 +44,10 @@ a{color:var(--bn-yellow);text-decoration:none;font-size:13px}
 var base = new URLSearchParams(location.search).get('rpc') || (location.protocol === 'http:' ? location.origin.replace(/:([0-9]+)$/, ':8841') : 'http://127.0.0.1:8841');
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function fmt(x){return esc(x);}
+function fmtFee(v){ var n=parseFloat(v); if(isNaN(n)) return '—'; if(n===0) return '0';
+  if(Math.abs(n)>=1) return n.toLocaleString('en-US',{maximumFractionDigits:8});
+  if(Math.abs(n)>=1e-8) return n.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+  return n.toExponential(6).replace(/(\.[0-9]*?)0+e/,'$1e').replace(/\.e/,'e'); }
 function card(title, html){return '<div class="card"><h3>'+title+'</h3>'+html+'</div>';}
 function kv(k,v){return '<div class="k"><span>'+k+'</span><b>'+v+'</b></div>';}
 fetch(base+'/api/status').then(function(r){return r.json();}).then(function(d){
@@ -57,13 +61,19 @@ fetch(base+'/api/status').then(function(r){return r.json();}).then(function(d){
     kv('共識', fmt(c.consensus))+
     kv('難度', fmt(c.difficulty))+
     kv('記憶體池', fmt(c.mempool_size)+' 筆')+
-    kv('Base Fee', fmt(c.base_fee)+' TACm/gas')+
-    kv('Gas Price', fmt(c.gas_price))+
+    kv('Base Fee', fmtFee(c.base_fee)+' TACm/gas')+
+    kv('Gas Price', fmtFee(c.gas_price))+
     kv('Block Gas Limit', fmt(c.block_gas_limit))+
-    kv('Burned Total', fmt(c.burned_total_tacm)+' TACm')+
+    kv('Burned Total', fmtFee(c.burned_total_tacm)+' TACm')+
     kv('運行時間', fmt(c.uptime_sec)+' 秒')+
     kv('節點', fmt(c.node_id))+
-    kv('地址', fmt(c.address)));
+    kv('地址', fmt(c.address))+
+    kv('節點獎勵 (M77)', '每塊 coinbase 9% 自動入節點地址 · 提取請見下方指令'));
+  cards += card('節點獎勵提取（僅本機 · M77）',
+    '<div class="big">'+fmt(c.address)+'</div>'+
+    '<div class="k"><span>方式</span><b>在伺服器上執行下方指令，節點金鑰代簽轉出</b></div>'+
+    '<div class="k"><span>curl</span><b style="max-width:100%;font-size:11px">curl -s -X POST '+location.origin+'/api/node/reward-withdraw -H "Content-Type: application/json" -d '{"to":"tx0目標地址","amount":"5"}'</b></div>'+
+    '<div class="muted">外部網路無法呼叫（僅 127.0.0.1），節點金鑰資產安全。</div>');
   cards += card('鏈上錢包',
     '<div class="big tacm">'+fmt(w.tacm)+' TACm</div>'+
     kv('TiUSD', fmt(w.tiusd))+

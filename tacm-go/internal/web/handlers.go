@@ -28,7 +28,15 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "index.html", pongo2.Context{"blocks": blocks, "chain": s.ds.ChainStats()})
+	txs, err := s.ds.RecentTransactions(10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.render(w, "index.html", pongo2.Context{
+		"blocks": blocks, "txs": txs,
+		"chain": s.ds.ChainStats(), "self": s.ds.Status(),
+	})
 }
 
 // handleExplorer GET /explorer — 公開區塊瀏覽器（M62）：全鏈統計＋搜尋＋最新區塊/交易。

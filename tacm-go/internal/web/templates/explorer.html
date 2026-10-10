@@ -20,11 +20,11 @@
   </div>
   <div class="card">
     <div class="card-label">Base Fee (TACm/gas)</div>
-    <div class="card-value mono" id="eBaseFee">{{ self.BaseFee }}</div>
+    <div class="card-value mono" id="eBaseFee">{{ self.BaseFee|fee8 }}</div>
   </div>
   <div class="card">
     <div class="card-label">Gas Price (建議)</div>
-    <div class="card-value mono" id="eGasPrice">{{ self.GasPrice }}</div>
+    <div class="card-value mono" id="eGasPrice">{{ self.GasPrice|fee8 }}</div>
   </div>
   <div class="card">
     <div class="card-label">Block Gas Limit</div>
@@ -32,7 +32,7 @@
   </div>
   <div class="card">
     <div class="card-label">已銷毀 (Burned TACm)</div>
-    <div class="card-value mono" id="eBurned">{{ self.BurnedTotal }}</div>
+    <div class="card-value mono" id="eBurned">{{ self.BurnedTotal|fee8 }}</div>
   </div>
 </section>
 

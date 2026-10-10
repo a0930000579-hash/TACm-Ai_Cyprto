@@ -97,6 +97,24 @@
 
 <script src="/static/js/i18n.js"></script>
 <script>
+// M77：全站金額/費率顯示格式化——小數點最多 8 位、去尾零；極小值科學記號（防破版）。
+window.TAC_fmtFee = function (x) {
+  if (x === null || x === undefined || x === '') return '—';
+  var n = (typeof x === 'number') ? x : parseFloat(x);
+  if (isNaN(n)) return String(x);
+  if (n === 0) return '0';
+  var s;
+  if (Math.abs(n) >= 1) {
+    s = n.toLocaleString('en-US', { maximumFractionDigits: 8 });
+  } else if (Math.abs(n) >= 1e-8) {
+    s = n.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+  } else {
+    s = n.toExponential(6).replace(/(\.[0-9]*?)0+e/, '$1e').replace(/\.e/, 'e');
+  }
+  return s;
+};
+</script>
+<script>
 // M37：訪客獨立地址——首次訪問由伺服器生成獨立 tx0 地址並存 localStorage；
 // 訪客不再共用節點地址（錢包/礦機/膠囊各自獨立）。登入會員一律用會員鏈上地址。
 // M38：生成時一併回傳並保存 WIF 私鑰；已有備份 WIF 時以 WIF 恢復同一地址（換裝置不丟資產）。

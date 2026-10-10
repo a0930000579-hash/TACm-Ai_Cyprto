@@ -3,9 +3,12 @@ package web
 import (
 	"embed"
 	"io/fs"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
@@ -61,6 +64,29 @@ func NewWithNetwork(ds DataSource, network string) (*Server, error) {
 	return s, nil
 }
 
+// formatFloat8 全站顯示格式化（M77）：小數點最多 8 位、去尾零；極小值用科學記號
+// 精簡（例如 5.86181640625e-7 → 0.00000059），避免長小數破版。
+func formatFloat8(s string) string {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return s
+	}
+	if f == 0 {
+		return "0"
+	}
+	var out string
+	if math.Abs(f) >= 1e-8 {
+		out = strconv.FormatFloat(f, 'f', 8, 64)
+	} else {
+		out = strconv.FormatFloat(f, 'e', 6, 64)
+	}
+	if strings.Contains(out, ".") {
+		out = strings.TrimRight(out, "0")
+		out = strings.TrimRight(out, ".")
+	}
+	return out
+}
+
 func registerFilters() {
 	fns := map[string]pongo2.FilterFunction{
 		"shortaddr": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
@@ -108,7 +134,12 @@ func registerFilters() {
 			if !ok {
 				return in, nil
 			}
-			return pongo2.AsValue(wallet.FormatAmountBig(v)), nil
+			amt := wallet.FormatAmountBig(v)
+			return pongo2.AsValue(formatFloat8(amt)), nil
+		},
+		// M77：全站小數點顯示統一 ≤8 位（防破版）；極小值用科學記號精簡。
+		"fee8": func(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+			return pongo2.AsValue(formatFloat8(in.String())), nil
 		},
 	}
 	for name, fn := range fns {

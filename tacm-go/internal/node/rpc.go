@@ -160,6 +160,8 @@ func NewRPCServer(n *Node) *RPCServer {
 	s.addRoute("GET /api/rewardpool", s.handleRewardPool)
 	s.addRoute("POST /api/rewardpool/topup", s.handleRewardPoolTopup)
 	s.addRoute("POST /api/rewardpool/withdraw", s.handleRewardPoolWithdraw)
+	// M77：節點獎勵提取（本機限定，節點金鑰代簽轉出節點獎勵）。
+	s.addRoute("POST /api/node/reward-withdraw", s.handleNodeRewardWithdraw)
 
 	s.addRoute("GET /contract/preview", s.handleContractPreview)
 	s.addRoute("GET /contract/list", s.handleContractList)
