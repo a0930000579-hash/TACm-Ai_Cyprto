@@ -33,7 +33,26 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "index.html", pongo2.Context{
+	s.render(w, "landing.html", pongo2.Context{
+		"blocks": blocks, "txs": txs,
+		"chain": s.ds.ChainStats(), "self": s.ds.Status(),
+	})
+}
+
+// handleApp GET /app — 系統主頁（原首頁儀表：7 狀態卡＋全鏈儀表＋最新區塊/交易）。
+// M80 起 `/` 為品牌門戶（landing），系統主頁移至 /app。
+func (s *Server) handleApp(w http.ResponseWriter, r *http.Request) {
+	blocks, err := s.ds.Blocks(10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	txs, err := s.ds.RecentTransactions(10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.render(w, "app.html", pongo2.Context{
 		"blocks": blocks, "txs": txs,
 		"chain": s.ds.ChainStats(), "self": s.ds.Status(),
 	})
@@ -99,6 +118,14 @@ func (s *Server) handlePeersAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleJoin GET /join — 節點加入指引頁（M63/M65）：依網段展示 seed 列表、一鍵指令與節點要求。
+// handleNode M86：節點獨立品牌前端說明頁（cmd/nodeweb + internal/nodeui）。
+func (s *Server) handleNode(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "node.html", pongo2.Context{
+		"seeds":   s.serverSeeds(),
+		"network": s.network,
+	})
+}
+
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "join.html", pongo2.Context{
 		"seeds":   s.serverSeeds(),
@@ -111,16 +138,16 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 // 注意：節點 /status 的 JSON 欄位名是 block_height/effective_difficulty，
 // 與 Web 內部 StatusView（height/difficulty）不同——探測外部節點必須用此協議結構。
 type nodeStatusResp struct {
-	NodeID             string `json:"node_id"`
-	Address            string `json:"address"`
-	Network            string `json:"network"`
-	ChainID            string `json:"chain_id"`
-	BlockHeight        int64  `json:"block_height"`
-	FinalBlockHeight   int64  `json:"final_block_height"`
-	MempoolSize        int    `json:"mempool_size"`
-	EffectiveDifficulty int   `json:"effective_difficulty"`
-	UptimeSec          int64  `json:"uptime_sec"`
-	Consensus          string `json:"consensus"`
+	NodeID              string `json:"node_id"`
+	Address             string `json:"address"`
+	Network             string `json:"network"`
+	ChainID             string `json:"chain_id"`
+	BlockHeight         int64  `json:"block_height"`
+	FinalBlockHeight    int64  `json:"final_block_height"`
+	MempoolSize         int    `json:"mempool_size"`
+	EffectiveDifficulty int    `json:"effective_difficulty"`
+	UptimeSec           int64  `json:"uptime_sec"`
+	Consensus           string `json:"consensus"`
 }
 
 // probeSeed 探測單一 seed 節點（M64）：GET {seed}/status、2 秒超時。

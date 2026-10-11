@@ -2,7 +2,8 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,6 +14,30 @@
 <link rel="icon" href="/static/tacm.svg" type="image/svg+xml">
 </head>
 <body>
+<!-- M83：強制亮色防禦（任何內嵌樣式都蓋不掉） -->
+<style>html{background:#f7f8fb !important} body{background:#f7f8fb !important;color-scheme:light}</style>
+<!-- M84：深色自癒——若被舊 Service Worker 快取餵到舊版深色頁面，自動強制重載＋更新 SW，無需手動清緩存 -->
+<script>
+(function () {
+  try {
+    // 強制檢查/更新已註冊的 Service Worker（舊 SW 一發現 sw.js 變更即安裝新版並接管）。
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { try { r.update(); } catch (e) {} });
+      }).catch(function () {});
+    }
+    // 深色檢測：body 計算背景亮度 < 128 → 判定舊版深色主題 → 帶參數強制重載（僅一次，避免死循環）。
+    var bg = getComputedStyle(document.body).backgroundColor || '';
+    var m = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+      var lum = 0.299 * (+m[1]) + 0.587 * (+m[2]) + 0.114 * (+m[3]);
+      if (lum < 128 && location.search.indexOf('tac=1') === -1) {
+        location.replace(location.pathname + location.hash + (location.search ? location.search + '&' : '?') + 'tac=1');
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 <!-- SVG icons（App 底部導航） -->
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
   <symbol id="ico-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
@@ -79,7 +104,7 @@
 <main class="container">
 <style>
   /* M79：頁面圖文橫幅（明亮、SVG 圖案） */
-  .pg-banner{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#eef2ff 0%,#ffffff 70%);border:1px solid rgba(98,126,234,.22);border-radius:16px;padding:22px 26px;margin-bottom:18px}
+  .pg-banner{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#e8f7ee 0%,#ffffff 70%);border:1px solid rgba(104,190,141,.22);border-radius:16px;padding:22px 26px;margin-bottom:18px}
   .pg-txt{flex:1;min-width:0}
   .pg-txt h1{margin:0 0 4px;font-size:clamp(20px,3.4vw,28px);font-weight:800;color:var(--text);letter-spacing:-.01em}
   .pg-txt p{margin:0;font-size:13px;color:var(--muted)}
@@ -90,7 +115,7 @@
 </main>
 
 <nav class="bottom-nav" aria-label="Main navigation" data-i18n-aria="nav.main">
-  <a href="/" data-i="home"><svg class="ico"><use href="#ico-home"/></svg><small data-i18n="nav.home">首頁</small></a>
+  <a href="/app" data-i="home"><svg class="ico"><use href="#ico-home"/></svg><small data-i18n="nav.home">首頁</small></a>
   <a href="/wallet" data-i="wallet"><svg class="ico"><use href="#ico-wallet"/></svg><small data-i18n="nav.wallet">錢包</small></a>
   <a href="/mining" data-i="mining"><svg class="ico"><use href="#ico-pick"/></svg><small data-i18n="nav.mining">挖礦</small></a>
   <a href="/exchange" data-i="exchange"><svg class="ico"><use href="#ico-chart"/></svg><small data-i18n="nav.exchange">交易所</small></a>

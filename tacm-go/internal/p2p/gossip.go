@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"tacm/internal/bridge"
 	"tacm/internal/chaindb"
@@ -45,6 +46,11 @@ func (n *Network) receiveBlock(b *chaindb.Block, txs []chaindb.Transaction, ttl 
 	}
 	if err := n.host.OnIncomingBlock(b, txs); err != nil {
 		log.Printf("[p2p] 接入區塊 h=%d 失敗: %v", b.Height, err)
+		// M86：收到缺口/超前區塊 → 立即觸發一次批量同步追塊（不等下一個 tick），
+		// 根治 follower 晚加入或 gossip 跳塊時的長時間停擺。
+		if strings.Contains(err.Error(), "區塊缺口") {
+			go n.syncOnce()
+		}
 	}
 	if ttl > 0 {
 		n.flood(gossipReq{

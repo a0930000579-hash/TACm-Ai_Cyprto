@@ -3,6 +3,7 @@ package chaindb
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // AddMempoolTx 將交易加入內存池：先淘汰過期交易，再寫入；
@@ -122,4 +123,118 @@ func (c *ChainDB) GetPeers(onlineOnly bool) ([]*Peer, error) {
 		out = append(out, &p)
 	}
 	return out, rows.Err()
+}
+
+// ---- M85：以太坊式 pending 佇列（nonce 依序打包） ----
+
+// GetMempoolPending 返回「可打包佇列」：每個地址從其鏈上 nonce 起連續取
+// （nonce gap 之後的交易跳過，留待前序交易入塊後再打包）；同一 nonce 多筆
+// 只保留 fee 最高者；地址之間按「隊首最高 fee」降序輪流，兼顧收費與公平。
+// 輸出順序即為區塊打包順序（produceBlock 直接使用）。
+func (c *ChainDB) GetMempoolPending(limit int) ([]map[string]any, error) {
+	rows, err := c.db.Query(
+		"SELECT tx_hash, payload, signature FROM mempool ORDER BY CAST(fee AS REAL) DESC")
+	if err != nil {
+		return nil, fmt.Errorf("chaindb: 讀內存池失敗: %w", err)
+	}
+	defer rows.Close()
+
+	// 按地址 → nonce → 交易（同 nonce 高 fee 覆蓋低 fee）。
+	byAddr := make(map[string]map[int64]map[string]any)
+	for rows.Next() {
+		var txHash, payload, signature string
+		if err := rows.Scan(&txHash, &payload, &signature); err != nil {
+			return nil, err
+		}
+		var tx map[string]any
+		if err := json.Unmarshal([]byte(payload), &tx); err != nil {
+			continue // 損壞記錄跳過
+		}
+		tx["tx_hash"] = txHash
+		tx["signature"] = signature
+		from := getString(tx, "from")
+		nonce := getInt64(tx, "nonce")
+		if from == "" {
+			continue
+		}
+		m, ok := byAddr[from]
+		if !ok {
+			m = make(map[int64]map[string]any)
+			byAddr[from] = m
+		}
+		cur, ok := m[nonce]
+		if !ok || feeOf(cur) < feeOf(tx) {
+			m[nonce] = tx
+		}
+	}
+
+	// 每地址：從鏈上 nonce 起連續構建可執行列表（gap 截斷）。
+	type addrQueue struct {
+		addr  string
+		start int64 // 該地址鏈上 nonce（GetNonce 含 pending 佔用，見 read.go）
+		txs   []map[string]any
+	}
+	var queues []*addrQueue
+	for addr, m := range byAddr {
+		q := &addrQueue{addr: addr, start: c.GetNonce(addr)}
+		n := q.start
+		for {
+			tx, ok := m[n]
+			if !ok {
+				break // nonce gap：其後交易暫不可打包
+			}
+			q.txs = append(q.txs, tx)
+			n++
+		}
+		if len(q.txs) > 0 {
+			queues = append(queues, q)
+		}
+	}
+
+	// 地址輪流：每次取「隊首 fee 最高」的地址出一筆（公平＋高費優先）。
+	out := make([]map[string]any, 0, limit)
+	for len(queues) > 0 && len(out) < limit {
+		best := 0
+		for i := 1; i < len(queues); i++ {
+			if feeOf(queues[i].txs[0]) > feeOf(queues[best].txs[0]) {
+				best = i
+			}
+		}
+		out = append(out, queues[best].txs[0])
+		queues[best].txs = queues[best].txs[1:]
+		if len(queues[best].txs) == 0 {
+			queues = append(queues[:best], queues[best+1:]...)
+		}
+	}
+	return out, nil
+}
+
+func getString(m map[string]any, k string) string {
+	if v, ok := m[k].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func getInt64(m map[string]any, k string) int64 {
+	switch v := m[k].(type) {
+	case float64:
+		return int64(v)
+	case int64:
+		return v
+	case string:
+		var n int64
+		fmt.Sscanf(v, "%d", &n)
+		return n
+	}
+	return 0
+}
+
+// feeOf 解析交易 fee（無效視為 0）。
+func feeOf(m map[string]any) float64 {
+	f, err := strconv.ParseFloat(getString(m, "fee"), 64)
+	if err != nil {
+		return 0
+	}
+	return f
 }

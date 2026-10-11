@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · TAC Node{% endblock %}
+{% block content %}
+<!-- M86：節點獨立品牌前端說明（cmd/nodeweb + internal/nodeui，與主網用戶功能分離） -->
+<section class="panel" style="background:linear-gradient(150deg,#fef9c3,#f0fdf4);border:1px solid #fde68a">
+  <div class="panel-head">
+    <h2><span class="badge-node" data-i18n="node.badge">NODE</span> <span data-i18n="node.h1">節點獨立品牌前端</span></h2>
+    <a class="btn-node" href="https://ethereum.org" style="display:none" aria-hidden="true"></a>
+  </div>
+  <p class="muted" data-i18n="node.p1">節點已獨立成自有品牌（TAC Ai Smart Chain — Node），檔案自成一個資料夾（cmd/nodeweb + internal/nodeui），與主網用戶功能完全分離。</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2 data-i18n="node.acc1">節點儀表</h2></div>
+  <div class="chain-grid">
+    <div class="cg"><small data-i18n="node.acc1">節點儀表</small><b>{% if network == "testnet" %}tacm-testnet-1{% else %}tacm-mainnet-1{% endif %}</b></div>
+    <div class="cg"><small data-i18n="node.acc2">同步狀態</small><b>Synced / Behind</b></div>
+    <div class="cg"><small data-i18n="node.acc3">P2P Peers</small><b>Online / Height</b></div>
+    <div class="cg"><small data-i18n="node.acc4">驗證人</small><b>Power / Quorum</b></div>
+    <div class="cg"><small data-i18n="node.acc5">出塊記錄</small><b>Proposer / Txs</b></div>
+    <div class="cg"><small data-i18n="node.seedTitle">種子節點</small><b>{{ seeds|length }}</b></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2 data-i18n="node.cmdTitle">啟動指令</h2></div>
+  <p class="muted" data-i18n="node.cmdHint">以下指令一次一條，於節點伺服器執行：</p>
+  <pre class="cmd-block">sudo ./nodeweb -web-port 8081 -p2p-url http://&lt;你的公網IP&gt;:8081 -p2p-seed http://2.28.201.174:8080 -p2p-follower</pre>
+  <p class="muted" style="margin-top:8px">開啟 <code>http://&lt;你的公網IP&gt;:8081</code> 即見節點品牌控制台。</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>🚀 節點步驟</h2></div>
+  <ol class="steps" style="margin:0;padding-left:20px;line-height:1.9;color:var(--muted)">
+    <li data-i18n="node.step1">下載套件並解壓。</li>
+    <li data-i18n="node.step2">用同一創世錨點啟動（follower）。</li>
+    <li data-i18n="node.step3">開啟節點品牌控制台。</li>
+    <li data-i18n="node.step4">節點自動同步、驗證並獲得 9% 出塊獎勵。</li>
+  </ol>
+</section>
+
+<style>
+  .badge-node{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;color:#fff;
+    background:linear-gradient(135deg,#facc15,#16a34a);border-radius:8px;padding:4px 8px;vertical-align:middle}
+  .btn-node{display:inline-block;margin-left:8px}
+  .cmd-block{background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;color:#0f172a}
+</style>
+{% endblock %}

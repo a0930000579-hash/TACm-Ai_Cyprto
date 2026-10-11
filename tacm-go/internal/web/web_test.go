@@ -34,6 +34,9 @@ func (f *fakeDS) OnChainCoinbase() (node.CoinbaseAggregate, error) {
 	return node.CoinbaseAggregate{Total: 100, Pool: 12, Miners: map[string]float64{"tx0proposeraddr": 88}, Count: 10, TipHeight: 10}, nil
 }
 
+// PendingTxHashes M85：交易池待打包哈希（測試替身）。
+func (f *fakeDS) PendingTxHashes(limit int) ([]string, error) { return nil, nil }
+
 // VerifyLedgerOnChain M71：交易與合約層審計（測試替身恆回傳全過）。
 func (f *fakeDS) VerifyLedgerOnChain() (node.LedgerAuditResult, error) {
 	return node.LedgerAuditResult{OK: true, LedgerOK: true, TipHeight: 10,
@@ -75,7 +78,8 @@ func TestServerPages(t *testing.T) {
 		wantStatus int
 		contains   string
 	}{
-		{"/", http.StatusOK, "最新區塊"},
+		{"/", http.StatusOK, "TAC Ai Smart Chain"}, // M80：/ 為品牌門戶
+		{"/app", http.StatusOK, "最新區塊"}, // M80：系統主頁移至 /app
 		{"/explorer", http.StatusOK, "鏈上搜尋"},
 		{"/explorer", http.StatusOK, "最新交易"},
 		{"/join", http.StatusOK, "加入 TAC Ai 智能鏈主網"},

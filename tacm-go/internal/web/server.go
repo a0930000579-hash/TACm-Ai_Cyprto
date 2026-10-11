@@ -32,6 +32,9 @@ type Server struct {
 	seedURLs []SeedInfo
 	// M65：網路段（mainnet | testnet）——決定 seed 列表與加入指令的展示。
 	network string
+	// M85：WebSocket 訂閱中心與推送迴圈。
+	hub    *wsHub
+	wsStop chan struct{}
 }
 
 // New 構造 Web 服務（mainnet 網段）：加載嵌入模板、註冊 filter 與路由。
@@ -51,7 +54,8 @@ func NewWithNetwork(ds DataSource, network string) (*Server, error) {
 	if network == "" {
 		network = "mainnet"
 	}
-	s := &Server{ds: ds, tplSet: tplSet, mux: http.NewServeMux(), network: network}
+	s := &Server{ds: ds, tplSet: tplSet, mux: http.NewServeMux(), network: network,
+		hub: newWSHub(), wsStop: make(chan struct{})}
 	s.seedURLs = append([]SeedInfo(nil), s.serverSeeds()...)
 	// 社群連結（env 配置：TAC_COMMUNITY_TELEGRAM / TAC_COMMUNITY_X / TAC_COMMUNITY_DISCORD / TAC_COMMUNITY_SITE）。
 	s.community = map[string]string{
@@ -152,12 +156,16 @@ func registerFilters() {
 }
 
 func (s *Server) routes() {
+	// M85：以太坊式 WebSocket 訂閱（eth_subscribe / eth_unsubscribe）。
+	s.mux.HandleFunc("GET /ws", s.handleWS)
 	s.mux.HandleFunc("GET /", s.handleIndex)
+	s.mux.HandleFunc("GET /app", s.handleApp)
 	// M62：公開區塊瀏覽器（公鏈門面）——鏈統計＋搜尋＋最新區塊/交易。
 	s.mux.HandleFunc("GET /explorer", s.handleExplorer)
 	s.mux.HandleFunc("GET /api/search", s.handleSearchAPI)
 	// M63：節點加入指引＋公開 seed 列表（去中心化多節點入口）。
 	s.mux.HandleFunc("GET /join", s.handleJoin)
+	s.mux.HandleFunc("GET /node", s.handleNode) // M86：節點獨立品牌前端說明
 	s.mux.HandleFunc("GET /api/peers", s.handlePeersAPI)
 	// M64：節點健康度監控（全網狀態統一視界）。
 	s.mux.HandleFunc("GET /network", s.handleNetwork)
@@ -220,5 +228,19 @@ func (s *Server) render(w http.ResponseWriter, name string, ctx pongo2.Context) 
 	ctx["community"] = s.community
 	if err := tpl.ExecuteWriter(ctx, w); err != nil {
 		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// StartWS 啟動 WebSocket 訂閱推送迴圈（cmd 啟動時調用）。
+func (s *Server) StartWS() {
+	go s.wsPump(s.wsStop)
+}
+
+// CloseWS 停止 WebSocket 推送迴圈。
+func (s *Server) CloseWS() {
+	select {
+	case <-s.wsStop:
+	default:
+		close(s.wsStop)
 	}
 }

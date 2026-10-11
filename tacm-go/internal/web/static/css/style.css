@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: #f7f8fb;
   --bg-soft: #eef0f5;
   --panel: #ffffff;
@@ -6,7 +7,10 @@
   --border: #e2e6ee;
   --text: #14161a;
   --muted: #5d6778;
-  --accent: #627eea;
+  --accent: #68BE8D;      /* 若竹色（wakatakeiro）主強調 */
+  --bamboo: #68BE8D;       /* 若竹色 */
+  --bamboo2: #7BAB80;      /* 青竹色（aotakeiro） */
+  --gold: #F0B90B;         /* 幣安黃 */
   --green: #0ecb81;
   --red: #f6465d;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -188,7 +192,7 @@ a:hover { color: var(--accent); }
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 60;
-    background: rgba(13, 17, 23, 0.97);
+    background: rgba(255,255,255,0.97);
     border-top: 1px solid var(--border);
     backdrop-filter: blur(10px);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
@@ -226,7 +230,7 @@ a:hover { color: var(--accent); }
 /* 背景：幣安深色底＋微光暈（所有頁面共用） */
 body {
   background:
-    radial-gradient(1200px 500px at 50% -120px, rgba(98, 126, 234, 0.05), transparent 60%),
+    radial-gradient(1200px 500px at 50% -120px, rgba(104, 190, 141, 0.05), transparent 60%),
     radial-gradient(900px 400px at 100% 0%, rgba(14, 203, 129, 0.035), transparent 55%),
     #14161a;
 }
@@ -251,12 +255,12 @@ input, select, textarea { font-size: 16px; }
 .brand { display: flex; align-items: center; gap: 8px; }
 .brand-badge {
   width: 22px; height: 22px; border-radius: 7px; flex: none;
-  background: linear-gradient(135deg, #627eea, #f8d94e);
-  box-shadow: 0 0 10px rgba(98, 126, 234, 0.45);
+  background: linear-gradient(135deg, #F0B90B, #f8d94e);
+  box-shadow: 0 0 10px rgba(104, 190, 141, 0.45);
 }
 .brand:hover span { color: var(--accent); }
 .navlinks a.active { color: var(--accent); }
-.netstat { padding: 4px 10px; background: rgba(98, 126, 234, 0.08); border: 1px solid rgba(98, 126, 234, 0.25); border-radius: 999px; }
+.netstat { padding: 4px 10px; background: rgba(104, 190, 141, 0.08); border: 1px solid rgba(104, 190, 141, 0.25); border-radius: 999px; }
 .netstat .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
 /* 通用按鈕（各頁可用；min-height 44px 觸控達標） */
@@ -264,11 +268,11 @@ input, select, textarea { font-size: 16px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 44px; padding: 10px 18px; border-radius: 8px;
   border: 1px solid transparent; font-size: 14px; font-weight: 600;
-  cursor: pointer; background: #1e2329; color: var(--text); text-decoration: none;
+  cursor: pointer; background: var(--panel-2); color: var(--text); text-decoration: none;
 }
 .btn:active { transform: scale(0.98); }
-.btn.primary { background: linear-gradient(135deg, #627eea, #5669dd); color: #14161a; }
-.btn.buy { background: linear-gradient(135deg, #0ecb81, #0ab26b); color: #14161a; }
+.btn.primary { background: linear-gradient(135deg, #F0B90B, #e6a50c); color: #14161a; }
+.btn.buy { background: linear-gradient(135deg, #68BE8D, #5aa97c); color: #14161a; }
 .btn.sell { background: linear-gradient(135deg, #f6465d, #d9344b); color: #fff; }
 .btn.ghost { background: transparent; border-color: var(--border); color: var(--muted); }
 .btn.small { min-height: 34px; padding: 6px 12px; font-size: 13px; border-radius: 6px; }
@@ -279,21 +283,21 @@ input, select, textarea { font-size: 16px; }
   padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
   border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,0.03);
 }
-.pill:hover { color: #627eea; border-color: rgba(98,126,234,.55); }
+.pill:hover { color: #68BE8D; border-color: rgba(104,190,141,.55); }
 .pill.off { opacity: .55; cursor: default; }
-#member-pill { border-color: rgba(98,126,234,.5); color: #627eea; }
-#member-pill:hover { background: rgba(98,126,234,.08); }
+#member-pill { border-color: rgba(104,190,141,.5); color: #68BE8D; }
+#member-pill:hover { background: rgba(104,190,141,.08); }
 
 /* 卡片 hover：幣安交互感 */
-.card:hover, .panel:hover { border-color: rgba(98,126,234,.3); }
+.card:hover, .panel:hover { border-color: rgba(104,190,141,.3); }
 
 /* 底部 App 導航：SVG icon、active 金黃、安全區、不與內容重疊 */
 .bottom-nav a { position: relative; }
 .bottom-nav a .ico { width: 22px; height: 22px; fill: currentColor; stroke: none; }
-.bottom-nav a.bn-active { color: #627eea; }
+.bottom-nav a.bn-active { color: #68BE8D; }
 .bottom-nav a.bn-active::before {
   content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 24px; height: 3px; border-radius: 0 0 3px 3px; background: #627eea;
+  width: 24px; height: 3px; border-radius: 0 0 3px 3px; background: #68BE8D;
 }
 .bottom-nav a.bn-active small { font-weight: 800; }
 
@@ -313,19 +317,19 @@ input, select, textarea { font-size: 16px; }
 }
 
 /* ===== M32 頂部登入/帳號（Python 同款：未登入「登入」、登入後綠燈＋帳號＋下拉） ===== */
-.member-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(98,126,234,.08); color: #627eea; border: 1px solid rgba(98,126,234,.35); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.member-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(104,190,141,.08); color: #68BE8D; border: 1px solid rgba(104,190,141,.35); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .member-pill .mdot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
 .member-pill.logged .mdot { background: #0ecb81; box-shadow: 0 0 6px rgba(14,203,129,.7); }
-.member-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 95; display: none; flex-direction: column; gap: 4px; min-width: 170px; padding: 10px; background: rgba(255,255,255,.98); border: 1px solid rgba(98,126,234,.25); border-radius: 12px; box-shadow: 0 12px 32px rgba(31,38,49,.14); }
+.member-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 95; display: none; flex-direction: column; gap: 4px; min-width: 170px; padding: 10px; background: rgba(255,255,255,.98); border: 1px solid rgba(104,190,141,.25); border-radius: 12px; box-shadow: 0 12px 32px rgba(104,190,141,.16); }
 .member-wrap { position: relative; }
 .member-wrap.open .member-menu { display: flex; }
 .member-menu a { color: var(--bn-sub); text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 13px; }
-.member-menu a:hover { background: rgba(98,126,234,.1); color: #627eea; }
+.member-menu a:hover { background: rgba(104,190,141,.1); color: #68BE8D; }
 .member-menu .mm-name { color: #fff; font-weight: 700; font-size: 13px; padding: 6px 10px; }
 /* ===== M31 頂部膠囊開關＋礦機訊號 ===== */
 .miner-pill { display: inline-flex; align-items: center; gap: 6px; }
 .miner-pill .mdot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; box-shadow: 0 0 6px rgba(107,114,128,.6); }
-.tools-toggle { background: rgba(98,126,234,.08); color: #627eea; border-color: rgba(98,126,234,.35); cursor: pointer; }
+.tools-toggle { background: rgba(104,190,141,.08); color: #68BE8D; border-color: rgba(104,190,141,.35); cursor: pointer; }
 .comm { position: relative; }
 .tools-menu { display: flex; align-items: center; gap: 8px; }
 
@@ -338,9 +342,9 @@ input, select, textarea { font-size: 16px; }
     position: absolute; top: calc(100% + 10px); right: 0; z-index: 90;
     flex-direction: column; align-items: stretch; gap: 6px;
     min-width: 168px; padding: 10px;
-    background: rgba(13, 17, 23, 0.98);
-    border: 1px solid rgba(98, 126, 234, 0.25); border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    background: rgba(255,255,255,0.98);
+    border: 1px solid rgba(104, 190, 141, 0.25); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(104,190,141,.14);
   }
   .tools-menu .pill { justify-content: flex-start; width: 100%; }
   .comm.open .tools-menu { display: flex; }

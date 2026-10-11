@@ -66,6 +66,7 @@ func (n *Network) registerRoutes() {
 	n.mux.HandleFunc("POST /p2p/hello", n.handleHello)
 	n.mux.HandleFunc("POST /p2p/gossip", n.handleGossip)
 	n.mux.HandleFunc("GET /p2p/block/{height}", n.handleBlockFetch)
+	n.mux.HandleFunc("GET /p2p/blocks", n.handleBlocksFetch) // M86：批量同步（catch-up）
 	n.mux.HandleFunc("GET /p2p/peers", n.handlePeers)
 }
 

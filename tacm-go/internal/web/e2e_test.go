@@ -50,14 +50,23 @@ func TestExplorerRealNode(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	// 首頁顯示真實鏈頂高度。
+	// M80：`/` 為品牌門戶（landing）；系統主頁（含最新區塊）移至 /app。
 	resp, _ := http.Get(ts.URL + "/")
 	body := readAllString(resp)
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("首頁 狀態=%d", resp.StatusCode)
+		t.Fatalf("門戶 狀態=%d", resp.StatusCode)
+	}
+	if !strings.Contains(body, "TAC Ai Smart Chain") {
+		t.Errorf("門戶缺少品牌標題")
+	}
+	resp.Body.Close()
+	resp, _ = http.Get(ts.URL + "/app")
+	body = readAllString(resp)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("系統主頁 狀態=%d", resp.StatusCode)
 	}
 	if !strings.Contains(body, "最新區塊") {
-		t.Errorf("首頁缺少區塊列表區塊")
+		t.Errorf("系統主頁缺少區塊列表區塊")
 	}
 	resp.Body.Close()
 

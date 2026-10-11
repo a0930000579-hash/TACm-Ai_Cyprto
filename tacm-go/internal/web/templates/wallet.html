@@ -2,7 +2,7 @@
 {% block content %}
 <section class="pg-banner">
   <div class="pg-txt"><h1 data-i18n="bn.wallet">進入錢包</h1><p data-i18n="bn.walletSub">資產與轉帳</p></div>
-  <svg viewBox="0 0 40 40" class="pg-art"><rect x="4" y="10" width="32" height="22" rx="5" fill="none" stroke="#627eea" stroke-width="2.4"/><path d="M4 16 h28 v-3 a5 5 0 0 0 -5 -5 H12 a5 5 0 0 0 -5 5 v3 Z" fill="rgba(98,126,234,.25)"/><circle cx="28" cy="24" r="3" fill="#627eea"/></svg>
+  <svg viewBox="0 0 40 40" class="pg-art"><rect x="4" y="10" width="32" height="22" rx="5" fill="none" stroke="#68BE8D" stroke-width="2.4"/><path d="M4 16 h28 v-3 a5 5 0 0 0 -5 -5 H12 a5 5 0 0 0 -5 5 v3 Z" fill="rgba(104,190,141,.25)"/><circle cx="28" cy="24" r="3" fill="#68BE8D"/></svg>
 </section>
 <style>
   :root { --bn-bg:#f7f8fb; --bn-card:#ffffff; --bn-card2:#f2f4f9; --bn-line:#e2e6ee;
@@ -17,8 +17,8 @@
   .bn-search input { width:100%; background:var(--bn-card); border:1px solid var(--bn-line); color:var(--bn-txt); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; }
   .bn-addr { font-size:12px; color:var(--bn-sub); display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; max-width:100%; }
   .bn-addr-tag { font-size:10px; color:var(--bn-sub); border:1px solid var(--border); border-radius:999px; padding:1px 8px; white-space:nowrap; }
-  .bn-copy { font-size:11px; color:#627eea; background:rgba(98,126,234,.08); border:1px solid rgba(98,126,234,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
-  .bn-copy:hover { background:rgba(98,126,234,.15); }
+  .bn-copy { font-size:11px; color:#68BE8D; background:rgba(104,190,141,.08); border:1px solid rgba(104,190,141,.4); border-radius:999px; padding:2px 10px; cursor:pointer; }
+  .bn-copy:hover { background:rgba(104,190,141,.15); }
   main { max-width:900px; margin:0 auto; padding:16px; }
   .bn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .asset-card { background:var(--bn-card); border:1px solid var(--bn-line); border-radius:12px; padding:16px; }
@@ -228,7 +228,7 @@
 
     <div class="bn-panel">
       <h3>Assets Info</h3>
-      <div class="bn-note" style="background:rgba(98,126,234,.07); border:1px solid rgba(98,126,234,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
+      <div class="bn-note" style="background:rgba(104,190,141,.07); border:1px solid rgba(104,190,141,.3); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--bn-sub);">
         ・Wallet shows only <b style="color:var(--bn-yellow)">personal assets</b>; <b>Total TACm Mined &amp; TiUSD Circulation</b> are on the Mining page's Chain Overview.<br>
         ・TiUSD is produced by <b style="color:var(--bn-yellow)">on-chain mechanism (supply-layer minting)</b> — DeFi pools / Exchange settlement auto-mint &amp; credit, <b>private issuance or burning prohibited</b>.
       </div>

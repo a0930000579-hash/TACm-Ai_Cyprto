@@ -2,22 +2,23 @@
 {% block title %}TAC Governance{% endblock %}
 {% block content %}
 <style>
+  body { background: var(--bg, #f7f8fb) !important; }
   .gov-wrap{max-width:1100px;margin:0 auto}
   .gov-head{background:linear-gradient(135deg,#f7f8fb,#f2f4f9);border:1px solid #e2e6ee;border-radius:16px;padding:18px 20px;color:#14161a;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .gov-head .logo{width:48px;height:48px;border-radius:12px;background:#627eea;color:#f7f8fb;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
-  .gov-head h2{margin:0;font-size:20px;font-weight:800;color:#627eea}
+  .gov-head .logo{width:48px;height:48px;border-radius:12px;background:#68BE8D;color:#f7f8fb;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
+  .gov-head h2{margin:0;font-size:20px;font-weight:800;color:#68BE8D}
   .gov-head .sub{font-size:12px;opacity:.8;margin-top:2px}
   .gov-stats{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
-  .gov-stats span{background:rgba(98,126,234,.12);border:1px solid rgba(98,126,234,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#627eea}
+  .gov-stats span{background:rgba(104,190,141,.12);border:1px solid rgba(104,190,141,.35);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:#68BE8D}
   .gov-grid{display:grid;grid-template-columns:360px 1fr;gap:14px;align-items:start}
   @media (max-width:900px){.gov-grid{grid-template-columns:1fr}}
   .gov-card{background:#f7f8fb;border:1px solid #e2e6ee;border-radius:14px;padding:16px;margin-bottom:14px}
-  .gov-card h3{margin:0 0 12px;font-size:14px;color:#627eea;font-weight:800;display:flex;align-items:center;gap:8px}
+  .gov-card h3{margin:0 0 12px;font-size:14px;color:#68BE8D;font-weight:800;display:flex;align-items:center;gap:8px}
   .gov-field{margin-bottom:10px}
   .gov-field label{display:block;font-size:12px;color:#5d6778;margin-bottom:4px}
   .gov-field input,.gov-field select,.gov-field textarea{width:100%;box-sizing:border-box;background:#f2f4f9;border:1px solid #e2e6ee;border-radius:10px;color:#14161a;padding:10px 12px;font-size:13px;font-family:ui-monospace,monospace}
   .gov-field textarea{min-height:64px;resize:vertical}
-  .gov-btn{width:100%;background:#627eea;color:#f7f8fb;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
+  .gov-btn{width:100%;background:#68BE8D;color:#f7f8fb;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}
   .gov-btn.ghost{background:transparent;border:1px solid #e2e6ee;color:#14161a;font-weight:700}
   .gov-btn.sm{width:auto;padding:6px 14px;font-size:12px;border-radius:8px}
   .gov-btn.v-yes{background:rgba(14,203,129,.15);color:#0ecb81;border:1px solid rgba(14,203,129,.4)}
@@ -31,12 +32,12 @@
   .gov-item .title{font-size:14px;font-weight:700;color:#14161a;flex:1;min-width:0}
   .gov-item .desc{font-size:12px;color:#5d6778;margin-top:4px;word-break:break-word}
   .gov-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:3px 8px;flex:none}
-  .gov-tag.st-voting{background:rgba(98,126,234,.15);color:#627eea}
+  .gov-tag.st-voting{background:rgba(104,190,141,.15);color:#68BE8D}
   .gov-tag.st-passed{background:rgba(14,203,129,.15);color:#0ecb81}
   .gov-tag.st-rejected{background:rgba(246,70,93,.15);color:#f6465d}
   .gov-tag.st-executed{background:rgba(71,139,255,.15);color:#478bff}
   .gov-tag.tp-param{background:#e2e6ee;color:#5d6778}
-  .gov-tag.tp-treasury{background:rgba(98,126,234,.15);color:#627eea}
+  .gov-tag.tp-treasury{background:rgba(104,190,141,.15);color:#68BE8D}
   .gov-tag.tp-meta{background:rgba(14,203,129,.15);color:#0ecb81}
   .gov-meta{font-size:11px;color:#5d6778;margin-top:6px;word-break:break-all}
   .gov-bar{display:flex;height:8px;border-radius:6px;overflow:hidden;margin:10px 0 4px;background:#e2e6ee}
@@ -49,7 +50,7 @@
   .gov-param-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e2e6ee;font-size:13px}
   .gov-param-row:last-child{border-bottom:none}
   .gov-param-row .k{color:#14161a;font-weight:600;font-family:ui-monospace,monospace}
-  .gov-param-row .v{color:#627eea;font-weight:800}
+  .gov-param-row .v{color:#68BE8D;font-weight:800}
   .gov-param-row .d{display:block;font-size:11px;color:#5d6778;font-weight:400}
 </style>
 

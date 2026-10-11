@@ -31,6 +31,8 @@ type DataSource interface {
 	OnChainCoinbase() (node.CoinbaseAggregate, error)
 	// M71：交易與合約層鏈上審計——全鏈賬本重放（簽名/nonce/餘額/合約格式/守恆）。
 	VerifyLedgerOnChain() (node.LedgerAuditResult, error)
+	// M85：交易池待打包交易哈希（WebSocket newPendingTransactions 訂閱數據源）。
+	PendingTxHashes(limit int) ([]string, error)
 }
 
 type nodeDS struct{ n *node.Node }
@@ -38,6 +40,21 @@ type nodeDS struct{ n *node.Node }
 // CurrentUser 讀取登入會員（session cookie）。
 func (d *nodeDS) CurrentUser(r *http.Request) (*node.AuthUser, error) {
 	return d.n.Auth().CurrentUser(r)
+}
+
+// PendingTxHashes 返回交易池中待打包交易的哈希列表（fee 降序，最多 limit 筆）。
+func (d *nodeDS) PendingTxHashes(limit int) ([]string, error) {
+	pool, err := d.n.DB().GetMempool(limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(pool))
+	for _, m := range pool {
+		if h, ok := m["tx_hash"].(string); ok && h != "" {
+			out = append(out, h)
+		}
+	}
+	return out, nil
 }
 
 // NewNodeDataSource 把運行中的節點適配為 Web 數據源。

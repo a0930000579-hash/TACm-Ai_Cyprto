@@ -156,6 +156,41 @@ func (n *Network) handleBlockFetch(w http.ResponseWriter, r *http.Request) {
 	writeP2PJSON(w, http.StatusOK, blockData{Block: b, Txs: txs})
 }
 
+// handleBlocksFetch M86：批量回傳 [from,to] 區塊（每塊含 txs），上限 500 塊——
+// follower 晚加入/大缺口時一次拉取，取代逐塊 HTTP round-trip。
+func (n *Network) handleBlocksFetch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	from, err := strconv.ParseInt(q.Get("from"), 10, 64)
+	if err != nil {
+		writeP2PErr(w, http.StatusBadRequest, "invalid from")
+		return
+	}
+	to := from + 499
+	if q.Get("to") != "" {
+		to, err = strconv.ParseInt(q.Get("to"), 10, 64)
+		if err != nil {
+			writeP2PErr(w, http.StatusBadRequest, "invalid to")
+			return
+		}
+	}
+	if to < from || to-from > 499 {
+		to = from + 499
+	}
+	out := make([]blockData, 0, to-from+1)
+	for h := from; h <= to; h++ {
+		b, txs, err := n.host.BlockDetail(h)
+		if err != nil {
+			writeP2PErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if b == nil {
+			break // 鏈頂已到
+		}
+		out = append(out, blockData{Block: b, Txs: txs})
+	}
+	writeP2PJSON(w, http.StatusOK, map[string]any{"blocks": out})
+}
+
 func (n *Network) handlePeers(w http.ResponseWriter, r *http.Request) {
 	writeP2PJSON(w, http.StatusOK, map[string]any{
 		"peers": n.snapshotPeers(), "count": len(n.snapshotPeers()),

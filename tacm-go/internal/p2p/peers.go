@@ -63,6 +63,9 @@ func (n *Network) markFail(p *Peer) {
 }
 
 // snapshotPeers 返回節點信息副本（併發安全）。
+// PeerSnapshot M86：公開 peers 快照（節點獨立 UI / 運維面板用）。
+func (n *Network) PeerSnapshot() []Peer { return n.snapshotPeers() }
+
 func (n *Network) snapshotPeers() []Peer {
 	n.mu.Lock()
 	defer n.mu.Unlock()

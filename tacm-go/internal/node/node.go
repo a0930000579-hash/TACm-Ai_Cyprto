@@ -795,7 +795,9 @@ func (n *Node) produceBlock() error {
 		}
 	}
 
-	mempool, err := n.db.GetMempool(maxTxPerBlock)
+	// M85：以太坊式 pending 佇列——每地址按 nonce 依序、同 nonce 取高 fee、
+	// 地址間按隊首 fee 輪流；nonce gap 之後的交易留待下塊。
+	mempool, err := n.db.GetMempoolPending(maxTxPerBlock)
 	if err != nil {
 		return err
 	}

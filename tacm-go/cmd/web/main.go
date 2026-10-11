@@ -189,6 +189,9 @@ func main() {
 		log.Printf("[node] 節點 %s 已啟動，地址 %s", *nodeID, n.Address())
 	}
 
+	// M85：啟動 WebSocket 訂閱推送（eth_subscribe newHeads / newPendingTransactions）。
+	wserver.StartWS()
+
 	var webSrv *http.Server
 	if *webPort == *rpcPort {
 		// 同埠模式：RPC 路由掛載進 Web mux，單一監聽
