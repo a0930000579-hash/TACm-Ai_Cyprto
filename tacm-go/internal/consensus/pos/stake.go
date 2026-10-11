@@ -83,6 +83,14 @@ func (s *Store) Stake(uid int64, address string, amount float64, validatorID *in
 			amount, amount, *validatorID); err != nil {
 			return nil, err
 		}
+	} else {
+		// M87：自質押若該地址已註冊驗證人，同步計入 self_stake / total_stake
+		// （無匹配驗證人時為普通質押，忽略）。
+		if _, err := tx.Exec(
+			`UPDATE validators SET self_stake=self_stake+?, total_stake=total_stake+? WHERE address=?`,
+			amount, amount, address); err != nil {
+			return nil, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err

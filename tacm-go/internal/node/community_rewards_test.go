@@ -57,9 +57,6 @@ func newCommunityHost(t *testing.T, blockTime int) (*Node, *httptest.Server) {
 	return n, ts
 }
 
-
-
-
 func cmPostJSON(t *testing.T, url string, body map[string]any) map[string]any {
 	t.Helper()
 	var b strings.Builder

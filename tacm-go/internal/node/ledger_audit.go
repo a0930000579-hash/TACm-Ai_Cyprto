@@ -31,19 +31,19 @@ func isCoinbaseMemo(memo string) bool {
 
 // LedgerAuditResult 交易與合約層鏈上審計結果（M71 核心結構）。
 type LedgerAuditResult struct {
-	OK            bool     `json:"ok"`               // 全部檢查通過且賬本守恆
-	TipHeight     int64    `json:"tip_height"`       // 重放時的鏈頂
-	CoinbaseTx    int      `json:"coinbase_tx"`      // 納入守恆的 coinbase 交易數
-	TxChecked     int      `json:"tx_checked"`       // 審計的非 coinbase 交易數
-	TxSigPass     int      `json:"tx_sig_pass"`      // 簽名驗證通過
+	OK            bool     `json:"ok"`          // 全部檢查通過且賬本守恆
+	TipHeight     int64    `json:"tip_height"`  // 重放時的鏈頂
+	CoinbaseTx    int      `json:"coinbase_tx"` // 納入守恆的 coinbase 交易數
+	TxChecked     int      `json:"tx_checked"`  // 審計的非 coinbase 交易數
+	TxSigPass     int      `json:"tx_sig_pass"` // 簽名驗證通過
 	TxSigFail     int      `json:"tx_sig_fail"`
-	TxNoncePass   int      `json:"tx_nonce_pass"`    // nonce 順序通過
+	TxNoncePass   int      `json:"tx_nonce_pass"` // nonce 順序通過
 	TxNonceFail   int      `json:"tx_nonce_fail"`
-	TxBalancePass int      `json:"tx_balance_pass"`  // 餘額充足通過
+	TxBalancePass int      `json:"tx_balance_pass"` // 餘額充足通過
 	TxBalanceFail int      `json:"tx_balance_fail"`
-	ContractPass  int      `json:"contract_pass"`    // 合約交易格式通過
+	ContractPass  int      `json:"contract_pass"` // 合約交易格式通過
 	ContractFail  int      `json:"contract_fail"`
-	LedgerOK      bool     `json:"ledger_ok"`        // 守恆：總餘額＋銷毀 == coinbase 增發
+	LedgerOK      bool     `json:"ledger_ok"`           // 守恆：總餘額＋銷毀 == coinbase 增發
 	CoinbaseTotal float64  `json:"coinbase_total_tacm"` // 全鏈 coinbase 增發總額
 	BalancesTotal float64  `json:"balances_total_tacm"` // 重放後全部地址餘額總和
 	BurnedTotal   float64  `json:"burned_total_tacm"`   // 全鏈 EIP-1559 銷毀總額（通縮）
@@ -77,7 +77,7 @@ func (n *Node) VerifyLedgerOnChain() (LedgerAuditResult, error) {
 	}
 
 	balances := map[string]float64{} // 地址 → 重放餘額（與鏈上 updateBalance 同規則）
-	nonces := map[string]int64{}    // 地址 → 已見 nonce（下一筆期望值，從 0 起）
+	nonces := map[string]int64{}     // 地址 → 已見 nonce（下一筆期望值，從 0 起）
 	var coinbaseTotal float64
 	var burnedTotal float64 // M74-3：全鏈 EIP-1559 銷毀總額（通縮）
 

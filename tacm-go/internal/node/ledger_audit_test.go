@@ -87,7 +87,7 @@ func m71SignedTx(t *testing.T, kp *crypto.KeyPair, to, amount, fee string, nonce
 		t.Fatal(err)
 	}
 	return chaindb.Transaction{
-		TxHash: "tx-" + tx["from"].(string)[:12] + "-" + fmt.Sprint(nonce),
+		TxHash:   "tx-" + tx["from"].(string)[:12] + "-" + fmt.Sprint(nonce),
 		FromAddr: tx["from"].(string), ToAddr: to, Amount: amount, Fee: fee,
 		Nonce: nonce, Ts: tx["ts"].(int64), Signature: sig,
 		Pubkey: tx["pubkey"].(string), Memo: memo,

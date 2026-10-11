@@ -671,16 +671,16 @@ func (s *RPCServer) ethGetTransactionReceipt(params []any) (any, error) {
 		}
 	}
 	return map[string]any{
-		"transactionHash":  "0x" + tx.TxHash,
-		"transactionIndex": hexBig(int64(tx.TxIndex)),
-		"blockHash":        "0x" + tx.BlockHash,
-		"blockNumber":      hexBig(tx.BlockHeight),
-		"from":             from0x,
-		"to":               to0x,
-		"status":           status,
-		"gasUsed":          hexBig(gasUsed),
+		"transactionHash":   "0x" + tx.TxHash,
+		"transactionIndex":  hexBig(int64(tx.TxIndex)),
+		"blockHash":         "0x" + tx.BlockHash,
+		"blockNumber":       hexBig(tx.BlockHeight),
+		"from":              from0x,
+		"to":                to0x,
+		"status":            status,
+		"gasUsed":           hexBig(gasUsed),
 		"effectiveGasPrice": gasPrice,
-		"logs":             ethLogs,
+		"logs":              ethLogs,
 	}, nil
 }
 

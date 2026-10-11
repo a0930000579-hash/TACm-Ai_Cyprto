@@ -137,13 +137,33 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleValidators(w http.ResponseWriter, r *http.Request) {
 	vs := s.n.ValidatorSet()
-	writeJSON(w, map[string]any{
+	resp := map[string]any{
 		"validators": vs.List(),
 		"total":      vs.Len(),
 		"power":      vs.TotalPower(),
 		"quorum":     vs.QuorumPower(),
 		"fault":      vs.FaultTolerance(),
-	})
+		"dynamic":    false,
+	}
+	// M87：PoS 動態驗證人集（質押驅動，jailed 標記）。
+	if ps := s.n.GetPosStore(); ps != nil {
+		if vals, err := ps.GetActiveValidatorsForConsensus(21); err == nil && len(vals) > 0 {
+			dyn := make([]map[string]any, 0, len(vals))
+			for i := range vals {
+				v := &vals[i]
+				dyn = append(dyn, map[string]any{
+					"address": v.Address, "name": v.Name, "stake": v.TotalStake,
+					"power":  int(v.TotalStake/100) + 1,
+					"status": v.Status, "jailed": v.Status == "jailed",
+					"uptime": v.Uptime, "proposed": v.BlocksProposed, "missed": v.BlocksMissed,
+				})
+			}
+			resp["dynamic"] = true
+			resp["validators"] = dyn
+			resp["total"] = len(dyn)
+		}
+	}
+	writeJSON(w, resp)
 }
 
 // handleBlocks 回傳最近 N 塊（含 coinbase 獎勵結構摘要）。

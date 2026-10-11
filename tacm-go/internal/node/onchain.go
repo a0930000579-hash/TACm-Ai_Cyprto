@@ -53,7 +53,7 @@ func (n *Node) OnChainCoinbaseAggregate() (CoinbaseAggregate, error) {
 		case tx.Memo == "coinbase:miner":
 			out.Miners[tx.ToAddr] += amt
 			out.MinerCount[tx.ToAddr]++
-		// coinbase:reserve 與 coinbase（舊式）不計入礦工收益，仍屬總產出。
+			// coinbase:reserve 與 coinbase（舊式）不計入礦工收益，仍屬總產出。
 		}
 	}
 	out.TipHeight = n.db.GetTipHeight()

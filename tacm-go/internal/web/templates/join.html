@@ -47,23 +47,21 @@
   <div class="panel-head"><h2>💻 一鍵加入指令</h2></div>
   <div class="join-cmd">
     {% if network == "testnet" %}
-    <pre id="joinCmd">git clone {{ repo }}.git
-cd TACm-Ai_Cyprto/tacm-go
-go build -o tacweb ./cmd/web
-go build -o tacnode ./cmd/node
-./tacweb -network testnet -web-port 8080 -rpc-port 8080 -data-dir ./data-testnet -block-time 2 -difficulty 1 -p2p -p2p-url http://&lt;你的公網IP&gt;:8080 -p2p-seed &lt;testnet錨點URL&gt; -p2p-follower</pre>
+    <pre id="joinCmd">curl -L -o /tmp/tacnet-node.sh 'https://aka.doubaocdn.com/s/eFr3VVzdq3' && bash /tmp/tacnet-node.sh --network testnet --mode nohup --seed &lt;testnet錨點URL&gt;</pre>
     <button class="search-btn" id="copyBtn" type="button">複製指令</button>
   </div>
-  <p class="muted">把 <b>&lt;你的公網IP&gt;</b> 與 <b>&lt;testnet錨點URL&gt;</b> 換成實際值後逐行執行。testnet 使用獨立鏈 ID <b>tacm-testnet-1</b> 與獨立資料目錄，與主網完全分離，可放心試跑。</p>
+  <p class="muted">一行一鍵安裝（自動下載／編譯／啟動）。testnet 使用獨立鏈 ID <b>tacm-testnet-1</b> 與獨立資料目錄，與主網完全分離，可放心試跑。</p>
     {% else %}
-    <pre id="joinCmd">git clone {{ repo }}.git
-cd TACm-Ai_Cyprto/tacm-go
-go build -o tacweb ./cmd/web
-go build -o tacnode ./cmd/node
-./tacweb -web-port 8080 -rpc-port 8080 -data-dir ./data -block-time 2 -difficulty 3 -p2p -p2p-url http://&lt;你的公網IP&gt;:8080 -p2p-seed http://2.28.201.174:8080 -p2p-follower</pre>
+    <pre id="joinCmd">curl -L -o /tmp/tacnet-node.sh 'https://aka.doubaocdn.com/s/eFr3VVzdq3' && bash /tmp/tacnet-node.sh</pre>
     <button class="search-btn" id="copyBtn" type="button">複製指令</button>
   </div>
-  <p class="muted">把 <b>&lt;你的公網IP&gt;</b> 換成你自己的 IP 後逐行執行。啟動後以 <b>-p2p-seed</b> 連上錨點完成握手，即開始同步主網。</p>
+  <p class="muted"><b>一行一鍵搭建</b>（自動裝 Go／下載／編譯／systemd 或 nohup 啟動／偵測公網 IP）。Linux 伺服器用 systemd（開機自啟），手機 Termux 自動用 nohup；自訂埠加 <code>--port 8081</code>，指定模式加 <code>--mode systemd|nohup|render</code>。啟動後節點品牌控制台＝<code>http://&lt;你的公網IP&gt;:8081</code>。</p>
+  <div class="join-cmd" style="margin-top:10px">
+    <pre id="joinCmdAlt"># Render（免費雲平台）：推 GitHub → Render 新建 Web Service → Go runtime（render.yaml 自動配置）
+# 進階手動方式：
+go build -o tacweb ./cmd/web
+./tacweb -web-port 8080 -rpc-port 8080 -data-dir ./data -block-time 2 -difficulty 3 -p2p -p2p-url http://&lt;你的公網IP&gt;:8080 -p2p-seed http://2.28.201.174:8080 -p2p-follower</pre>
+  </div>
     {% endif %}
 </section>
 
@@ -77,7 +75,7 @@ go build -o tacnode ./cmd/node
       <tr><td>系統</td><td>Linux / macOS（需 Go 1.22+）</td></tr>
       <tr><td>記憶體</td><td>建議 2GB RAM 以上</td></tr>
       <tr><td>磁碟</td><td>10GB 以上（鏈資料會持續增長）</td></tr>
-      <tr><td>網路</td><td>開放 TCP 8080 埠（P2P + RPC 同埠合併）</td></tr>
+      <tr><td>網路</td><td>開放 TCP 8080 埠（P2P + RPC 同埠合併）；8081 埠供節點品牌控制台</td></tr>
       <tr><td>同步</td><td>首次啟動自動從 seed 節點同步全鏈</td></tr>
     </tbody>
   </table>
@@ -94,6 +92,22 @@ go build -o tacnode ./cmd/node
   <p class="muted">啟動後在網頁「挖礦」頁開啟礦機即可參與出塊：收益按鏈上 coinbase 分潤規則發放（池 + 礦工），開機/關機狀態經心跳交易寫入鏈上，任何入口看到你的在線狀態一致。</p>
 </section>
 
+<!-- M87：GitHub 永久固化 -->
+<section class="panel">
+  <div class="panel-head"><h2>🔒 原始碼永久固化（GitHub）</h2></div>
+  <p class="muted">節點與整套鏈的原始碼固化到 GitHub，任何人可 clone、審計、部署（一次一條）：</p>
+  <div class="join-cmd">
+    <pre id="joinGit">cd tacm-go
+git init -b main
+git add -A
+git commit -m "TAC Ai Smart Chain - M87 (dynamic validators + slashing)"
+git remote add origin https://github.com/&lt;你的帳號&gt;/TACm-Ai_Cyprto.git
+git push -u origin main</pre>
+    <button class="search-btn" id="copyGitBtn" type="button">複製指令</button>
+  </div>
+  <p class="muted">推完後將 <b>公開倉庫網址</b> 貼回本頁 seed 列表（或告知我），即可成為全網永久可查證的開源錨點。</p>
+</section>
+
 <style>
   .chain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
   .cg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
@@ -104,9 +118,28 @@ go build -o tacnode ./cmd/node
 </style>
 
 <script>
-  // M63：複製一鍵指令。
+  // M63：複製一鍵指令（M87：GitHub 固化指令共用同一邏輯）。
+  function bindCopy(btnId, preId, doneLabel) {
+    var btn = document.getElementById(btnId);
+    var pre = document.getElementById(preId);
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.textContent;
+      function done() { btn.textContent = doneLabel + ' ✓'; setTimeout(function () { btn.textContent = '複製指令'; }, 1500); }
+      function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
+      } else { fallback(); }
+    });
+  }
   (function () {
-    var btn = document.getElementById('copyBtn');
+    bindCopy('copyBtn', 'joinCmd', '已複製');
+    bindCopy('copyGitBtn', 'joinGit', '已複製');
     var pre = document.getElementById('joinCmd');
     if (!btn || !pre) return;
     btn.addEventListener('click', function () {

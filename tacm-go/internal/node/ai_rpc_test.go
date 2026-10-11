@@ -27,8 +27,8 @@ func newAIHost(t *testing.T) *RPCServer {
 
 func TestAIIntentMatch(t *testing.T) {
 	cases := []struct {
-		q      string
-		want   aiIntent
+		q    string
+		want aiIntent
 	}{
 		{"node status", aiStatus},
 		{"節點狀態", aiStatus},

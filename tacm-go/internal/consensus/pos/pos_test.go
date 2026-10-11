@@ -88,17 +88,17 @@ func TestUnlockFlow(t *testing.T) {
 func TestValidator(t *testing.T) {
 	s := openTestStore(t, DefaultConfig())
 
-	v, err := s.RegisterValidator(1, "tx0val1", "node1", 0.05)
+	v, err := s.RegisterValidator(1, "tx0val1", "node1", 0.05, "ab12cd34")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if v.Status != "active" {
 		t.Error("驗證人應為 active")
 	}
-	if _, err := s.RegisterValidator(1, "tx0val1", "dup", 0.05); err == nil {
+	if _, err := s.RegisterValidator(1, "tx0val1", "dup", 0.05, "ef56ab78"); err == nil {
 		t.Error("同地址重複註冊應報錯")
 	}
-	if _, err := s.RegisterValidator(2, "tx0val2", "high", 0.3); err == nil {
+	if _, err := s.RegisterValidator(2, "tx0val2", "high", 0.3, "cd34ef56"); err == nil {
 		t.Error("傭金率過高應報錯")
 	}
 	vals, _ := s.GetValidators(10)

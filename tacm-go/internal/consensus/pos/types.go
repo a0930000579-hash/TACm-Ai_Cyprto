@@ -33,6 +33,7 @@ type Validator struct {
 	Uptime         float64 `json:"uptime"`
 	BlocksProposed int64   `json:"blocks_proposed"`
 	BlocksMissed   int64   `json:"blocks_missed"`
+	PubkeyHex      string  `json:"pubkey_hex"`
 }
 
 // Reward 為收益記錄。

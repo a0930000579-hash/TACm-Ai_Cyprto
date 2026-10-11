@@ -50,6 +50,10 @@ func NewRPCServer(n *Node) *RPCServer {
 	s := &RPCServer{node: n, mux: mux}
 
 	s.addRoute("GET /health", s.handleHealth)
+	s.addRoute("GET /api/pos/validators", s.handlePosValidators)
+	s.addRoute("POST /api/pos/register", s.handlePosRegister)
+	s.addRoute("POST /api/pos/stake", s.handlePosStake)
+	s.addRoute("GET /api/pos/slash_evidence", s.handlePosSlashEvidence)
 	s.addRoute("GET /status", s.handleStatus)
 	s.addRoute("GET /api/gas", s.handleGasOracle)
 	s.addRoute("GET /headers", s.handleHeaders)
@@ -282,7 +286,7 @@ func (s *RPCServer) handleGasOracle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "base_fee": baseFee, "priority_fee": priority,
 		"max_fee": baseFee + priority, "gas_limit": gasLimit,
-		"block_gas_limit": st.BlockGasLimit,
+		"block_gas_limit":    st.BlockGasLimit,
 		"total_fee_estimate": (baseFee + priority) * float64(gasLimit),
 	})
 }

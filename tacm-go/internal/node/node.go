@@ -22,6 +22,7 @@ import (
 	"tacm/internal/config"
 	"tacm/internal/consensus/bft"
 	"tacm/internal/consensus/difficulty"
+	"tacm/internal/consensus/pos"
 	"tacm/internal/crypto"
 	"tacm/internal/defi"
 	"tacm/internal/dex"
@@ -100,6 +101,10 @@ type Node struct {
 
 	// 鏈上 DEX（AMM 恆定乘積交易所；nil=合約層未啟用時不初始化）
 	dex *dex.Engine
+
+	// M87 動態驗證人集：PoS 質押層（pos.db）+ 雙簽罰沒追蹤器 + 週期重建。
+	posStore     *pos.Store
+	slashTracker *bft.SlashingTracker
 
 	// 官方代簽的 mempool pending nonce（同 from 連續多筆合約交易佔用 nonce；
 	// 入塊後 db.GetNonce 已含全部，resetPendingTx 清空）。
@@ -244,6 +249,15 @@ func New(cfg *config.Config, nodeID string, baseDifficulty int) (*Node, error) {
 	tip := db.GetTipHeight()
 	n.adjDiff = difficulty.ReplayDifficulty(n.blockLookup, tip,
 		baseDifficulty, bt.Seconds(), difficulty.RetargetInterval)
+
+	// M87 PoS 質押層（pos.db）：動態驗證人集的資料來源。開啟失敗不致命——
+	// 共識回退創世驗證人集（單節點仍可正常出塊）。
+	if ps, perr := pos.Open(filepath.Join(dataDir, "pos.db"), pos.DefaultConfig()); perr == nil {
+		n.posStore = ps
+		n.slashTracker = bft.NewSlashingTracker(pos.DefaultConfig().SlashRate * pos.DefaultConfig().ValidatorMinStk)
+	} else {
+		n.posStore = nil
+	}
 
 	// 智能合約管理器：持久化於 tac_evm.db。
 	cm, err := vm.NewContractManager(filepath.Join(dataDir, "tac_evm.db"))
@@ -476,6 +490,7 @@ func (n *Node) Start() {
 	go n.consensusLoop()
 	go n.runBFT()
 	go n.minerHeartbeatLoop()
+	n.StartDynamicValidators() // M87：動態驗證人集週期重建（內部自行 wg.Add(1)）
 }
 
 // minerHeartbeatLoop M60：伺服器端礦機排程——每 30s 對所有已「開機」的礦工續發
@@ -517,6 +532,7 @@ func (n *Node) StartAsFollower() {
 	n.wg.Add(2)
 	go n.runBFT()
 	go n.minerHeartbeatLoop()
+	n.StartDynamicValidators() // M87：follower 同樣週期重建動態驗證人集
 }
 
 // StartDistributed 以分佈式 BFT 模式啟動：每個高度僅輪值 proposer

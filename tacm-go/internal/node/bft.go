@@ -272,6 +272,12 @@ func (n *Node) bftStep() {
 // handleIncomingVote 接收網絡傳來的共識投票：驗簽入狀態機，
 // precommit 另記存以供最終性證明/SPV。
 func (n *Node) handleIncomingVote(v *bft.Vote) error {
+	// M87：雙簽罰沒偵測（equivocation）——同驗證人同高度同輪對不同塊投票 → jail + slash。
+	if n.slashTracker != nil {
+		if ev := n.slashTracker.Observe(v); ev != nil {
+			n.applySlashing(ev)
+		}
+	}
 	if err := n.bftNode.ReceiveVote(v); err != nil {
 		return err
 	}

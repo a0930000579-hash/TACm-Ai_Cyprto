@@ -30,6 +30,23 @@
 </section>
 
 <section class="panel">
+  <div class="panel-head"><h2>⚡ 一行一鍵搭建</h2></div>
+  <pre class="cmd-block">curl -L -o /tmp/tacnet-node.sh 'https://aka.doubaocdn.com/s/eFr3VVzdq3' &amp;&amp; bash /tmp/tacnet-node.sh</pre>
+  <p class="muted" style="margin-top:8px">自動偵測環境（systemd / nohup / render）、自動裝 Go、下載、編譯、啟動、偵測公網 IP。Render：推 GitHub → 新建 Web Service → Go runtime（<code>render.yaml</code> 自動配置）。</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>🔒 原始碼永久固化（GitHub）</h2></div>
+  <pre class="cmd-block">cd tacm-go
+git init -b main
+git add -A
+git commit -m "TAC Ai Smart Chain - M87"
+git remote add origin https://github.com/&lt;你的帳號&gt;/TACm-Ai_Cyprto.git
+git push -u origin main</pre>
+  <p class="muted" style="margin-top:8px">一次一條執行；推完後節點原始碼永久公開可查證、可 clone 部署。</p>
+</section>
+
+<section class="panel">
   <div class="panel-head"><h2>🚀 節點步驟</h2></div>
   <ol class="steps" style="margin:0;padding-left:20px;line-height:1.9;color:var(--muted)">
     <li data-i18n="node.step1">下載套件並解壓。</li>

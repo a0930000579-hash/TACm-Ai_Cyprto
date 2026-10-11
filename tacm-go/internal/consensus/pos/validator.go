@@ -8,24 +8,28 @@ import (
 
 const validatorCols = `id, uid, address, name, total_stake, self_stake,
 	delegated_stake, commission_rate, status, joined_at, jailed_at,
-	uptime, blocks_proposed, blocks_missed`
+	uptime, blocks_proposed, blocks_missed, pubkey_hex`
 
 func scanValidator(scanner interface{ Scan(...any) error }) (*Validator, error) {
 	var v Validator
 	err := scanner.Scan(
 		&v.ID, &v.UID, &v.Address, &v.Name, &v.TotalStake, &v.SelfStake,
 		&v.DelegatedStake, &v.CommissionRate, &v.Status, &v.JoinedAt, &v.JailedAt,
-		&v.Uptime, &v.BlocksProposed, &v.BlocksMissed)
+		&v.Uptime, &v.BlocksProposed, &v.BlocksMissed, &v.PubkeyHex)
 	if err != nil {
 		return nil, err
 	}
 	return &v, nil
 }
 
-// RegisterValidator 註冊成為驗證人。
-func (s *Store) RegisterValidator(uid int64, address, name string, commission float64) (*Validator, error) {
+// RegisterValidator 註冊成為驗證人。pubkeyHex 為驗證人公鑰（hex，必填——
+// BFT 動態驗證人集重建時以公鑰派生地址校驗身分）。
+func (s *Store) RegisterValidator(uid int64, address, name string, commission float64, pubkeyHex string) (*Validator, error) {
 	if commission < 0 || commission > 0.2 {
 		return nil, fmt.Errorf("傭金率必須在 0-20%% 之間")
+	}
+	if pubkeyHex == "" {
+		return nil, fmt.Errorf("驗證人必須提供公鑰（pubkey_hex）")
 	}
 	now := time.Now().Unix()
 
@@ -45,9 +49,9 @@ func (s *Store) RegisterValidator(uid int64, address, name string, commission fl
 	}
 
 	res, err := tx.Exec(
-		`INSERT INTO validators (uid,address,name,commission_rate,status,joined_at)
-		 VALUES (?,?,?,?,'active',?)`,
-		uid, address, name, commission, now)
+		`INSERT INTO validators (uid,address,name,commission_rate,status,joined_at,pubkey_hex)
+		 VALUES (?,?,?,?,'active',?,?)`,
+		uid, address, name, commission, now, pubkeyHex)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +70,12 @@ func (s *Store) RegisterValidator(uid int64, address, name string, commission fl
 		return nil, err
 	}
 	return s.GetValidatorInfo(id)
+}
+
+// GetValidatorByAddress 依地址返回驗證人（含監禁狀態；M87 RPC/測試用）。
+func (s *Store) GetValidatorByAddress(address string) (*Validator, error) {
+	return scanValidator(s.db.QueryRow(
+		`SELECT `+validatorCols+` FROM validators WHERE address=?`, address))
 }
 
 // GetValidatorInfo 返回驗證人詳情。

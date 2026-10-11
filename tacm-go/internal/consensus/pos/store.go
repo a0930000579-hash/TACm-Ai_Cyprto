@@ -37,6 +37,16 @@ func Open(path string, cfg Config) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	// M87：相容既有 db 的 pubkey_hex 欄位遷移（已存在時忽略錯誤）。
+	_, _ = db.Exec(`ALTER TABLE validators ADD COLUMN pubkey_hex TEXT`)
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS slash_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		address TEXT NOT NULL,
+		amount REAL NOT NULL,
+		rate REAL NOT NULL,
+		reason TEXT,
+		created_at INTEGER NOT NULL)`)
+
 	if _, err := db.Exec("PRAGMA busy_timeout=30000"); err != nil {
 		db.Close()
 		return nil, err
@@ -80,7 +90,15 @@ func (s *Store) initSchema() error {
 			jailed_at INTEGER,
 			uptime REAL DEFAULT 100.0,
 			blocks_proposed INTEGER DEFAULT 0,
-			blocks_missed INTEGER DEFAULT 0)`,
+			blocks_missed INTEGER DEFAULT 0,
+			pubkey_hex TEXT)`,
+		`CREATE TABLE IF NOT EXISTS slash_events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			address TEXT NOT NULL,
+			amount REAL NOT NULL,
+			rate REAL NOT NULL,
+			reason TEXT,
+			created_at INTEGER NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS rewards (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			uid INTEGER NOT NULL,
